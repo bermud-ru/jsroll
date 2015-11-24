@@ -1,0 +1,56 @@
+{
+  "name": "bermud-ru/SPARoll-dev",
+  "version": "0.1.0",
+  "type": "project",
+  "description": "Javascript SPA framework (Javascript DOM application)",
+  "keywords": [
+    "rest",
+    "spa",
+    "framework"
+  ],
+  "homepage": "http://www.infotelecom.pro/",
+  "license": "BSD-3-Clause",
+  "authors": [
+    {
+      "name": "Andrew Novikoff",
+      "email": "bermud@nm.ru",
+      "homepage": "http://www.infotelecom.pro/",
+      "role": "Founder and project lead"
+    }
+  ],
+
+  "repositories": [
+
+  ],
+
+  "scripts": {
+    "post-install-cmd": [
+      "bower install"
+    ],
+    "post-update-cmd": [
+      "bower install"
+    ]
+  },
+
+  "require": {
+    "bower-asset/jquery": "2.1.*@stable | 1.11.*@stable",
+    "bower-asset/jquery.inputmask": "3.1.*",
+    "bower-asset/jquery.validate": "1.14.*",
+    "twbs/bootstrap": ">=3.0.0"
+  },
+
+  "extra": {
+    "assets": {
+      "actions": [
+        {
+          "type": "copy",
+          "target": "webroot/public/js",
+          "pattern": "\\.js$"
+        }
+      ],
+      "packages": {
+        "app/roll": "*"
+      }
+    }
+  }
+}
