@@ -33,9 +33,9 @@
   },
 
   "require": {
-    "bower-asset/jquery": "2.1.*@stable | 1.11.*@stable",
-    "bower-asset/jquery.inputmask": "3.1.*",
-    "bower-asset/jquery.validate": "1.14.*",
+    "components/jquery": ">=2.1.*",
+    "components/jquery-validation": "1.14.*",
+    "components/handlebars.js": ">=4.0.*",
     "twbs/bootstrap": ">=3.0.0"
   },
 
@@ -45,7 +45,7 @@
         {
           "type": "copy",
           "target": "webroot/public/js",
-          "pattern": "\\.js$"
+          "pattern": "*"
         }
       ],
       "packages": {
