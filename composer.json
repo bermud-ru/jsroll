@@ -21,14 +21,13 @@
 
   "require": {
     "components/jquery": "2.1.*",
-    "twbs/bootstrap": "3.0.*  "
-  },
-
-  "extra": {
-    "script": {
-      "post-update-cmd": [
-        "mkdir -p public2"
-      ]
+    "twbs/bootstrap": "3.0.*  ",
+    "extra": {
+      "script": {
+        "post-update-cmd": [
+          "mkdir -p public2"
+        ]
+      }
     }
   }
 
