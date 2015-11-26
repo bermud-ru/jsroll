@@ -21,20 +21,30 @@
 
   "require": {
     "components/jquery": "2.1.*",
-    "twbs/bootstrap": "3.0.*  "
+    "twbs/bootstrap": "3.0.*  ",
+    "php": ">=5.3",
+    "ext-xsl": "*",
+    "ext-imap": "*",
+    "ext-gd": "*"
   }  ,
 
+  "autoload": {
+    "psr-0": {
+      "MyProject": "src/"
+    }
+  },
+
   "scripts": {
-  "pre-install-cmd": "mkdir -p pre-install-cmd",
-  "post-install-cmd": [
-    "mkdir -p post-install-cmd"
-  ],
-  "post-package-install": [
-    "mkdir -p post-package-install"
-  ],
-    "post-update-cmd": [
-      "mkdir -p post-update-cmd"
+    "pre-install-cmd": "MyProject\Installer::preInstall",
+    "post-install-cmd": [
+      "MyProject\Installer::postInstall"
+    ],
+    "post-package-install": [
+      "MyProject\Installer::postPackageInstall",
+      "phpunit -c /tests",
+      "./bin/install.sh"
     ]
+  }
 }
 
 }
