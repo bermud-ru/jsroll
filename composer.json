@@ -25,7 +25,7 @@
 
   "extra": {
     "installer-paths": {
-      "public/js": ["bermud-ru/sparoll"]
+      "public/js": ["vendor/bermud-ru/sparoll"]
     }
   }
 
