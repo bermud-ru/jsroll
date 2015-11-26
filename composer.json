@@ -24,13 +24,12 @@
     "twbs/bootstrap": "3.0.*  "
   },
 
-  "extra":{
+  "extra": {
     "script": {
       "post-update-cmd": [
         "mkdir -p public2"
       ]
     }
-    ]
   }
 
 }
