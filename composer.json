@@ -18,20 +18,19 @@
       "role": "Founder and project lead"
     }
   ],
-  "repositories": [
-    {
-      "url": "git@github.com:jzaefferer/jquery-validation.git",
-      "type": "git"
-    }
-  ],
 
   "require": {
     "components/jquery": "2.1.*",
     "twbs/bootstrap": "3.0.*  "
   },
 
-  "config": {
-    "vendor-dir": "public/js/"
+  "extra":{
+    "script": {
+      "post-update-cmd": [
+        "mkdir -p public2"
+      ]
+    }
+    ]
   }
 
 }
