@@ -18,7 +18,7 @@
       "role": "Founder and project lead"
     }
   ],
-  
+
   "require": {
     "components/jquery": "2.1.*",
     "twbs/bootstrap": "3.0.*  ",
@@ -35,12 +35,12 @@
   },
 
   "scripts": {
-    "pre-install-cmd": "MyProject\Installer::preInstall",
+    "pre-install-cmd": "MyProject\\Installer::preInstall",
     "post-install-cmd": [
-      "MyProject\Installer::postInstall"
+      "MyProject\\Installer::postInstall"
     ],
     "post-package-install": [
-      "MyProject\Installer::postPackageInstall",
+      "MyProject\\Installer::postPackageInstall",
       "phpunit -c /tests",
       "./bin/install.sh"
     ]
