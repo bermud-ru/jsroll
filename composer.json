@@ -21,9 +21,8 @@
 
   "require": {
     "twbs/bootstrap": "3.0.*  "
-  }
-
-,
+  },
+  
   "extra": {
     "assets": {
       "actions": [
