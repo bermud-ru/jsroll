@@ -22,19 +22,10 @@
   "require": {
     "twbs/bootstrap": "3.0.*  "
   },
-  
+
   "extra": {
-    "assets": {
-      "actions": [
-        {
-          "type": "copy",
-          "target": "webroot/public/js/roll",
-          "pattern": "\\.js$"
-        }
-      ],
-      "packages": {
-        "bermud-ru/sparoll": "*"
-      }
+    "installer-paths": {
+      "public/js": ["bermud-ru/sparoll"]
     }
   }
 
