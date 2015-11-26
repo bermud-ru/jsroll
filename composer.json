@@ -27,8 +27,22 @@
 
   "require": {
     "components/jquery": "2.1.*",
-    "components/handlebars.js":"*",
     "twbs/bootstrap": "3.0.*  "
+  },
+
+  "extra": {
+    "public": {
+      "name": "roll",
+      "scripts": [
+        "roll.js"
+      ],
+      "files": [
+        "roll.js","roll.view.js","roll.model.js"
+      ],
+      "shim": {
+        "exports": "roll"
+      }
+    }
   }
 
 }
