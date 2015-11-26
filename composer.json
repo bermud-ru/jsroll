@@ -27,7 +27,7 @@
 
   "require": {
     "components/jquery": "2.1.*",
-    "jzaefferer/jquery-validation": "1.14.1-pre",
+    "components/handlebars.js":"*",
     "twbs/bootstrap": "3.0.*  "
   }
 
