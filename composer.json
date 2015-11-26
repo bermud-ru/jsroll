@@ -19,26 +19,12 @@
     }
   ],
 
-
   "require": {
     "components/jquery": "2.1.*",
     "components/jquery-validation": "1.14.*",
     "components/handlebars.js": "4.0.*",
-    "twbs/bootstrap": "3.0.*"
-  },
-
-  "extra": {
-    "assets": {
-      "actions": [
-        {
-          "type": "copy",
-          "target": "webroot/public/js",
-          "pattern": "*"
-        }
-      ],
-      "packages": {
-        "app/roll": "*"
-      }
-    }
+    "twbs/bootstrap": "3.0.*  "
   }
+
+
 }
