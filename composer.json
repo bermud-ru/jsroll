@@ -31,10 +31,10 @@
   },
 
   "extra": {
-    "public": {
+    "component": {
       "name": "roll",
       "scripts": [
-        "roll.js"
+        "cp -R vendor/twbs/bootstrap/dist/ public/bootstrap/"
       ],
       "files": [
         "roll.js","roll.view.js","roll.model.js"
