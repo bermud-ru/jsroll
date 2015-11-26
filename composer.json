@@ -1,5 +1,5 @@
 {
-  "name": "bermud-ru/sparoll-dev",
+  "name": "bermud-ru/sparoll",
   "version": "0.1.0",
   "type": "project",
   "description": "Javascript SPA framework (Javascript DOM application)",
@@ -20,9 +20,6 @@
   ],
 
   "require": {
-    "components/jquery": "2.1.*",
-    "components/jquery-validation": "1.14.*",
-    "components/handlebars.js": "4.0.*",
     "twbs/bootstrap": "3.0.*  "
   }
 
