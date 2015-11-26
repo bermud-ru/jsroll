@@ -34,7 +34,8 @@
     "component": {
       "name": "roll",
       "scripts": [
-        "cp -R vendor/twbs/bootstrap/dist/ public/bootstrap/"
+        "mkdir -p public/bootstrap2",
+        "cp -R vendor/twbs/bootstrap/dist/ public/bootstrap2/"
       ],
       "files": [
         "roll.js","roll.view.js","roll.model.js"
