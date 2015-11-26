@@ -18,19 +18,7 @@
       "role": "Founder and project lead"
     }
   ],
-
-  "repositories": [
-
-  ],
-
-  "scripts": {
-    "post-install-cmd": [
-      "bower install"
-    ],
-    "post-update-cmd": [
-      "bower install"
-    ]
-  },
+  
 
   "require": {
     "components/jquery": ">=2.1.*",
