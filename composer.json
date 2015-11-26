@@ -27,7 +27,7 @@
 
   "require": {
     "components/jquery": "2.1.*",
-    "jzaefferer/jquery-validation": "*@dev",
+    "jzaefferer/jquery-validation": "1.14.*",
     "twbs/bootstrap": "3.0.*  "
   }
 
