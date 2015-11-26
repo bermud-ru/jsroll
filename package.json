@@ -1,7 +1,7 @@
 {
   "jspm": {
-    "main": "sparoll",
-    "shim": { "SPARoll": { "exports": "SPARoll" } },
+    "main": "sparoll-dev",
+    "shim": { "sparoll": { "exports": "sparoll" } },
     "files": ["tools.js", "roll/roll.js", "roll/roll.model.js", "roll/roll.control.js","roll/roll.rest.js", "roll/roll.route.js", "roll/roll.storage.js", "roll/roll.view.js"],
     "buildConfig": { "minify": true }
   }
