@@ -18,6 +18,7 @@
       "role": "Founder and project lead"
     }
   ],
+  
   "require": {
     "components/jquery": "2.1.*",
     "twbs/bootstrap": "3.0.*  ",
@@ -26,6 +27,7 @@
     "ext-imap": "*",
     "ext-gd": "*"
   }  ,
+
   "autoload": {
     "psr-0": {
       "MyProject": "src/"
