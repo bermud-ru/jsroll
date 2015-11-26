@@ -22,10 +22,7 @@
   "require": {
     "components/jquery": "2.1.*",
     "twbs/bootstrap": "3.0.*  ",
-    "php": ">=5.3",
-    "ext-xsl": "*",
-    "ext-imap": "*",
-    "ext-gd": "*"
+    "php": ">=5.3"
   }  ,
 
   "autoload": {
