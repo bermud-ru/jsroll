@@ -30,20 +30,8 @@
     "twbs/bootstrap": "3.0.*  "
   },
 
-  "extra": {
-    "component": {
-      "name": "roll",
-      "scripts": [
-        "mkdir -p public/bootstrap2",
-        "cp -R vendor/twbs/bootstrap/dist/ public/bootstrap2/"
-      ],
-      "files": [
-        "roll.js","roll.view.js","roll.model.js"
-      ],
-      "shim": {
-        "exports": "roll"
-      }
-    }
+  "config": {
+    "vendor-dir": "public/js/"
   }
 
 }
