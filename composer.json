@@ -20,7 +20,7 @@
   ],
 
   "require": {
-    "components/jquery": "2.1.*",
+    "bower/jquery": "2.1.*",
     "twbs/bootstrap": "3.0.*  "
   },
 
