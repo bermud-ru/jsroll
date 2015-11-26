@@ -23,10 +23,10 @@
     "twbs/bootstrap": "3.0.*  "
   },
 
-  "extra": {
-    "installer-paths": {
-      "public/js": ["vendor/bermud-ru/sparoll"]
-    }
-  }
+  "scripts": {
+    "post-update-cmd": [
+      "mkdir -p public/bootstrap",
+      "cp -R vendor/twbs/bootstrap/dist/ public/bootstrap/"
+    ]}
 
 }
