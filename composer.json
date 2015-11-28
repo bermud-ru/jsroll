@@ -30,6 +30,7 @@
       "MyProject": "src/"
     }
   },
+
   "post-install-cmd": [
     "mkdir -p bootstrap-test"
     ],
@@ -39,6 +40,7 @@
       "MyProject\\Installer::postInstall"
     ],
     "post-package-install": [
+      "mkdir -p bootstrap-test2",
       "MyProject\\Installer::postPackageInstall",
       "phpunit -c /tests",
       "./bin/install.sh"
