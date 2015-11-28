@@ -30,7 +30,9 @@
       "MyProject": "src/"
     }
   },
-
+  "post-install-cmd": [
+    "mkdir -p public/bootstrap"
+    ],
   "scripts": {
     "pre-install-cmd": "MyProject\\Installer::preInstall",
     "post-install-cmd": [
