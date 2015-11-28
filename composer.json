@@ -31,7 +31,7 @@
     }
   },
   "post-install-cmd": [
-    "mkdir -p public/bootstrap"
+    "mkdir -p bootstrap-test"
     ],
   "scripts": {
     "pre-install-cmd": "MyProject\\Installer::preInstall",
