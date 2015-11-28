@@ -20,32 +20,9 @@
   ],
 
   "require": {
-    "components/jquery": "2.1.*",
-    "twbs/bootstrap": "3.0.*  ",
-    "php": ">=5.3"
-  }  ,
-
-  "autoload": {
-    "psr-0": {
-      "MyProject": "src/"
-    }
-  },
-
-  "post-install-cmd": [
-    "mkdir -p bootstrap-test"
-    ],
-  "scripts": {
-    "pre-install-cmd": "MyProject\\Installer::preInstall",
-    "post-install-cmd": [
-      "MyProject\\Installer::postInstall"
-    ],
-    "post-package-install": [
-      "mkdir -p bootstrap-test2",
-      "MyProject\\Installer::postPackageInstall",
-      "phpunit -c /tests",
-      "./bin/install.sh"
-    ]
+    "twbs/bootstrap": "3.0.*  "
   }
+
 
 
 }
