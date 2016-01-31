@@ -2,7 +2,7 @@
  * @app jsroll.js
  * @category RIA (Rich Internet Application) / (SPA) Single-page Application
  *
- * Функции-классы RIA / SPA
+ * Классы RIA / SPA framework
  * @author Андрей Новиков <andrey@novikov.be>
  * @data 01/01/2016
  */

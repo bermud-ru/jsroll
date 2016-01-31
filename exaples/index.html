@@ -1,0 +1,26 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework</title>
+    <script type="text/javascript"
+            src="../jsroll.min.js" charset="UTF-8"></script>
+    <script type="text/x-tmpl" id="welcome">
+        <h3>{%=caption%}</h3>
+        <p>{%=text%}</p>
+    </script>
+</head>
+<body>
+<div class="container">
+    Container demo!
+</div>
+
+<script>
+    document.querySelector('.container').innerHTML = tmpl('welcome', {
+        caption: 'welcome!',
+        text: 'Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework'
+    });
+</script>
+
+</body>
+</html>
