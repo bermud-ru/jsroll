@@ -1,0 +1,13 @@
+#!/bin/sh
+
+echo "Post-install ..."
+mkdir -p ./js/
+cp ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/
+read -p 'R u want install examples[Y/n]: ' answer
+case "${answer}" in
+    [yY]|[yY][eE][sS])
+        echo "Examples for RIA/SPA JSRoll"
+        mkdir -p ./js/examples
+        cp -R ./vendor/bermud-ru/jsroll/examples/* ./js/examples
+        ;;
+esac

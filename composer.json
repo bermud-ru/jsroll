@@ -1,11 +1,11 @@
 {
-  "name": "bermud-ru/sparoll",
+  "name": "bermud-ru/jsroll",
   "version": "0.1.0",
   "type": "project",
-  "description": "Javascript SPA framework (Javascript DOM application)",
+  "description": "Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework",
   "keywords": [
-    "rest",
-    "spa",
+    "rest", "application",
+    "ria", "spa",
     "framework"
   ],
   "homepage": "http://www.infotelecom.pro/",
@@ -13,13 +13,10 @@
   "authors": [
     {
       "name": "Andrew Novikoff",
-      "email": "bermud@nm.ru",
-      "homepage": "http://www.infotelecom.pro/",
+      "email": "andrey@novikov.be",
+      "homepage": "http://www.novikov.be/",
       "role": "Founder and project lead"
     }
-  ],
-
-  "require": {
-    "twbs/bootstrap": "3.0.*  "
-  }
+  ]
+  "download": "https://github.com/bermud-ru/jsroll/archive/master.zip"
 }
