@@ -2,25 +2,59 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework</title>
+    <title>RIA (Rich Internet Application) / SPA (Single-page Application) frameworkk</title>
+
+    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+
+
     <script type="text/javascript"
-            src="../jsroll.min.js" charset="UTF-8"></script>
+            src="../build/jsroll.min.js" charset="UTF-8"></script>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+        body {
+            /* Margin bottom by footer height */
+            margin-bottom: 60px;
+        }
+        footer {
+            padding: 1.5em 0;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            /* Set the fixed height of the footer here */
+            height: 60px;
+            background-color: #f5f5f5;
+        }
+
+        .navbar .container {color:#ccc;}
+    </style>
     <script type="text/x-tmpl" id="welcome">
         <h3>{%=caption%}</h3>
         <p>{%=text%}</p>
     </script>
 </head>
 <body>
-<div class="container">
-    Container demo!
+<div id="app" role="application">
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container"></div>
+    </div>
+
 </div>
+<footer>
+    <div class="container">
+        <div class="copyright">© <script>document.write(new Date().getFullYear())</script></div>
+    </div>
+</footer>
 
 <script>
-    document.querySelector('.container').innerHTML = tmpl('welcome', {
-        caption: 'welcome!',
-        text: 'Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework'
+    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
+        caption: 'JsRoll',
+        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) framework'
     });
 </script>
+
 
 </body>
 </html>
