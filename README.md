@@ -1,4 +1,33 @@
-# Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework
+# JsRoll RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework
+
+Обекты и свойства JsRoll
+========================
+### uuid()
+Функция возрващает 16-байтный (128-битный) идентификатор (см. wiki)
+
+### storage(instance)
+Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
+```
+    <script>
+    storage.setItem('user', JSON.stringify(params));
+    </script>
+```
+                    
+### params([search])
+Функция возрващает Object (Хеш-таблица) параметров в строке запроса (location.search, часть адреса после символа ?, включая символ ?) если не определен аргумент search или разбирает данные из переменной search.
+
+### [router](docs/router.md)
+Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд. По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
+
+### [eventhandler](docs/eventhandler.md)
+Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события любых DOM объектов документа.
+
+### [xhr](docs/xhr.md)
+Хелпер работы с запросами на основе xmlHttpRequest, в рамках одного инстанса позволяет мониторить и работать с серией запросов различного типа.
+
+### [tmpl](docs/tmpl.md)
+Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так и использования швнешнего ресурса запрошенного
+
 
 composer.json
 ```
@@ -25,7 +54,7 @@ composer.json
 ```
 
 example
-======
+=======
 
 ```
 <html>
