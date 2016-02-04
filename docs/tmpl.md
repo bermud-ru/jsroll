@@ -17,7 +17,7 @@ Type: Function
 Arguments: context  
 Параметр callback функция javascript определяет как tmpl воздвращает результат генерации контента при условиии корректной работы скрипта, если функция не определена то tmpl возвращает конетент как результа функции и если id в формате URL, то объект XMLHttpRequest внутри скрита работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся сгнерерированные контент и сли id в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
 
-### HTMLElementObject.id
+**HTMLElementObject.id**
 ```html
     <script type="text/x-tmpl" id="welcome" charset="UTF-8">
     <h3>{%=caption%}
@@ -32,7 +32,7 @@ Arguments: context
     </script>
 ```
                     
-### XMLHttpRequest async = *false* mode
+**XMLHttpRequest async = *false* mode**
 ```js
     document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
     caption: 'JsRoll',
@@ -40,7 +40,7 @@ Arguments: context
     });
 ```
                     
-### XMLHttpRequest async = *true* mode
+**XMLHttpRequest async = *true* mode**
 ```js
     tmpl('/js/welcome.tmpl',
     {
