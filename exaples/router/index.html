@@ -1,0 +1,152 @@
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
+    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+    <script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+    <style>
+        html {
+            position: relative;
+            min-height: 100%;
+        }
+        body {
+            padding-top: 8em;
+            margin-bottom: 60px;
+        }
+
+        footer {
+            padding: 1.5em 0;
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 60px;
+            background-color: #f5f5f5;
+        }
+        .navbar .container {color:#ccc;}
+    </style>
+    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
+        <h3>{%=caption%}</h3>
+        <p>{%=text%}</p>
+    </script>
+</head>
+<body>
+<div id="app" role="application">
+
+    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container"></div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <h2>Шаблонизатор tmpl</h2>
+            <div class="col-sm-8">
+                <div class="row list-group-item" style="border: none">
+                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
+                        и использования швнешнего ресурса запрошенного
+                </div>
+                <div class="row">
+                    <div class="panel panel-primary">
+                        <div class="panel-heading">
+                            <h3 class="panel-title">tmpl( id [, data [, callback]]) <span style="float:right">returns: String</span></h3>
+                        </div>
+                        <div class="panel-body">
+                            <div class="list-group-item" style="border: none">
+                                <div class="row"><b>id</b></div>
+                                <div class="row">Type: String</div>
+                                <div class="row">
+                                    Параметр <b>id</b> принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. <a href="https://ru.wikipedia.org/wiki/URL"> wiki</a>), содержащий код шаблона.
+                                </div>
+
+                            </div>
+                        </div>
+                        <!-- List group -->
+                        <ul class="list-group">
+                            <li class="list-group-item">
+                                <div class="list-group-item" style="border: none">
+                                    <div class="row"><b>data</b></div>
+                                    <div class="row">Type: Object</div>
+                                    <div class="row">
+                                        Параметр <b>data</b> объект javascript содержит данные которы являются источником данных длоступные внутри шаблона.
+                                    </div>
+                                </div>
+                            </li>
+                            <li class="list-group-item">
+                                <div class="list-group-item" style="border: none">
+                                    <div class="row"><b>callback</b></div>
+                                    <div class="row">Type: Function</div>
+                                    <div class="row">Arguments: context</div>
+                                    <div class="row">
+                                        Параметр <b>callback</b> функция javascript определяет как <b>tmpl</b> воздвращает результат генерации контента при условиии корректной работы скрипта,
+                                        если функция не определена то <b>tmpl</b> возвращает конетент как результа функции и если <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита
+                                        работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся
+                                        сгнерерированные контент и сли <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <h4>HTMLElementObject.id</h4>
+                    <pre>
+<code>
+    &lt;script type="text/x-tmpl" id="welcome" charset="UTF-8">
+    &lt;h3>{%=caption%}</h3>
+    &lt;p>{%=text%}</p>    &lt;/script>
+    ...
+    &lt;script>
+    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
+    caption: 'JsRoll',
+    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
+    });
+    &lt;/script>
+</code>
+                    </pre>
+                    <h4>XMLHttpRequest async=<i>false</i> mode</h4>
+                    <pre>
+<code>
+    document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
+    caption: 'JsRoll',
+    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
+    });
+</code>
+                    </pre>
+                    <h4>XMLHttpRequest async=<i>true</i> mode</h4>
+                    <pre>
+<code>
+    tmpl('/js/welcome.tmpl',
+    {
+    caption: 'JsRoll',
+    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
+    },
+    function(content){
+    document.querySelector('.navbar .container').innerHTML = content;
+    });
+</code>
+                    </pre>
+                </div>
+            </div>
+            <div class="col-sm-3 col-sm-offset-1">
+                <div class="row">
+                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<footer>
+    <div class="container">
+        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
+    </div>
+</footer>
+
+<script>
+    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
+        caption: 'JsRoll',
+        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
+    });
+</script>
+
+
+</body>
+</html>

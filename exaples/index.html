@@ -2,11 +2,8 @@
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>RIA (Rich Internet Application) / SPA (Single-page Application) frameworkk</title>
-
+    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
     <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
-
-
     <script type="text/javascript"
             src="../build/jsroll.min.js" charset="UTF-8"></script>
     <style>
@@ -15,43 +12,110 @@
             min-height: 100%;
         }
         body {
-            /* Margin bottom by footer height */
+            padding-top: 8em;
             margin-bottom: 60px;
         }
+
         footer {
             padding: 1.5em 0;
             position: absolute;
             bottom: 0;
             width: 100%;
-            /* Set the fixed height of the footer here */
             height: 60px;
             background-color: #f5f5f5;
         }
-
         .navbar .container {color:#ccc;}
     </style>
-    <script type="text/x-tmpl" id="welcome">
+    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
         <h3>{%=caption%}</h3>
         <p>{%=text%}</p>
     </script>
 </head>
 <body>
 <div id="app" role="application">
+
     <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
         <div class="container"></div>
     </div>
 
+    <div class="container">
+        <h2>Обекты и свойства JsRoll</h2>
+        <div class="row">
+            <div class="col-sm-8">
+                <div class="row">
+                    <h3>uuid()</h3>
+                    <div class="list-group-item" style="border: none">
+                        Функция возрващает 16-байтный (128-битный) идентификатор (см. <a href="https://ru.wikipedia.org/wiki/UUID"> wiki</a>)
+                    </div>
+                </div>
+                <div class="row">
+                    <h3>storage(instance)</h3>
+                    <div class="list-group-item" style="border: none">
+                        Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage)
+                        и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota
+                        на мобильных устройствах.
+                    </div>
+                    <pre>
+<code>
+    &lt;script>
+    storage.setItem('user', JSON.stringify(params));
+    &lt;/script>
+</code>
+                    </pre>
+                </div>
+                <div class="row">
+                    <h3>params([search])</h3>
+                    <div class="list-group-item" style="border: none">
+                        Функция возрващает Object (Хеш-таблица) параметров в строке запроса (location.search, часть адреса после символа ?, включая символ ?) если не определен аргумент search или разбирает данные из переменной search.
+                    </div>
+                </div>
+                <div class="row">
+                    <h3><a href="router/index.html">router</a></h3>
+                    <div class="list-group-item" style="border: none">
+                        Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд.
+                        По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
+                    </div>
+                </div>
+                <div class="row">
+                    <h3><a href="eventhandler/index.html">eventhandler</a></h3>
+                    <div class="list-group-item" style="border: none">
+                        Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события
+                        любых DOM объектов документа.
+                    </div>
+                </div>
+                <div class="row">
+                    <h3><a href="xhr/index.html">xhr</a></h3>
+                    <div class="list-group-item" style="border: none">
+                        Хелпер работы с запросами на основе xmlHttpRequest, в рамках одного инстанса позволяет мониторить и работать с серией запросов различного типа.
+                    </div>
+                </div>
+                <div class="row">
+                    <h3><a href="tmpl/index.html">tmpl</a></h3>
+                    <div class="list-group-item" style="border: none">
+                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
+                        и использования швнешнего ресурса запрошенного
+                    </div>
+                </div>
+
+            </div>
+            <div class="col-sm-3 col-sm-offset-1">
+                <div class="row">
+                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 <footer>
     <div class="container">
-        <div class="copyright">© <script>document.write(new Date().getFullYear())</script></div>
+        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
     </div>
 </footer>
 
 <script>
     document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
         caption: 'JsRoll',
-        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) framework'
+        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
     });
 </script>
 

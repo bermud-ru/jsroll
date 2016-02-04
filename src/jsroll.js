@@ -32,9 +32,9 @@ g.uuid = uuid;
  *
  * @result { Array }
  */
-var params = function(url) {
+var params = function(search) {
     var re=/[?&]([^=#]+)=([^&#]*)/g,p={},m;
-    try { while (m = re.exec((url || g.location.search)))
+    try { while (m = re.exec((search || g.location.search)))
         if ((m1 = decodeURIComponent(m[1])) && (m2 = decodeURIComponent(m[2])) && !p.hasOwnProperty(m1)) p[m1] = m2;
     }catch(e){return null}
     return p;
@@ -42,7 +42,7 @@ var params = function(url) {
 g.location.params = params;
 
 /**
- * @function eventhendler
+ * @function router
  * Хелпер Маршрутизатор SPA
  *
  * @method { function () } frgm
@@ -116,7 +116,7 @@ function router(r){
 g.router = router('/');
 
 /**
- * @function eventhendler
+ * @function eventhandler
  * Хелпер Обработчик событий
  *
  * @argument { String } id идентификатор события
@@ -125,7 +125,7 @@ g.router = router('/');
  *
  * @result { Object }
  */
-function eventhendler() {
+function eventhandler() {
     var event = function (id, param) {
             return g.dispatchEvent(new CustomEvent(id, {detail: param}));
         },
@@ -148,11 +148,11 @@ function eventhendler() {
         bind: bind
     }
 }
-g.eventhandler = eventhendler();
+g.eventhandler = eventhandler();
 
 /**
  * @function xhr
- * Хелпер для шаблонизатора tmpl получает код шаблона по url
+ * Хелпер запросов на основе xmlHttpRequest
  *
  * @argument { String } url (Uniform Resource Locator) путь до шаблона
  * @argument { String } id идентификатор шаблона
