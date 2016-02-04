@@ -19,7 +19,7 @@ src/            исходные коды библиотеки
 
 ### storage(instance)
 Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
-```js
+```html
     <script>
     storage.setItem('user', JSON.stringify(params));
     </script>
@@ -76,9 +76,6 @@ example
     <title>Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework</title>
     <script type="text/javascript"
             src="https://github.com/bermud-ru/jsroll/blob/master/build/jsroll.min.js" charset="UTF-8"></script>
-    <style>
-        .im-centered { margin: auto; max-width:32em;}
-    </style>
     <script type="text/x-tmpl" id="welcome">
         <h3>{%=caption%}</h3>
         <p>{%=text%}</p>
