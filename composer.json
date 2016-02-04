@@ -1,12 +1,12 @@
 {
   "name": "bermud-ru/jsroll",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "project",
-  "description": "Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework",
+  "description": "JsRoll RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework",
   "keywords": [
     "rest", "application",
     "ria", "spa",
-    "framework"
+    "javascript", "framework"
   ],
   "homepage": "http://www.infotelecom.pro/",
   "license": "BSD-3-Clause",
@@ -17,6 +17,6 @@
       "homepage": "http://www.novikov.be/",
       "role": "Founder and project lead"
     }
-  ]
+  ],
   "download": "https://github.com/bermud-ru/jsroll/archive/master.zip"
 }
