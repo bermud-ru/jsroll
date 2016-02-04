@@ -19,7 +19,7 @@ src/            исходные коды библиотеки
 
 ### storage(instance)
 Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
-```
+```js
     <script>
     storage.setItem('user', JSON.stringify(params));
     </script>
@@ -42,7 +42,7 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
 
 
 composer.json
-```
+```json
 {
     "repositories": [
     {
@@ -68,7 +68,7 @@ composer.json
 example
 =======
 
-```
+```html
 <html>
 <head>
     <meta charset="utf-8" />
