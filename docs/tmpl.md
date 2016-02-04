@@ -2,8 +2,8 @@
 
 Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так и использования швнешнего ресурса запрошенного
 
-`tmpl( id [, data [, callback]]) returns: String`
-------------------------------------------------
+### `tmpl( id [, data [, callback]]) returns: String`
+
 **id**  
 Type: String  
 Параметр id принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. [wiki](https://ru.wikipedia.org/wiki/URL)), содержащий код шаблона.
@@ -20,8 +20,8 @@ Arguments: context
 **HTMLElementObject.id**
 ```html
     <script type="text/x-tmpl" id="welcome" charset="UTF-8">
-    <h3>{%=caption%}
-    <p>{%=text%}
+    <h3>{%=caption%}</h3>
+    <p>{%=text%}</p>
     </script>
     ...
     <script>
