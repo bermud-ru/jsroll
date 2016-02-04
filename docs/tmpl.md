@@ -4,21 +4,17 @@
 
 **tmpl**( id [, data [, callback]]) returns: String
 
-**id**
-Type: String
-
+**id**__
+Type: String__
 Параметр id принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. [wiki](https://ru.wikipedia.org/wiki/URL)), содержащий код шаблона.
 
-**data**
-Type: Object
-
+**data**__
+Type: Object__
 Параметр data объект javascript содержит данные которы являются источником данных длоступные внутри шаблона.
 
-**callback**
-Type: Function
-
-Arguments: context
-
+**callback**__
+Type: Function__
+Arguments: context__
 Параметр callback функция javascript определяет как tmpl воздвращает результат генерации контента при условиии корректной работы скрипта, если функция не определена то tmpl возвращает конетент как результа функции и если id в формате URL, то объект XMLHttpRequest внутри скрита работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся сгнерерированные контент и сли id в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
 
 ### HTMLElementObject.id
