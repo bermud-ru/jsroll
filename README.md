@@ -17,7 +17,7 @@ src/            исходные коды библиотеки
 ### uuid()
 Функция возрващает 16-байтный (128-битный) идентификатор (см. [wiki](https://ru.wikipedia.org/wiki/UUID))
 
-### storage(instance)
+### storage([instance])
 Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
 ```html
     <script>
