@@ -25,7 +25,7 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
     </script>
 ```
                     
-### params([search])
+### window.location.params([search])
 Функция возрващает Object (Хеш-таблица) параметров в строке запроса (location.search, часть адреса после символа ?, включая символ ?) если не определен аргумент search или разбирает данные из переменной search.
 ```html
     <script>

@@ -165,13 +165,15 @@ function xhr(){
     var x = new xmlHttpRequest();
     if (!x) return null;
     if (!x.hasOwnProperty('ref')) x.ref = {};
-    x.request=function(method, url, async, username, password){
+    x.request=function(params){
         var id=''; for(var i in arguments) id += arguments[i].toString().replace(/(\.|\/|\-)/g,'_')
         if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
         var item = new xhr(); item.isLoad = false;
-        item.open(method, url,(typeof async !== 'undefined' ? async: true), username, password);
-        item.send(data || null);
+        item.open(params.method || 'GET', params.url || undefined, params.async || true, params.username || undefined, params.password || undefined);
+        item.send(params.data || null);
         item.id = id;
+        params.result && (item.result = x.result(params.result));
+        params.process && (item.process = x.process(params.process));
         return x.ref[id] = item;
     };
     x.result=function(fn){
