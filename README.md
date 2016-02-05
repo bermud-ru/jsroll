@@ -71,7 +71,6 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
 ```
 
 ### example
-
 ```html
 <html>
 <head>
@@ -93,7 +92,7 @@ Container demo!
 <script>
        document.querySelector('.container').innerHTML = tmpl('welcome', {
            caption: 'welcome!',
-           text: 'Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework'
+           text: 'RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework'
         });
 </script>
 
