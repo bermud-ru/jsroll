@@ -1,4 +1,4 @@
-# Обработчик событий window.eventhandler
+# Обработчик событий window.event
 
 Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события любых DOM объектов документа.
 
@@ -13,7 +13,7 @@
     <span>[X] close</span>
 </div>
 <script>
-    eventhandler.onclick = function(e) {
+    event.onclick = function(e) {
         console.log(e.srcElement);
         return true;
     }

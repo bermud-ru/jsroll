@@ -116,7 +116,7 @@ function router(r){
 g.router = router('/');
 
 /**
- * @function eventhandler
+ * @function event
  * Хелпер Обработчик событий
  *
  * @argument { String } id идентификатор события
@@ -125,7 +125,7 @@ g.router = router('/');
  *
  * @result { Object }
  */
-function eventhandler() {
+function event() {
     var event = function (id, param) {
             return g.dispatchEvent(new CustomEvent(id, {detail: param}));
         },
@@ -134,7 +134,7 @@ function eventhandler() {
         };
     g.onbeforeunload = function(e){ e.preventDefault(); };
     g.onclickhandler = function(e) {
-        if (g.eventhandler.onclick(e)) {
+        if (g.event.onclick(e)) {
             e.preventDefault();
             e.stopPropagation();
         }
@@ -148,7 +148,7 @@ function eventhandler() {
         bind: bind
     }
 }
-g.eventhandler = eventhandler();
+g.event = event();
 
 /**
  * @function xhr
