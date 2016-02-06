@@ -17,7 +17,7 @@ src/            исходные коды библиотеки
 ### uuid()
 Функция возрващает 16-байтный (128-битный) идентификатор (см. [wiki](https://ru.wikipedia.org/wiki/UUID))
 
-### storage(instance)
+### storage([instance])
 Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
 ```html
     <script>
@@ -25,8 +25,13 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
     </script>
 ```
                     
-### params([search])
+### window.location.params([search])
 Функция возрващает Object (Хеш-таблица) параметров в строке запроса (location.search, часть адреса после символа ?, включая символ ?) если не определен аргумент search или разбирает данные из переменной search.
+```html
+    <script>
+    console.log(window.location.params());
+    </script>
+```
 
 ### [router](docs/router.md)
 Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд. По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
@@ -65,7 +70,6 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
 ```
 
 ### example
-
 ```html
 <html>
 <head>
@@ -87,7 +91,7 @@ Container demo!
 <script>
        document.querySelector('.container').innerHTML = tmpl('welcome', {
            caption: 'welcome!',
-           text: 'Javascript RIA (Rich Internet Application) / (SPA) Single-page Application framework'
+           text: 'RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework'
         });
 </script>
 
