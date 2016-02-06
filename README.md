@@ -14,10 +14,10 @@ src/            исходные коды библиотеки
 
 Обекты и свойства JsRoll
 ------------------------
-### uuid()
+### window.uuid()
 Функция возрващает 16-байтный (128-битный) идентификатор (см. [wiki](https://ru.wikipedia.org/wiki/UUID))
 
-### storage([instance])
+### window.storage([instance])
 Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage) и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota на мобильных устройствах.
 ```html
     <script>
@@ -33,16 +33,16 @@ Proxy-объект реализующий интерфейс (.setItem, .getItem
     </script>
 ```
 
-### [router](docs/router.md)
+### [window.router](docs/router.md)
 Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд. По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
 
-### [eventhandler](docs/eventhandler.md)
+### [window.eventhandler](docs/eventhandler.md)
 Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события любых DOM объектов документа.
 
-### [xhr](docs/xhr.md)
+### [window.xhr](docs/xhr.md)
 Хелпер работы с запросами на основе xmlHttpRequest, в рамках одного инстанса позволяет мониторить и работать с серией запросов различного типа.
 
-### [tmpl](docs/tmpl.md)
+### [window.tmpl](docs/tmpl.md)
 Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так и использования швнешнего ресурса запрошенного
 
 **Код для использования в проекте с composer**

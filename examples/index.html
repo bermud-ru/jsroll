@@ -43,13 +43,13 @@
         <div class="row">
             <div class="col-sm-8">
                 <div class="row">
-                    <h3>uuid()</h3>
+                    <h3>window.uuid()</h3>
                     <div class="list-group-item" style="border: none">
                         Функция возрващает 16-байтный (128-битный) идентификатор (см. <a href="https://ru.wikipedia.org/wiki/UUID"> wiki</a>)
                     </div>
                 </div>
                 <div class="row">
-                    <h3>storage(instance)</h3>
+                    <h3>window.storage(instance)</h3>
                     <div class="list-group-item" style="border: none">
                         Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage)
                         и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota
@@ -70,27 +70,27 @@
                     </div>
                 </div>
                 <div class="row">
-                    <h3><a href="router/index.html">router</a></h3>
+                    <h3><a href="router/index.html">window.router</a></h3>
                     <div class="list-group-item" style="border: none">
                         Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд.
                         По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
                     </div>
                 </div>
                 <div class="row">
-                    <h3><a href="eventhandler/index.html">eventhandler</a></h3>
+                    <h3><a href="eventhandler/index.html">window.eventhandler</a></h3>
                     <div class="list-group-item" style="border: none">
                         Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события
                         любых DOM объектов документа.
                     </div>
                 </div>
                 <div class="row">
-                    <h3><a href="xhr/index.html">xhr</a></h3>
+                    <h3><a href="xhr/index.html">window.xhr</a></h3>
                     <div class="list-group-item" style="border: none">
                         Хелпер работы с запросами на основе xmlHttpRequest, в рамках одного инстанса позволяет мониторить и работать с серией запросов различного типа.
                     </div>
                 </div>
                 <div class="row">
-                    <h3><a href="tmpl/index.html">tmpl</a></h3>
+                    <h3><a href="tmpl/index.html">window.tmpl</a></h3>
                     <div class="list-group-item" style="border: none">
                         Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
                         и использования швнешнего ресурса запрошенного

@@ -1,8 +1,8 @@
-# Шаблонизатор tmpl
+# Шаблонизатор window.tmpl
 
 Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так и использования швнешнего ресурса запрошенного
 
-### `tmpl( id [, data [, callback]]) returns: String`
+### `window.tmpl( id [, data [, callback]]) returns: String`
 
 **id**  
 Type: String  
