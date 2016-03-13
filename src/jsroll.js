@@ -91,7 +91,7 @@ function form(f, params) {
             if (opt.type == 'json') return res.data[f.elements[i].name || i] = encodeURIComponent(f.elements[i].value)
             else res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
         }
-    res.data = opt.type == 'json' ? JSON.stringify(res.data) :res.data.join('&');
+    res.data = opt.type == 'json' ? JSON.stringify(res.data) : '?'+res.data.join('&');
     return res;
 }
 g.JSON.form = form;
@@ -226,8 +226,8 @@ function xhr(){
         //TODO: check double request for resurce
         //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
         var item = new xhr(); item.isLoad = false;
-        if (['GET','DELETE'].indexOf(opt.method.toUpperCase()) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
-        item.open(opt.method || 'GET', opt.url || undefined, opt.async || true, opt.username || undefined, opt.password || undefined);
+        //if (['GET','DELETE'].indexOf(opt.method.toUpperCase()) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
+        item.open(opt.method || 'GET', opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
         if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m, opt.rs[m]);
         item.send(opt.data || null);
         item.id = id;
