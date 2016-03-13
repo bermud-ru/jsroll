@@ -223,8 +223,10 @@ function xhr(){
     x.request=function(params){
         var opt = Object.assign({method:'GET', rs:{'Content-type':'application/x-www-form-urlencoded'}}, params);
         var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
+        //TODO: check double request for resurce
         //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
         var item = new xhr(); item.isLoad = false;
+        if (['GET','DELETE'].indexOf(opt.method.toUpperCase()) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
         item.open(opt.method || 'GET', opt.url || undefined, opt.async || true, opt.username || undefined, opt.password || undefined);
         if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m, opt.rs[m]);
         item.send(opt.data || null);
@@ -233,6 +235,7 @@ function xhr(){
         opt.process && (item.process = x.process(opt.process));
         return x.ref[id] = item;
     };
+    //TODO: xmlHttpRequest.abort()
     x.result=function(fn){
         x.onload = function(e){
             this.isLoad = true;
