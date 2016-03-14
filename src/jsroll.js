@@ -66,8 +66,8 @@ g.fadeOut = fadeOut;
  */
 function fadeIn(el, cb){
     var st = null;
-    if (el.style.display == 'none') el.style.display = 'inherit';
     el && (st = setInterval(function() {
+        if (el.style.display == 'none') el.style.display = 'inherit';
         el.style.opacity = el.style.opacity && el.style.opacity < 1 ?  (parseFloat(el.style.opacity) + 0.1).toFixed(1) : '0';
         if (parseFloat(el.style.opacity) >= 1) {if (cb && typeof cb === 'function' && cb.call(el)) cb.call(el);clearInterval(st)}
     }, typeof cb === 'number' ? cb : 25));
