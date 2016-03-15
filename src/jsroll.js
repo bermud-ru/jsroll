@@ -225,7 +225,7 @@
             fail: function(fn){ this.failed = fn }
         };
         c.tuple = Array.prototype.slice.call(arguments).map(function(fn){
-            fn.onload =  function(){ c.pool.apply(fn.onload, arguments) };
+            fn.onload =  function(){ c.pool.apply(fn, arguments) };
             fn.chain = c; return fn;
         });
         return c;
