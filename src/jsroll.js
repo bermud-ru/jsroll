@@ -218,7 +218,7 @@
             donned:function(fn){ return false },
             failed:function(fn){ return false },
             pool:function (fn, arg) {
-                this.chain.cache.push(fn);
+                this.chain.cache.push(this);
                 if (this.chain.tuple.length == this.chain.cache.length) this.chain.donned.apply(this.chain, this.chain.cache);
             },
             done: function(fn){ this.donned = fn },
@@ -344,6 +344,7 @@
             } catch(e) { console.error(e); return ''}
         };
     load.src = []; load.pool = []; tmpl.cache = {};
+    //TODO:перепроектировать класс для работы в режиме цепочек
     g.tmpl = tmpl;
 
     /**
