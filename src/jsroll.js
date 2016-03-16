@@ -26,7 +26,7 @@
 
     /**
      * @function params
-     * Воздрващает массив (Хеш-таблица) параметров
+     * Возвращает массив (Хеш-таблица) параметров
      *
      * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
      *
