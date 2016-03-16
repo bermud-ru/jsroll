@@ -78,21 +78,17 @@
      * @function form
      * Хелпер сериализации формы
      *
-     * @param f DOM элемент форма
+     * @param f DOM элемент форма + f.rolling = ['post','get','put','delete' ets]
      * @param params
      * @returns {result:Object, data: String}}
      */
 
-    function form(f, params) {
-        var opt = Object.assign({type:'none', validator:null}, params);
-        var res = {result: {}, data: opt.type == 'json' ? {} : []};
-        if (opt.validator == null || (typeof opt.validator === 'function' && opt.validator.call(f, res)))
-            for (var i =0; i < f.elements.length; i++){
-                if (opt.type == 'json') return res.data[f.elements[i].name || i] = encodeURIComponent(f.elements[i].value)
-                else res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
-            }
-        res.data = opt.type == 'json' ? JSON.stringify(res.data) : res.data.join('&');
-        return res;
+    function form(f, validator) {
+        var res = {result: {}, data: []};
+        if (!validator || (typeof validator === 'function' && validator.call(f, res)))
+            for (var i =0; i < f.elements.length; i++) res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
+        f.setAttribute('valid', JSON.stringify(res.result));
+        return res.data.join('&');
     }
     g.JSON.form = form;
 
@@ -248,13 +244,15 @@
         if (!x) return null;
         if (!x.hasOwnProperty('ref')) x.ref = {};
         x.request=function(params){
-            var opt = Object.assign({method:'GET', rs:{'Content-type':'application/x-www-form-urlencoded'}}, params);
+            var opt = Object.assign({method:'GET'}, params);
+            opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
             var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
             //TODO: check double request for resurce
+            //TODO: multithreading request and compile by chain algoritрm
             //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
             var item = new xhr(); item.isLoad = false;
-            if (['GET','DELETE'].indexOf(opt.method.toUpperCase() >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
-            item.open(opt.method || 'GET', opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
+            if ((['GET','DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
+            item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
             if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m, opt.rs[m]);
             item.send(opt.data || null);
             item.id = id;
