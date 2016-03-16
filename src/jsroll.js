@@ -91,7 +91,7 @@
                 if (opt.type == 'json') return res.data[f.elements[i].name || i] = encodeURIComponent(f.elements[i].value)
                 else res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
             }
-        res.data = opt.type == 'json' ? JSON.stringify(res.data) : '?'+res.data.join('&');
+        res.data = opt.type == 'json' ? JSON.stringify(res.data) : res.data.join('&');
         return res;
     }
     g.JSON.form = form;
