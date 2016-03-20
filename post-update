@@ -2,7 +2,7 @@
 
 echo "Post-update ..."
 
-if [ ! -f ./js/jsroll.min.js ]; then
-    ln -s ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/jsroll.min.js
+if [ ! -f ./public/js/jsroll.min.js ]; then
+    ln -s ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./public/js/jsroll.min.js
 fi
 
