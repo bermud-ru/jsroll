@@ -2,7 +2,8 @@
 
 echo "Post-install ..."
 mkdir -p ./js/
-cp ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/
+#cp ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/
+ln ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/jsroll.min.js
 read -p 'R u want install examples[Y/n]: ' answer
 case "${answer}" in
     [yY]|[yY][eE][sS])

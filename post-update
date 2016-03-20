@@ -1,5 +1,5 @@
 #!/bin/sh
 
 echo "Post-update ..."
-mkdir -p ./js/jquery/
-cp ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/
+
+ln ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./js/jsroll.min.js
