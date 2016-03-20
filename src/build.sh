@@ -8,7 +8,7 @@ echo "
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 01/01/2016
+ * @data $(date +"%d/%m/%Y %H:%M")
  */
 " > ../build/jsroll.min.js
 cat ./jsroll.min.js >> ../build/jsroll.min.js
