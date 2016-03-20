@@ -13,3 +13,4 @@ echo "
 " > ../build/jsroll.min.js
 cat ./jsroll.min.js >> ../build/jsroll.min.js
 rm ./jsroll.min.js
+git add .
