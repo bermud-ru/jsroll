@@ -290,13 +290,18 @@
      * @result { String }
      */
     var load = function(url, id, params) {
-            var opt = Object.assign({method:'GET', async:false, rs:{'Content-type':'application/xml;charset=utf-8'}}, params);
+            var opt = Object.assign({method:'GET', async:false}, params);
+
+            opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
             load.src[id] = new xmlHttpRequest();
             if (opt.async) load.src[id].onload = function (e) {
                 var fn = tmpl.cache[id] = func(this.responseText);
-                for (var i in load.pool[id]) load.pool[id][i].cb.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn));
+                for (var i in load.pool[id])
+                    load.pool[id][i].cb === 'object' ? load.pool[id][i].cb.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn)) :
+                        load.pool[id][i].cb.async.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn));
                 load.pool[id] = undefined;
             }
+
             load.src[id].open(opt.method, url, opt.async);
             if (opt.rs) for(var m in opt.rs) load.src[id].setRequestHeader(m, opt.rs[m]);
             load.src[id].send(null);
@@ -323,11 +328,11 @@
             var m = str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i);
             try {
                 if (m) {
-                    str = str.replace(/(\.|\/|\-)/g, '');
-                    if (typeof cb === 'function') {
+                    str = str.replace(/(\.|\/|\-)/g, ''); //TODO refactoring code!
+                    if (typeof cb === 'function' || typeof cb === 'object') {
                         if (typeof load.pool[str] === 'undefined') {
                             load.pool[str] = [{data: data, cb: cb}];
-                            return load(m.input, str, {async:cb});
+                            return load(m.input, str, (typeof cb === 'object' ? cb : {async:cb}));
                         } else {
                             var a = load.pool[str];a.push({data: data, cb: cb});
                             return '';
