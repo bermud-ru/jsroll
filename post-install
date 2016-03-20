@@ -1,10 +1,11 @@
 #!/bin/sh
 
-echo "Post-install ..."
+echo "jsroll post-install ..."
 mkdir -p ./public/js/
 
 #cp ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./public/js/
 #ln ./vendor/bermud-ru/jsroll/build/jsroll.min.js ./public/js/jsroll.min.js
+
 if [ ! -f ./public/js/jsroll.min.js ]; then
     ln -s ./../../vendor/bermud-ru/jsroll/build/jsroll.min.js ./public/js/jsroll.min.js
 fi
