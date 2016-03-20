@@ -1,6 +1,7 @@
 #!/bin/sh
 
 echo "jsroll post-update ..."
+mkdir -p ./public/js/
 
 if [ ! -f ./public/js/jsroll.min.js ]; then
     ln -s ./../../vendor/bermud-ru/jsroll/build/jsroll.min.js ./public/js/jsroll.min.js
