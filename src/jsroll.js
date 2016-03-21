@@ -297,7 +297,7 @@
             if (opt.async) load.src[id].onload = function (e) {
                 var fn = tmpl.cache[id] = func(this.responseText);
                 for (var i in load.pool[id])
-                    load.pool[id][i].cb === 'object' ? load.pool[id][i].cb.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn)) :
+                    load.pool[id][i].cb === 'function' ? load.pool[id][i].cb.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn)) :
                         load.pool[id][i].cb.async.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn));
                 load.pool[id] = undefined;
             }
