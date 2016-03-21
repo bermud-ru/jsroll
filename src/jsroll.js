@@ -253,7 +253,7 @@
             var item = new xhr(); item.isLoad = false;
             if ((['GET','DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
             item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
-            if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m, opt.rs[m]);
+            if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
             item.send(opt.data || null);
             item.id = id;
             opt.result && (item.result = x.result(opt.result));
@@ -293,6 +293,7 @@
             var opt = Object.assign({method:'GET', async:false}, params);
 
             opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
+            console.log(opt);
             load.src[id] = new xmlHttpRequest();
             if (opt.async) load.src[id].onload = function (e) {
                 var fn = tmpl.cache[id] = func(this.responseText);
@@ -302,8 +303,9 @@
                 load.pool[id] = undefined;
             }
 
-            load.src[id].open(opt.method, url, opt.async);
-            if (opt.rs) for(var m in opt.rs) load.src[id].setRequestHeader(m, opt.rs[m]);
+            load.src[id].open(opt.method, url, !!opt.async ? true : false);
+            if (opt.rs) for(var m in opt.rs) load.src[id].setRequestHeader(m.trim(), opt.rs[m].trim());
+
             load.src[id].send(null);
             if (!opt.async) return (load.src[id].status != 200 ? '' : load.src[id].responseText);
             return '';
