@@ -291,9 +291,8 @@
      */
     var load = function(url, id, params) {
             var opt = Object.assign({method:'GET', async:false}, params);
-
             opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
-            console.log(opt);
+
             load.src[id] = new xmlHttpRequest();
             if (opt.async) load.src[id].onload = function (e) {
                 var fn = tmpl.cache[id] = func(this.responseText);
