@@ -264,13 +264,13 @@
         x.result=function(fn){
             x.onload = function(e){
                 this.isLoad = true;
-                return fn.call(this, e);
+                if (typeof fn === 'function') return fn.call(this, e);
             }
             return this;
         };
         x.process = function(fn){
             x.onreadystatechange = function(e){
-                return fn.call(this, e);
+                if (typeof fn === 'function') return fn.call(this, e);
             }
             return this;
         };
