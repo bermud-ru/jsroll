@@ -35,7 +35,7 @@
     var params = function(search) {
         var re=/[?&]([^=#]+)=([^&#]*)/g,p={},m;
         try { while (m = re.exec((search || g.location.search)))
-            if ((m1 = decodeURIComponent(m[1])) && (m2 = decodeURIComponent(m[2])) && !p.hasOwnProperty(m1)) p[m1] = m2;
+            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
         }catch(e){return null}
         return p;
     }
