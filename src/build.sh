@@ -2,12 +2,12 @@
 
 java -jar ./yuicompressor-2.4.8.jar ./jsroll.js -o ./jsroll.min.js
 java -jar ./yuicompressor-2.4.8.jar ./jsroll.ui.js -o ./jsroll.ui.min.js
-id="\$Id: jsroll.js"
+id="\$Id: jsroll.min.js"
 version="0.1.0"
 status="beta"
 echo "
  /**
- * @app jsroll.js
+ * @app jsroll.min.js
  * @category RIA (Rich Internet Application) / SPA (Single-page Application)
  *
  * Классы RIA / SPA javascritp framework

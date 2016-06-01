@@ -137,5 +137,5 @@
                 return true;
         }
     }; g.spinner = spinner;
-    
+
 }( window ));

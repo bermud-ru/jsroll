@@ -78,7 +78,7 @@
 
     /**
      * @function form
-     * Хелпер сериализации формы
+     * Хелпер работы с данными формы
      *
      * @param f DOM элемент форма + f.rolling = ['post','get','put','delete' ets]
      * @param params
@@ -86,11 +86,76 @@
      */
 
     function form(f, validator) {
-        var res = {result: {}, data: []};
-        if (!validator || (typeof validator === 'function' && validator.call(f, res)))
-            for (var i =0; i < f.elements.length; i++) res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
-        f.setAttribute('valid', JSON.stringify(res.result));
-        return res.data.join('&');
+        f.setAttribute('valid', 1);
+        f.xhr = null;
+        f.prepare = function(validator){
+            var res = {result: {}, data: []};
+            if (!validator || (typeof validator === 'function' && validator.call(f, res)))
+                for (var i =0; i < f.elements.length; i++) res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
+            f.setAttribute('valid', JSON.stringify(res.result));
+            return res.data.join('&');
+        };
+        f.validator = validator || f.validator;
+        f.release = function(p){
+            var data = f.prepare(p && p.validator || f.validator);
+            if (f.getAttribute('valid') != 0) {
+                g.xhr.request({method: p && p.method || f.method, url: p && p.url || f.action, data: data})
+                    .result(p && p.callback || function() {
+                            var res = {result:'error'};
+                            if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
+                            else try {
+                                res = JSON.parse(this.responseText);
+                                if (res.form) for (var i in res.form) if (f.elements[i]) f.elements[i].status = 'error';
+                            } catch (e) {
+                                res.message = 'Cервер вернул не коректные данные';
+                            }
+                            f.xhr = res;
+                            if (p && typeof p.fn == 'function') p.fn.call(f, res);
+                            return f;
+                        });
+            }
+            return f;
+        };
+        f.insert= function(data){
+            for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
+            else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
+                if (field && data[field]) f.elements[i].value = data[field];
+            }
+            return f;
+        };
+        f.setup = function(p){
+            if (p) switch (true){
+                case p.hasOwnProperty('form'):
+                    console.log('data from data');
+                    if (typeof p.form === 'object') {
+                        f.insert(p.form);
+                        var validator = (p && p.validator || f.validator);
+                        if (typeof validator == 'function') validator.call(f, p.data);
+                    } break;
+                case p.hasOwnProperty('xhr'):
+                    g.xhr.request({method: p.xhr.method || 'GET', url: p.xhr.url, data: p.xhr.data || null, rs: p.xhr.rs || {}})
+                        .result(p.xhr.callback || function() {
+                                var res = {result:'error'};
+                                if ([200, 206].indexOf(this.status) < 0) {
+                                    res.message = this.status + ': ' + this.statusText;
+                                } else try {
+                                    res = JSON.parse(this.responseText);
+                                    f.insert(res.data || {});
+                                    var validator = (p && p.validator || f.validator);
+                                    if (typeof validator == 'function') validator.call(f, res.data);
+                                } catch (e) {
+                                    res.message = 'Cервер вернул не коректные данные';
+                                }
+                                f.xhr = res;
+                                if (p && typeof p.fn == 'function') p.fn.call(f, res);
+                                return f;
+                            });
+                    break;
+                default: f.reset();
+            } else f.reset();
+            return f;
+        };
+        return f;
     }
     g.JSON.form = form;
 
@@ -264,12 +329,12 @@
                         .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
             build = function(str, id){
                 var isId = typeof id !== 'undefined';
-                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data); if (idCb) cb.call(g.tmpl, result); return result }
+                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if (idCb) cb.call(g.tmpl, result); return result }
                 var result = null, pattern = null;
                 try {
                     pattern = compile(str);
                     if (isId) g.tmpl.cache[id] = pattern;
-                    result = pattern.call(g.tmpl ,data);
+                    result = pattern.call(g.tmpl, data || {});
                     if (isCb) cb.call(pattern || g.tmpl, result);
                 } catch(e) { console.error(e)  }
                 return result;
