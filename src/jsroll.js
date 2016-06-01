@@ -105,7 +105,9 @@
                             if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
                             else try {
                                 res = JSON.parse(this.responseText);
-                                if (res.form) for (var i in res.form) if (f.elements[i]) f.elements[i].status = 'error';
+                                if (res.form) for (var i =0; i < f.elements.length; i++)
+                                    if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
+                                    else g.css.el(f.elements[i].parentElement).del('has-error');
                             } catch (e) {
                                 res.message = 'Cервер вернул не коректные данные';
                             }

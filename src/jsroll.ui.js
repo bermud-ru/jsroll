@@ -13,7 +13,7 @@
     'use strict';
 
     g.config = {
-        msg:'.alert.alert-danger',
+        msg:{container:'.alert.alert-danger', tmpl:'handlebars-alert'},
         spinner:'.locker.spinner',
         popup:{wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
@@ -64,26 +64,29 @@
         return this;
     };
     css.prototype = {
+        el: function(i){
+            this.instance = i; return this;
+        },
         re: function (s, g) { return new RegExp(s, g || 'g') },
         add: function (c) {
             if (!this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'))) this.instance.className += ' ' + c;
-            return this.instance;
+            return this;
         },
         del: function (c) {
             this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
-            return this.instance;
+            return this;
         },
         tgl: function (c) {
             if (!this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'))) this.instance.className += ' ' + c;
             else this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
-            return this.instance;
+            return this;
         }
     }; g.css = new css(document);
 
     var msg = {
-        elem: g.spa.el(g.config.msg),
+        elem: g.spa.el(g.config.msg.container),
         show: function (params, close) {
-            this.elem.innerHTML = tmpl('handlebars-alert', params);
+            this.elem.innerHTML = tmpl(g.config.msg.tmpl, params);
             this.elem.style.display = 'inherit';
             if (typeof close == 'undefined' || !close) fadeOut(this.elem, 105);
         }
