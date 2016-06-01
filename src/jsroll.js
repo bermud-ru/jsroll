@@ -4,7 +4,9 @@
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 01/01/2016
+ * @status beta
+ * @version 0.1.0
+ * @revision $Id: jsroll.js 0004 2016-05-30 9:00:01Z $
  */
 
 (function ( g, undefined ) {
@@ -167,41 +169,6 @@
     g.router = router('/');
 
     /**
-     * @function eventhandler
-     * Хелпер Обработчик событий
-     *
-     * @argument { String } id идентификатор события
-     * @argument { JSON } param объект в контейнере события
-     * @event { window.onbeforeunload & window.onclickhandler }
-     *
-     * @result { Object }
-     */
-    function eventhandler() {
-        var event = function (id, param) {
-                return g.dispatchEvent(new CustomEvent(id, {detail: param}));
-            },
-            bind = function(id, fn, opt) {
-                return g.addEventListener(id, fn, !!opt ? opt : false);
-            };
-        g.onbeforeunload = function(e){ e.preventDefault(); };
-        g.onclickhandler = function(e) {
-            if (g.eventhandler.onclick(e)) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
-        };
-        bind('onbeforeunload', g.onbeforeunload.bind(g), false);
-        bind('click', g.onclickhandler.bind(g), true);
-        return {
-            set onbeforeunload(fn){g.onbeforeunload = fn},
-            onclick: function(e){return false},
-            event: event,
-            bind: bind
-        }
-    }
-    g.eventhandler = eventhandler();
-
-    /**
      * @class chain
      * Хелпер Обработчик цепочки асинхронных объектов
      *
@@ -265,13 +232,13 @@
             x.onload = function(e){
                 this.isLoad = true;
                 if (typeof fn === 'function') return fn.call(this, e);
-            }
+            };
             return this;
         };
         x.process = function(fn){
             x.onreadystatechange = function(e){
                 if (typeof fn === 'function') return fn.call(this, e);
-            }
+            };
             return this;
         };
         return x;
@@ -279,76 +246,46 @@
     g.xhr = xhr();
 
     /**
-     * @function load
-     * Хелпер для шаблонизатора tmpl получает код шаблона по url
+     * @function tmpl
+     * Хелпер для генерации контескта
      *
-     * @argument { String } url (Uniform Resource Locator) путь до шаблона
-     * @argument { String } id идентификатор шаблона
-     * @argument { Boolean } async режим XMLHttpRequest
-     * @event { XMLHttpRequest.onload }
+     * @argument { String } str (url | html)
+     * @argument { JSON } data объект с даннными
+     * @argument { undefined | function } cb callback функция
      *
      * @result { String }
      */
-    var load = function(url, id, params) {
-            var opt = Object.assign({method:'GET', async:false}, params);
-            opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
-
-            load.src[id] = new xmlHttpRequest();
-            if (opt.async) load.src[id].onload = function (e) {
-                var fn = tmpl.cache[id] = func(this.responseText);
-                for (var i in load.pool[id])
-                    typeof load.pool[id][i].cb === 'function' ? load.pool[id][i].cb.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn)) :
-                        load.pool[id][i].cb.async.call(this, (load.pool[id][i].data ? fn(load.pool[id][i].data) : fn));
-                load.pool[id] = undefined;
-            }
-
-            load.src[id].open(opt.method, url, !!opt.async ? true : false);
-            if (opt.rs) for(var m in opt.rs) load.src[id].setRequestHeader(m.trim(), opt.rs[m].trim());
-
-            load.src[id].send(null);
-            if (!opt.async) return (load.src[id].status != 200 ? '' : load.src[id].responseText);
-            return '';
-        },
-        func = function(str) {
-            return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
-                    .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
-                    .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
-                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');");
-        },
-        /**
-         * @function load
-         * Хелпер для генерации контескта
-         *
-         * @argument { String } str (url | html)
-         * @argument { JSON } data объект с даннными
-         * @argument { undefined | function } cb callback функция
-         *
-         * @result { String }
-         */
-        tmpl = function tmpl(str, data, cb) {
-            var m = str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i);
-            try {
-                if (m) {
-                    str = str.replace(/(\.|\/|\-)/g, ''); //TODO refactoring code!
-                    if (typeof cb === 'function' || typeof cb === 'object') {
-                        if (typeof load.pool[str] === 'undefined') {
-                            load.pool[str] = [{data: data, cb: cb}];
-                            return load(m.input, str, (typeof cb === 'object' ? cb : {async:cb}));
-                        } else {
-                            var a = load.pool[str];a.push({data: data, cb: cb});
-                            return '';
-                        }
-                    } else tmpl.cache[str] = tmpl.cache[str] || func(load(m.input, str, false));
-                }
-                var fn = !/[^\w\-\.]/.test(str) ? tmpl.cache[str] = tmpl.cache[str] ||
-                    tmpl(g.document.getElementById(str).innerHTML) : func(str);
-                var res = data ? fn(data) : fn;
-                if (typeof (cb) === 'function') return cb.call(tmpl,res);
-                else return res;
-            } catch(e) { console.error(e); return ''}
-        };
-    load.src = []; load.pool = []; tmpl.cache = {};
-    //TODO:перепроектировать класс для работы в режиме цепочек
+    var tmpl = function tmpl(str, data, cb) {
+        var isCb = typeof cb == 'function',
+            compile = function(str) {
+                return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
+                        .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
+                        .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
+                        .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
+            build = function(str, id){
+                var isId = typeof id !== 'undefined';
+                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data); if (idCb) cb.call(g.tmpl, result); return result }
+                var result = null, pattern = null;
+                try {
+                    pattern = compile(str);
+                    if (isId) g.tmpl.cache[id] = pattern;
+                    result = pattern.call(g.tmpl ,data);
+                    if (isCb) cb.call(pattern || g.tmpl, result);
+                } catch(e) { console.error(e)  }
+                return result;
+            };
+        switch (true) {
+            case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
+                if (g.tmpl.cache[id]) return build(null, id);
+                return g.xhr.request({url:str, async: (typeof cb == 'function')}).result(function(e){
+                    if ([200, 206].indexOf(this.status) < 0)  console.warn(this.status + ': ' + this.statusText);
+                    else build(this.responseText, id);
+                });
+            case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById(str).innerHTML, str );
+            default: return build( str );
+        }
+    };
+    tmpl.cache = {};
     g.tmpl = tmpl;
 
     /**
