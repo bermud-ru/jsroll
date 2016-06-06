@@ -13,13 +13,14 @@
     'use strict';
 
     g.config = {
-        msg:{container:'.alert.alert-danger', tmpl:'handlebars-alert'},
-        spinner:'.locker.spinner',
-        popup:{wnd:'.b-popup', container:'.b-popup .b-popup-content'}
+        app: {container:'[role="workspace"]'},
+        msg: {container:'.alert.alert-danger', tmpl:'handlebars-alert'},
+        spinner: '.locker.spinner',
+        popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
 
     var spa = function(instance){
-        this.instance = instance;
+        this.instance = instance || g;
         return this;
     }; spa.prototype = {
         el: function (s) {
@@ -59,6 +60,7 @@
             return this.instance;
         }
     };  g.spa = new spa(document);
+
     var css = function(instance){
         this.instance = instance;
         return this;
