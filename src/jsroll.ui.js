@@ -14,7 +14,7 @@
 
     g.config = {
         app: {container:'[role="workspace"]'},
-        msg: {container:'.alert.alert-danger', tmpl:'handlebars-alert'},
+        msg: {container:'.alert.alert-danger', tmpl:'alert-box'},
         spinner: '.locker.spinner',
         popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
