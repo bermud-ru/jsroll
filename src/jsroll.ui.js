@@ -36,10 +36,10 @@
             if (typeof s === 'string') {
                 var el = this.instance.querySelectorAll(s);
                 if (!el) return [];
-                var a = Array.prototype.slice.call(el);
+                var a = Array.prototype.slice.call(el), c = 0;
                 return a.map(function (i) { if (!i.hasOwnProperty('spa')) {
-                    i.spa = new spa(i);i.css = new css(i);
-                    if (typeof fn == 'function') fn.apply(i, a);
+                    i.spa = new spa(i); i.css = new css(i);
+                    if (typeof fn == 'function') fn.call(g, i, c++);
                 } return i });
             } else return [];
         },
@@ -51,9 +51,12 @@
             }
             return {};
         },
+        get parent(){
+            return new spa(this.instance && this.instance.parentElement)
+        },
         src: function (e) {
             var el = e ? e : this.instance;
-            return el.srcElement || el.target;
+            return new spa(el.srcElement || el.target);
         },
         on: function (evnt, fn, opt) {
             this.instance.addEventListener(evnt, fn, opt || true);
@@ -115,8 +118,8 @@
                 this.wnd.style.opacity = '0';
                 params.content && this.container && (this.container.innerHTML = params.content);
                 if (typeof params === 'object') (params.width || params.height) && this.init(params);
-                g.spa.els('[role="popup-close"]', function (a) {
-                    this.spa.on('click', function (e) { return popup.hide() })
+                this.container.spa.els('[role="popup-close"]', function (a) {
+                    a.spa.on('click', function (e) { return popup.hide() })
                 });
                 if (params.event && params.event.length) params.event.map(function (a, i) { a.call(popup, i) });
                 this.visible = true;
@@ -131,6 +134,9 @@
             }
         }
     }; g.popup = popup;
+    g.spa.on("keyup", function (e) {
+        if (e.keyCode == 27 && popup.visible) popup.hide();
+    }, false);
 
     var spinner = {
         element: g.spa.el(g.config.spinner),

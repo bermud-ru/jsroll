@@ -99,15 +99,18 @@
         f.release = function(p){
             var data = f.prepare(p && p.validator || f.validator);
             if (f.getAttribute('valid') != 0) {
-                g.xhr.request({method: p && p.method || f.method, url: p && p.url || f.action, data: data})
+                g.xhr.request(Object.assign({method: p && p.method || f.method, url: p && p.url || f.action, data: data}, {rs:p.rs || {}}))
                     .result(p && p.callback || function() {
                             var res = {result:'error'};
                             if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
                             else try {
                                 res = JSON.parse(this.responseText);
-                                if (res.form) for (var i =0; i < f.elements.length; i++)
-                                    if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
-                                    else g.css.el(f.elements[i].parentElement).del('has-error');
+                                if (res.form) for (var i =0; i < f.elements.length; i++) {
+                                    if (res.form.hasOwnProperty(f.elements[i].name)) css.el(f.elements[i].parentElement).add('has-error');
+                                    else css.el(f.elements[i].parentElement).del('has-error');
+                                    //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
+                                    //else g.css.el(f.elements[i].parentElement).del('has-error');
+                                }
                             } catch (e) {
                                 res.message = 'Cервер вернул не коректные данные';
                             }
@@ -322,29 +325,29 @@
      *
      * @result { String }
      */
-    var tmpl = function tmpl(str, data, cb) {
-        var isCb = typeof cb == 'function',
-            compile = function(str) {
+    var tmpl = function tmpl(str, data, cb, opt) {
+        var compile = function(str) {
                 return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
                         .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
                         .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
                         .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
             build = function(str, id){
                 var isId = typeof id !== 'undefined';
-                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if (idCb) cb.call(g.tmpl, result); return result }
+
+                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if(typeof cb == 'function') cb.call(g.tmpl, result); return result }
                 var result = null, pattern = null;
                 try {
                     pattern = compile(str);
                     if (isId) g.tmpl.cache[id] = pattern;
                     result = pattern.call(g.tmpl, data || {});
-                    if (isCb) cb.call(pattern || g.tmpl, result);
+                    if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
                 } catch(e) { console.error(e)  }
                 return result;
             };
         switch (true) {
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
-                return g.xhr.request({url:str, async: (typeof cb == 'function')}).result(function(e){
+                return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
                     if ([200, 206].indexOf(this.status) < 0)  console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });
