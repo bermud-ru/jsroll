@@ -58,6 +58,9 @@
             var el = e ? e : this.instance;
             return new spa(el.srcElement || el.target);
         },
+        css: function() {
+            return g.css.el(this.instance);
+        },
         on: function (evnt, fn, opt) {
             this.instance.addEventListener(evnt, fn, opt || true);
             return this.instance;
@@ -73,8 +76,11 @@
             this.instance = i; return this;
         },
         re: function (s, g) { return new RegExp(s, g || 'g') },
+        has: function(c){
+            return this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'));
+        },
         add: function (c) {
-            if (!this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'))) this.instance.className += ' ' + c;
+            if (!this.has(c)) this.instance.className += ' ' + c;
             return this;
         },
         del: function (c) {
@@ -82,7 +88,7 @@
             return this;
         },
         tgl: function (c) {
-            if (!this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'))) this.instance.className += ' ' + c;
+            if (!this.has(c)) this.instance.className += ' ' + c;
             else this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
             return this;
         }
@@ -139,9 +145,11 @@
     }, false);
 
     var spinner = {
+        count: 0,
         element: g.spa.el(g.config.spinner),
         set run(v) {
-            v ? this.element.style.display = 'block' : this.element.style.display = 'none';
+            v ? this.count++ : this.count--;
+            this.count > 0 ? this.element.style.display = 'block' : this.element.style.display = 'none';
         },
         get run() {
             if (this.element.style.display == 'none') return false; else
