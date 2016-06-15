@@ -23,16 +23,16 @@
         this.instance = instance || g;
         return this;
     }; spa.prototype = {
-        el: function (s) {
+        el: function (s, v) {
             var el = null;
             if (typeof s === 'string') {
-                if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''))
+                if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
-                if (el && !el.hasOwnProperty('spa')) { el.spa = new spa(el); el.css = new css(el); }
+                if (el && !el.hasOwnProperty('spa')) { if (typeof v == 'string') g[v] = el; el.spa = new spa(el); el.css = new css(el); }
             }
             return el;
         },
-        els: function (s, fn) {
+        els: function (s, fn, v) {
             if (typeof s === 'string') {
                 var el = this.instance.querySelectorAll(s);
                 if (!el) return [];
@@ -40,6 +40,7 @@
                 return a.map(function (i) { if (!i.hasOwnProperty('spa')) {
                     i.spa = new spa(i); i.css = new css(i);
                     if (typeof fn == 'function') fn.call(g, i, c++);
+                    if (typeof fn == 'string' || typeof v == 'string') { if (!g[v]) g[v]=[]; g[v].push(i) }
                 } return i });
             } else return [];
         },
