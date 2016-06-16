@@ -134,16 +134,13 @@
                 params.cb && params.cb.call(this);
             }
         },
-        hide: function (t) {
+        hide: function (param) {
             if (this.wnd) {
                 this.visible = false;
-                fadeOut(this.wnd, t || 35);
+                fadeOut(this.wnd, param || 35);
             }
         }
     }; g.popup = popup;
-    g.spa.on("keyup", function (e) {
-        if (e.keyCode == 27 && popup.visible) popup.hide();
-    }, false);
 
     var spinner = {
         count: 0,
