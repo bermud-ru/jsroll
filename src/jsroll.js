@@ -89,11 +89,11 @@
         f.setAttribute('valid', 1);
         f.xhr = null;
         f.prepare = function(validator){
-            var res = {result: {}, data: []};
-            if (!validator || (typeof validator === 'function' && validator.call(f, res)))
-                for (var i =0; i < f.elements.length; i++) res.data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
-            f.setAttribute('valid', JSON.stringify(res.result));
-            return res.data.join('&');
+            var data = [];
+            if (!validator || (typeof validator === 'function' && validator.call(f, data)))
+                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + encodeURIComponent(f.elements[i].value));
+            else f.setAttribute('valid', 0);
+            return data.join('&');
         };
         f.validator = validator || f.validator;
         f.release = function(p){
