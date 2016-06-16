@@ -23,6 +23,10 @@
         this.instance = instance || g;
         return this;
     }; spa.prototype = {
+        create:function(el){
+            if (typeof el === 'object') return new spa(el);
+            return null;
+        },
         el: function (s, v) {
             var el = null;
             if (typeof s === 'string') {
