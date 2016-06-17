@@ -23,8 +23,8 @@
         this.instance = instance || g;
         return this;
     }; spa.prototype = {
-        create:function(el){
-            if (typeof el === 'object') return new spa(el);
+        create:function(el, v){
+            if (typeof el === 'object') { var o = new spa(el); if (o && typeof v == 'string') g[v]=o; return o }
             return null;
         },
         el: function (s, v) {
@@ -69,6 +69,23 @@
         on: function (evnt, fn, opt) {
             this.instance.addEventListener(evnt, fn, opt || true);
             return this.instance;
+        },
+        xml:function(d, mime){
+            var xml, tmp;
+            if ( !d || typeof d !== 'string' ) return null;
+            try {
+                if ( g.DOMParser ) {
+                    tmp = new DOMParser();
+                    xml = tmp.parseFromString( d, mime || 'text/xml' );
+                } else {
+                    xml = new ActiveXObject( 'Microsoft.XMLDOM' );
+                    xml.async = 'false';
+                    xml.loadXML( d );
+                }
+            } catch ( e ) {
+                xml = undefined;
+            }
+            return xml;
         }
     };  g.spa = new spa(document);
 
@@ -79,6 +96,9 @@
     css.prototype = {
         el: function(i){
             this.instance = i; return this;
+        },
+        style:function(k,v){
+            this.instance.style[k] = v;
         },
         re: function (s, g) { return new RegExp(s, g || 'g') },
         has: function(c){
