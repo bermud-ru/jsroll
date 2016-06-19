@@ -43,6 +43,7 @@
     }
     g.location.params = params;
 
+    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10    ])/ Math.log(10);
     /**
      * @function fadeOut
      * Функция плавного скрытия элемента - свойство opacity = 0
@@ -51,11 +52,16 @@
      * @param cb callback функция
      */
     function fadeOut(el, cb){
-        var st = null;
-        el && (st = setInterval(function() {
-            el.style.opacity = el.style.opacity && el.style.opacity > 0 ? (parseFloat(el.style.opacity) - 0.1).toFixed(1) : '1';
-            if (parseFloat(el.style.opacity) <= 0){if (typeof cb === 'function' && cb.call(el)) cb.call(el);el.style.display = 'none';clearInterval(st)}
-        }, typeof cb === 'number' ? cb : 25));
+        var st = null, d = 9,
+            fn = function fn (d, cb) {
+                this.style.opacity = g.fadeRule[d];
+                if (d-- <= 0){if (typeof cb === 'function') cb.call(this);this.style.display = 'none';clearTimeout(st)}
+                else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+            };
+        if (el) {
+            el.style.display = 'inherit'; el.style.opacity = 1;
+            st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
+        }
     }
     g.fadeOut = fadeOut;
 
@@ -67,12 +73,16 @@
      * @param cb callback функция
      */
     function fadeIn(el, cb){
-        var st = null;
-        el && (st = setInterval(function() {
-            if (el.style.display == 'none') el.style.display = 'inherit';
-            el.style.opacity = el.style.opacity && el.style.opacity < 1 ?  (parseFloat(el.style.opacity) + 0.1).toFixed(1) : '0';
-            if (parseFloat(el.style.opacity) >= 1) {if (typeof cb === 'function' && cb.call(el)) cb.call(el);clearInterval(st)}
-        }, typeof cb === 'number' ? cb : 25));
+        var st = null, d = 0,
+            fn = function fn (d, cb) {
+                this.style.opacity = g.fadeRule[d];
+                if (d++ >= 9){if (typeof cb === 'function') cb.call(this);clearTimeout(st)}
+                else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+            };
+        if (el) {
+            el.style.display = 'inherit'; el.style.opacity = 0;
+            st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
+        }
     }
     g.fadeIn = fadeIn;
 

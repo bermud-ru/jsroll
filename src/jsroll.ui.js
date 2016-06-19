@@ -48,13 +48,17 @@
                 } return i });
             } else return [];
         },
-        json: function (a) {
-            if (a) try {
+        attr: function (a, v) {
+            if (a && typeof v === 'undefined') try {
                 return JSON.parse(this.instance.getAttribute(a))
             } catch (e) {
                 return this.instance.getAttribute(a)
+            } else if (a && v) try {
+                this.instance.setAttribute(a, JSON.parse(v))
+            } catch (e) {
+                this.instance.setAttribute(a, v)
             }
-            return {};
+            return this;
         },
         get parent(){
             return new spa(this.instance && this.instance.parentElement)
@@ -124,7 +128,7 @@
         show: function (params, close) {
             this.elem.innerHTML = tmpl(g.config.msg.tmpl, params);
             this.elem.style.display = 'inherit';
-            if (typeof close == 'undefined' || !close) fadeOut(this.elem, 105);
+            if (typeof close == 'undefined' || !close) fadeOut(this.elem, 90);
         }
     }; g.msg = msg;
 
@@ -166,17 +170,20 @@
         }
     }; g.popup = popup;
 
-    var spinner = {
-        count: 0,
-        element: g.spa.el(g.config.spinner),
-        set run(v) {
-            v ? this.count++ : this.count--;
-            this.count > 0 ? this.element.style.display = 'block' : this.element.style.display = 'none';
+    g.spinner_count = 0;
+    g.spinner_element = g.spa.el(g.config.spinner);
+    if (g.spinner_element) Object.defineProperty(g, 'spinner', {
+        __proto__: null,
+        enumerable: false,
+        configurable: false,
+        set: function (v) {
+            v ? g.spinner_count++ : g.spinner_count--;
+            g.spinner_count > 0 ? g.spinner_element.style.display = 'block' : g.spinner_element.style.display = 'none';
         },
-        get run() {
-            if (this.element.style.display == 'none') return false; else
-                return true;
+        get: function () {
+            if (g.spinner_element.style.display == 'none') return false;
+            return true;
         }
-    }; g.spinner = spinner;
+    });
 
 }( window ));
