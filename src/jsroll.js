@@ -52,7 +52,7 @@
      * @param cb callback функция
      */
     function fadeOut(el, cb){
-        var st = null, d = 9,
+        var st = null, d = 8,
             fn = function fn (d, cb) {
                 this.style.opacity = g.fadeRule[d];
                 if (d-- <= 0){if (typeof cb === 'function') cb.call(this);this.style.display = 'none';clearTimeout(st)}
@@ -73,7 +73,7 @@
      * @param cb callback функция
      */
     function fadeIn(el, cb){
-        var st = null, d = 0,
+        var st = null, d = 1,
             fn = function fn (d, cb) {
                 this.style.opacity = g.fadeRule[d];
                 if (d++ >= 9){if (typeof cb === 'function') cb.call(this);clearTimeout(st)}
