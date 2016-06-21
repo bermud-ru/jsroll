@@ -32,7 +32,11 @@
             if (typeof s === 'string') {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
-                if (el && !el.hasOwnProperty('spa')) { if (typeof v == 'string') g[v] = el; el.spa = new spa(el); el.css = new css(el); }
+                if (el && !el.hasOwnProperty('spa')) {
+                    el.spa = new spa(el); el.css = new css(el);
+                    if (typeof v === 'string') g[v] = el;
+                    else if (typeof v === 'function') v.call(el, arguments);
+                }
             }
             return el;
         },
@@ -50,13 +54,13 @@
         },
         attr: function (a, v) {
             if (a && typeof v === 'undefined') try {
-                return JSON.parse(this.instance.getAttribute(a))
+                return JSON.parse(this.instance.getAttribute(a));
             } catch (e) {
-                return this.instance.getAttribute(a)
+                return this.instance.getAttribute(a);
             } else if (a && v) try {
-                this.instance.setAttribute(a, JSON.parse(v))
+                this.instance.setAttribute(a, JSON.stringify(v));
             } catch (e) {
-                this.instance.setAttribute(a, v)
+                this.instance.setAttribute(a, v);
             }
             return this;
         },
