@@ -32,8 +32,8 @@
             if (typeof s === 'string') {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
-                if (el && !el.hasOwnProperty('spa')) {
-                    el.spa = new spa(el); el.css = new css(el);
+                if (el){
+                    if (!el.hasOwnProperty('spa')) { el.spa = new spa(el); el.css = new css(el); }
                     if (typeof v === 'string') g[v] = el;
                     else if (typeof v === 'function') v.call(el, arguments);
                 }
