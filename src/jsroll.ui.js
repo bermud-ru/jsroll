@@ -57,11 +57,9 @@
                 return JSON.parse(this.instance.getAttribute(a));
             } catch (e) {
                 return this.instance.getAttribute(a);
-            } else if (a && v) try {
-                this.instance.setAttribute(a, JSON.stringify(v));
-            } catch (e) {
-                this.instance.setAttribute(a, v);
-            }
+            } else if (a && v)
+                if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
+                else this.instance.setAttribute(a, v);
             return this;
         },
         get parent(){
