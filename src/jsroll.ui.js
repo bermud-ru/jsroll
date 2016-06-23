@@ -162,6 +162,7 @@
                 this.visible = true;
                 fadeIn(this.wnd, 35);
                 params.cb && params.cb.call(this);
+                this.container.spa.el('[tabindex="1"]', function(){this.focus()});
             }
         },
         hide: function (param) {
