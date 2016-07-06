@@ -189,4 +189,11 @@
         }
     });
 
+    Object.defineProperty(g, 'selected', {
+        get: function selected() {
+            return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
+                document.selection.createRange().text; // IE, используем объект selection
+        }
+    });
+
 }( window ));
