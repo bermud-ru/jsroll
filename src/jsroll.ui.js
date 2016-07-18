@@ -157,7 +157,7 @@
                 if (typeof params === 'object') (params.width || params.height) && this.init(params);
                 this.container.spa.els('[role="popup-close"]', function (a) {
                     a.spa.on('click', function (e) { return popup.hide() })
-                });
+          2      });
                 if (params.event && params.event.length) params.event.map(function (a, i) { a.call(popup, i) });
                 this.visible = true;
                 fadeIn(this.wnd, 35);
