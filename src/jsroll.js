@@ -101,7 +101,7 @@
         f.prepare = function(validator){
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
-                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf(f.elements[i].getAttribute('type').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
+                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf(f.elements[i].getAttribute('type')) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
