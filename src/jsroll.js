@@ -120,7 +120,7 @@
         f.prepare = function(validator){
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
-                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf(f.elements[i].getAttribute('type').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
+                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'none').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
@@ -160,7 +160,6 @@
         f.setup = function(p){
             if (p) switch (true){
                 case p.hasOwnProperty('form'):
-                    console.log('data from data');
                     if (typeof p.form === 'object') {
                         f.insert(p.form);
                         var validator = (p && p.validator || f.validator);
@@ -374,7 +373,7 @@
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
                 return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
-                    if ([200, 206].indexOf(this.status) < 0)  console.warn(this.status + ': ' + this.statusText);
+                    if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });
             case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById(str).innerHTML, str );
