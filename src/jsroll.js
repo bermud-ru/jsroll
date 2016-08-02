@@ -115,11 +115,11 @@
                             if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
                             else try {
                                 f.xhr = res = JSON.parse(this.responseText);
-                                if (res.result == 'error') f.fail(res || this.responseText);
+                                if (res.result == 'error' && f.fail == 'function') f.fail.call(f, res || this.responseText);
                             } catch (e) {
-                                f.xhr = this.responseText;
                                 res.message = 'Cервер вернул не коректные данные';
                             }
+                            f.xhr = res;
                             if (p && typeof p.fn == 'function') p.fn.call(f, res);
                             return f;
                         });
@@ -127,13 +127,17 @@
             return f;
         };
         f.fail=function (res) {
-            if (res && typeof res == 'function') res.call(f, f.xhr);
-            else if (res.form) for (var i =0; i < f.elements.length; i++) {
+            if (res.form) for (var i =0; i < f.elements.length; i++) {
                 if (res.form.hasOwnProperty(f.elements[i].name)) css.el(f.elements[i].parentElement).add('has-error');
                 else css.el(f.elements[i].parentElement).del('has-error');
                 //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
                 //else g.css.el(f.elements[i].parentElement).del('has-error');
+                return true;
             }
+            return false;
+        };
+        f.error=function (fn) {
+            if (fn) f.fail = fn;
             return f;
         };
         f.insert= function(data){
