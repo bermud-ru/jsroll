@@ -23,8 +23,7 @@
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
-    };
-    g.uuid = uuid;
+    }; g.uuid = uuid;
 
     /**
      * @function params
@@ -40,10 +39,32 @@
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
         }catch(e){return null}
         return p;
-    }
-    g.location.params = params;
+    }; g.location.params = params;
 
-    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10    ])/ Math.log(10);
+    /**
+     * @function update
+     * Возвращает Url c обновёнными (если были) или добавленными параметрами
+     *
+     * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
+     * @argument { JSON object } параметры в формате ключ-значения
+     *
+     * @result { String }
+     */
+    var update = function(search, params) {
+        var u = [], h = [], url = g.location.search, kv = params || {};
+        if (typeof search === 'string' ) url = search; else kv = search;
+        var p = g.location.params(url);
+        if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
+        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
+        var res = []; for (var a in p) res.push(a+'='+p[a]);
+        if (res.length) if (!u.length && !h.length) return url + '?'+res.join('&');
+        else if (u.length && !h.length) return u[0] + '?'+res.join('&');
+        else if (u.length && h.length) return u[0] + '?'+res.join('&') + h[1];
+        else if (!u.length && h.length) return h[0] + '?'+res.join('&') + h[1];
+        return url;
+    }; g.location.update = update;
+
+    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
     /**
      * @function fadeOut
      * Функция плавного скрытия элемента - свойство opacity = 0
@@ -62,8 +83,7 @@
             el.style.display = 'inherit'; el.style.opacity = 1;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
-    }
-    g.fadeOut = fadeOut;
+    }; g.fadeOut = fadeOut;
 
     /**
      * @function fadeIn
@@ -83,8 +103,7 @@
             el.style.display = 'inherit'; el.style.opacity = 0;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
-    }
-    g.fadeIn = fadeIn;
+    }; g.fadeIn = fadeIn;
 
     /**
      * @function form
@@ -106,6 +125,17 @@
             return data.join('&');
         };
         f.validator = validator || f.validator;
+        f.fail=function (res) {
+            if (res.form) for (var i =0; i < this.elements.length; i++) {
+                if (res.form.hasOwnProperty(this.elements[i].name)) css.el(this.elements[i].parentElement).add('has-error');
+                else css.el(this.elements[i].parentElement).del('has-error');
+                //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
+                //else g.css.el(f.elements[i].parentElement).del('has-error');
+                return true;
+            }
+            return false;
+        };
+
         f.release = function(p){
             var data = f.prepare(p && p.validator || f.validator);
             if (f.getAttribute('valid') != 0) {
@@ -115,29 +145,19 @@
                             if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
                             else try {
                                 f.xhr = res = JSON.parse(this.responseText);
-                                if (res.result == 'error' && f.fail == 'function') f.fail.call(f, res || this.responseText);
                             } catch (e) {
                                 res.message = 'Cервер вернул не коректные данные';
                             }
                             f.xhr = res;
-                            if (p && typeof p.fn == 'function') p.fn.call(f, res);
+                            if (res.result == 'error' ) {
+                                if (p && typeof p.fail == 'function') p.fail.call(f, res);
+                                else f.fail(res);
+                            } else if (res.result == 'ok') {
+                                if (p && typeof p.done == 'function') p.done.call(f, res);
+                            }
                             return f;
                         });
             }
-            return f;
-        };
-        f.fail=function (res) {
-            if (res.form) for (var i =0; i < f.elements.length; i++) {
-                if (res.form.hasOwnProperty(f.elements[i].name)) css.el(f.elements[i].parentElement).add('has-error');
-                else css.el(f.elements[i].parentElement).del('has-error');
-                //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
-                //else g.css.el(f.elements[i].parentElement).del('has-error');
-                return true;
-            }
-            return false;
-        };
-        f.error=function (fn) {
-            if (fn) f.fail = fn;
             return f;
         };
         f.insert= function(data){
@@ -254,8 +274,7 @@
                     return this;
                 }
         }
-    }
-    g.router = router('/');
+    }; g.router = router('/');
 
     /**
      * @class chain
@@ -331,8 +350,7 @@
             return this;
         };
         return x;
-    }
-    g.xhr = xhr();
+    }; g.xhr = xhr();
 
     /**
      * @function tmpl
@@ -367,15 +385,13 @@
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
                 return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
-                    if ([200, 206].indexOf(this.status) < 0)  console.warn(this.status + ': ' + this.statusText);
+                    if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });
             case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById(str).innerHTML, str );
             default: return build( str );
         }
-    };
-    tmpl.cache = {};
-    g.tmpl = tmpl;
+    }; tmpl.cache = {}; g.tmpl = tmpl;
 
     /**
      * @function storage
@@ -415,7 +431,6 @@
             };
         }
         return s;
-    };
-    g.storage = storage();
+    }; g.storage = storage();
 
 }(window));
