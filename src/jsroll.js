@@ -23,7 +23,8 @@
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
-    }; g.uuid = uuid;
+    };
+    g.uuid = uuid;
 
     /**
      * @function params
@@ -39,32 +40,10 @@
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
         }catch(e){return null}
         return p;
-    }; g.location.params = params;
+    }
+    g.location.params = params;
 
-    /**
-     * @function update
-     * Возвращает Url c обновёнными (если были) или добавленными параметрами
-     *
-     * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
-     * @argument { JSON object } параметры в формате ключ-значения
-     *
-     * @result { String }
-     */
-    var update = function(search, params) {
-        var u = [], h = [], url = g.location.search, kv = params || {};
-        if (typeof search === 'string' ) url = search; else kv = search;
-        var p = g.location.params(url);
-        if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
-        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
-        var res = []; for (var a in p) res.push(a+'='+p[a]);
-        if (res.length) if (!u.length && !h.length) return url + '?'+res.join('&');
-        else if (u.length && !h.length) return u[0] + '?'+res.join('&');
-        else if (u.length && h.length) return u[0] + '?'+res.join('&') + h[1];
-        else if (!u.length && h.length) return h[0] + '?'+res.join('&') + h[1];
-        return url;
-    }; g.location.update = update;
-
-    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
+    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10    ])/ Math.log(10);
     /**
      * @function fadeOut
      * Функция плавного скрытия элемента - свойство opacity = 0
@@ -83,7 +62,8 @@
             el.style.display = 'inherit'; el.style.opacity = 1;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
-    }; g.fadeOut = fadeOut;
+    }
+    g.fadeOut = fadeOut;
 
     /**
      * @function fadeIn
@@ -103,7 +83,8 @@
             el.style.display = 'inherit'; el.style.opacity = 0;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
-    }; g.fadeIn = fadeIn;
+    }
+    g.fadeIn = fadeIn;
 
     /**
      * @function form
@@ -120,7 +101,7 @@
         f.prepare = function(validator){
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
-                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
+                for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf(f.elements[i].getAttribute('type').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
@@ -134,19 +115,24 @@
                             if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
                             else try {
                                 res = JSON.parse(this.responseText);
-                                if (res.form) for (var i =0; i < f.elements.length; i++) {
-                                    if (res.form.hasOwnProperty(f.elements[i].name)) css.el(f.elements[i].parentElement).add('has-error');
-                                    else css.el(f.elements[i].parentElement).del('has-error');
-                                    //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
-                                    //else g.css.el(f.elements[i].parentElement).del('has-error');
-                                }
+                                if (res.result == 'error') throw new Error(res.message || 'Ошибка в данных формы!');
                             } catch (e) {
                                 res.message = 'Cервер вернул не коректные данные';
+                                f.error(res || this.responseText);
                             }
                             f.xhr = res;
                             if (p && typeof p.fn == 'function') p.fn.call(f, res);
                             return f;
                         });
+            }
+            return f;
+        };
+        f.error=function (res) {
+            if (res.form) for (var i =0; i < f.elements.length; i++) {
+                if (res.form.hasOwnProperty(f.elements[i].name)) css.el(f.elements[i].parentElement).add('has-error');
+                else css.el(f.elements[i].parentElement).del('has-error');
+                //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
+                //else g.css.el(f.elements[i].parentElement).del('has-error');
             }
             return f;
         };
@@ -160,6 +146,7 @@
         f.setup = function(p){
             if (p) switch (true){
                 case p.hasOwnProperty('form'):
+                    console.log('data from data');
                     if (typeof p.form === 'object') {
                         f.insert(p.form);
                         var validator = (p && p.validator || f.validator);
@@ -189,7 +176,8 @@
             return f;
         };
         return f;
-    }; g.JSON.form = form;
+    }
+    g.JSON.form = form;
 
     /**
      * @function router
@@ -262,7 +250,8 @@
                     return this;
                 }
         }
-    }; g.router = router('/');
+    }
+    g.router = router('/');
 
     /**
      * @class chain
@@ -338,7 +327,8 @@
             return this;
         };
         return x;
-    }; g.xhr = xhr();
+    }
+    g.xhr = xhr();
 
     /**
      * @function tmpl
@@ -373,13 +363,15 @@
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
                 return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
-                    if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
+                    if ([200, 206].indexOf(this.status) < 0)  console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });
             case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById(str).innerHTML, str );
             default: return build( str );
         }
-    }; tmpl.cache = {}; g.tmpl = tmpl;
+    };
+    tmpl.cache = {};
+    g.tmpl = tmpl;
 
     /**
      * @function storage
@@ -419,6 +411,7 @@
             };
         }
         return s;
-    }; g.storage = storage();
+    };
+    g.storage = storage();
 
 }(window));
