@@ -58,9 +58,9 @@
         for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
         var res = []; for (var a in p) res.push(a+'='+p[a]);
         if (res.length) if (!u.length && !h.length) return url + '?'+res.join('&');
-        else if (u.length && !h.length) return u[0] + '?'+res.join('&');
-        else if (u.length && h.length) return u[0] + '?'+res.join('&') + h[1];
-        else if (!u.length && h.length) return h[0] + '?'+res.join('&') + h[1];
+            else if (u.length && !h.length) return u[0] + '?'+res.join('&');
+            else if (u.length && h.length) return u[0] + '?'+res.join('&') + h[1];
+            else if (!u.length && h.length) return h[0] + '?'+res.join('&') + h[1];
         return url;
     }; g.location.update = update;
 
@@ -74,11 +74,11 @@
      */
     function fadeOut(el, cb){
         var st = null, d = 8,
-            fn = function fn (d, cb) {
-                this.style.opacity = g.fadeRule[d];
-                if (d-- <= 0){if (typeof cb === 'function') cb.call(this);this.style.display = 'none';clearTimeout(st)}
-                else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-            };
+        fn = function fn (d, cb) {
+            this.style.opacity = g.fadeRule[d];
+            if (d-- <= 0){if (typeof cb === 'function') cb.call(this);this.style.display = 'none';clearTimeout(st)}
+            else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+        };
         if (el) {
             el.style.display = 'inherit'; el.style.opacity = 1;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
@@ -94,11 +94,11 @@
      */
     function fadeIn(el, cb){
         var st = null, d = 1,
-            fn = function fn (d, cb) {
-                this.style.opacity = g.fadeRule[d];
-                if (d++ >= 9){if (typeof cb === 'function') cb.call(this);clearTimeout(st)}
-                else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-            };
+        fn = function fn (d, cb) {
+            this.style.opacity = g.fadeRule[d];
+            if (d++ >= 9){if (typeof cb === 'function') cb.call(this);clearTimeout(st)}
+            else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+        };
         if (el) {
             el.style.display = 'inherit'; el.style.opacity = 0;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
@@ -364,23 +364,23 @@
      */
     var tmpl = function tmpl(str, data, cb, opt) {
         var compile = function(str) {
-                return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
-                        .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
-                        .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
-                        .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
-            build = function(str, id){
-                var isId = typeof id !== 'undefined';
+            return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
+                    .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
+                    .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
+                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
+        build = function(str, id){
+            var isId = typeof id !== 'undefined';
 
-                if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if(typeof cb == 'function') cb.call(g.tmpl, result); return result }
-                var result = null, pattern = null;
-                try {
-                    pattern = compile(str);
-                    if (isId) g.tmpl.cache[id] = pattern;
-                    result = pattern.call(g.tmpl, data || {});
-                    if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
-                } catch(e) { console.error(e)  }
-                return result;
-            };
+            if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if(typeof cb == 'function') cb.call(g.tmpl, result); return result }
+            var result = null, pattern = null;
+            try {
+                pattern = compile(str);
+                if (isId) g.tmpl.cache[id] = pattern;
+                result = pattern.call(g.tmpl, data || {});
+                if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
+            } catch(e) { console.error(e)  }
+            return result;
+        };
         switch (true) {
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
