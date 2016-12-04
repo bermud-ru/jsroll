@@ -364,7 +364,7 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         var compile = function( str ) {
-            var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[\w\s\']*)|(\<![\-\-\s\w\>\/]*\>)/g, '');
+            var source = str.replace(/(\/\*[\w\'\"\s\r\t\n\*]*\*\/)|(\/\/[\w\s\t\'\"]*)/g, '');
             console.log(source);
             return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+source
                     .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
