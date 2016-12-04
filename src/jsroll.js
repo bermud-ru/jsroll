@@ -362,33 +362,43 @@
      *
      * @result { String }
      */
-    var tmpl = function tmpl(str, data, cb, opt) {
-        var compile = function(str) {
+    var tmpl = function tmpl( str, data, cb, opt ) {
+        var compile = function( str ) {
             return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
                     .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
                     .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
-                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")},
-        build = function(str, id){
-            var isId = typeof id !== 'undefined';
+                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")
+            },
+            build = function( str, id ) {
+                var isId = typeof id !== 'undefined';
 
-            if (isId && g.tmpl.cache[id]) { result = g.tmpl.cache[id].call(g.tmpl, data || {}); if(typeof cb == 'function') cb.call(g.tmpl, result); return result }
-            var result = null, pattern = null;
-            try {
-                pattern = compile(str);
-                if (isId) g.tmpl.cache[id] = pattern;
-                result = pattern.call(g.tmpl, data || {});
-                if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
-            } catch(e) { console.error(e)  }
-            return result;
-        };
-        switch (true) {
+                if (isId && g.tmpl.cache[id]) {
+                    result = g.tmpl.cache[id].call(g.tmpl, data || {});
+                    if(typeof cb == 'function') cb.call(g.tmpl, result);
+                    return result
+                }
+
+                var result = null, pattern = null;
+                try {
+                    pattern = compile( str );
+                    if (isId) g.tmpl.cache[id] = pattern;
+                    result = pattern.call(g.tmpl, data || {});
+                    if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
+                } catch( e ) {
+                    console.error( e );
+                    return undefined;
+                }
+                return result;
+            };
+
+        switch ( true ) {
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
                 return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
                     if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });
-            case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById(str).innerHTML, str );
+            case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
             default: return build( str );
         }
     }; tmpl.cache = {}; g.tmpl = tmpl;
