@@ -364,10 +364,11 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         var compile = function( str ) {
-            return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+str
+            var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[\w\s\']*)|(\<![\-\-\s\w\>\/]*\>)/g, '');
+            return new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+source
                     .replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
                     .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
-                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');")
+                    .join("\\'")+ "');} return p.join(' ').replace(/<%/g,'{%').replace(/%>/g,'%}');")
             },
             build = function( str, id ) {
                 var isId = typeof id !== 'undefined';
