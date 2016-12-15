@@ -225,7 +225,7 @@
             frgm: isHistory ?
                 function(){
                     var f = this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
-                    return this.clr(this.root != '/' ? f.replace(this.root, '') : f);
+                    return this.clr(this.root != r ? f.replace(this.root, '') : f);
                 } :
                 function(){
                     var m = window.location.href.match(/#(.*)$/);
