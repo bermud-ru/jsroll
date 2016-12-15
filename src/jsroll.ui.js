@@ -62,6 +62,17 @@
                 else this.instance.setAttribute(a, v);
             return this;
         },
+        merge: function () {
+            var i = 1, t = arguments[0] || {};
+            if (this.instance.hasOwnProperty('spa')) { t = this.instance; i = 0; }
+            Array.prototype.slice.call(arguments, i).forEach( function(v, k, a) {
+                Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
+                    d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    return d;
+                }, {}));
+            });
+            return t;
+        },
         get parent(){
             return new spa(this.instance && this.instance.parentElement)
         },
