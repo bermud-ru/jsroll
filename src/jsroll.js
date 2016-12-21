@@ -379,10 +379,8 @@
                 if (isId && g.tmpl.cache[id]) {
                     if (pig && (before = pig.getAttribute('tmpl-before'))) eval(before);
                     result = g.tmpl.cache[id].call(g.tmpl, data || {});
-                    if(typeof cb == 'function') {
-                        cb.call(g.tmpl, result);
-                        if (pig && (after = pig.getAttribute('tmpl-after'))) eval(after);
-                    }
+                    if(typeof cb == 'function') cb.call(g.tmpl, result);
+                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval(after);
                     return result
                 }
 
@@ -392,10 +390,8 @@
                     pattern = compile( str );
                     if (isId) g.tmpl.cache[id] = pattern;
                     result = pattern.call(g.tmpl, data || {});
-                    if (typeof cb == 'function') {
-                        cb.call(pattern || g.tmpl, result);
-                        if (pig && (after = pig.getAttribute('tmpl-after'))) eval(after);
-                    }
+                    if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
+                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval(after);
                 } catch( e ) {
                     console.error( e );
                     return undefined;
