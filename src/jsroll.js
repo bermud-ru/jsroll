@@ -373,16 +373,21 @@
             },
             build = function( str, id ) {
                 var isId = typeof id !== 'undefined';
+                var result = null, after = undefined, before = undefined;
+                var pig = g.document.getElementById(id);
 
                 if (isId && g.tmpl.cache[id]) {
+                    if (pig && (before = pig.getAttribute('tmpl-before'))) eval(before);
                     result = g.tmpl.cache[id].call(g.tmpl, data || {});
-                    if(typeof cb == 'function') cb.call(g.tmpl, result);
+                    if(typeof cb == 'function') {
+                        cb.call(g.tmpl, result);
+                        if (pig && (after = pig.getAttribute('tmpl-after'))) eval(after);
+                    }
                     return result
                 }
 
-                var result = null, pattern = null;
+                var  pattern = null;
                 try {
-                    var after = undefined, before = undefined, pig = g.document.getElementById(id);
                     if (pig && (before = pig.getAttribute('tmpl-before'))) eval(before);
                     pattern = compile( str );
                     if (isId) g.tmpl.cache[id] = pattern;
