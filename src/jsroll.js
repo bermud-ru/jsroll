@@ -382,13 +382,13 @@
 
                 var result = null, pattern = null;
                 try {
-                    if ( opt && typeof opt.before == 'function' ) str = opt.before.call(g.tmpl, str) || str;
+                    if ( opt && typeof opt.before == 'function' ) str = opt.before.call(g.tmpl, str, data) || str;
                     pattern = compile( str );
                     if (isId) g.tmpl.cache[id] = pattern;
                     result = pattern.call(g.tmpl, data || {});
                     if (typeof cb == 'function') {
                         cb.call(pattern || g.tmpl, result);
-                        if ( opt && typeof opt.after == 'function' ) opt.after.call(g.tmpl, result);
+                        if ( opt && typeof opt.after == 'function' ) opt.after.call(g.tmpl, result, data);
                     }
                 } catch( e ) {
                     console.error( e );
