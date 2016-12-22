@@ -364,6 +364,7 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
+        g.arguments = arguments;
         var compile = function( str ) {
             var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[\w\s\']*)|(\<![\-\-\s\w\>\/]*\>)/igm, '').trim();
             return source.length ? new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+
@@ -372,25 +373,23 @@
                     .join("\\'")+ "');} return p.join(' ').replace(/<%/g,'{%').replace(/%>/g,'%}');") : undefined;
             },
             build = function( str, id ) {
-                var isId = typeof id !== 'undefined';
-                var result = null, after = undefined, before = undefined;
+                var isId = typeof id !== 'undefined', pattern = null;
+                var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
-
-                if (isId && g.tmpl.cache[id]) {
-                    if (pig && (before = pig.getAttribute('tmpl-before'))) eval.call(g.tmpl, before);
-                    result = g.tmpl.cache[id].call(g.tmpl, data || {});
-                    if(typeof cb == 'function') cb.call(result || g.tmpl, result);
-                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval.call(result || g.tmpl, after);
-                    return result
-                }
+                var data = g.arguments[1] || {};
 
                 try {
-                    if (pig && (before = pig.getAttribute('tmpl-before'))) eval.call(g.tmpl, before);
-                    var pattern = compile( str );
-                    if (isId) g.tmpl.cache[id] = pattern;
-                    result = pattern.call(g.tmpl, data || {});
+                    if (pig && (before = pig.getAttribute('tmpl-before'))) eval.call(g.arguments, before);
+                    if (pig && (args = pig.getAttribute('arguments'))) data = Object.assign(JSON.parse(args) || {}, g.arguments[1]);
+                    if (isId && g.tmpl.cache[id]) {
+                        pattern = g.tmpl.cache[id];
+                    } else {
+                        pattern = compile(str);
+                        if (isId) g.tmpl.cache[id] = pattern;
+                    }
+                    result = pattern.call(g.tmpl, data);
                     if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
-                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval.call(pattern || g.tmpl, after);
+                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval.call(g.arguments, after);
                 } catch( e ) {
                     console.error( e );
                     return undefined;
