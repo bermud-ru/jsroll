@@ -170,7 +170,6 @@
         f.setup = function(p){
             if (p) switch (true){
                 case p.hasOwnProperty('form'):
-                    console.log('data from data');
                     if (typeof p.form === 'object') {
                         f.insert(p.form);
                         var validator = (p && p.validator || f.validator);
@@ -379,8 +378,19 @@
                 var data = g.arguments[1] || {};
 
                 try {
-                    if (pig && (before = pig.getAttribute('tmpl-before'))) eval.call(g.arguments, before);
-                    if (pig && (args = pig.getAttribute('arguments'))) data = Object.assign(JSON.parse(args) || {}, g.arguments[1]);
+                    if (pig) {
+                        if (before = pig.getAttribute('before')) eval.call(g.arguments, before);
+                        var nn = null;
+                        Array.prototype.slice.call(pig.attributes).map(function (i) {
+                            if ( i && /^tmpl-*/.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/, '')) )
+                                try {
+                                    data[nn] = JSON.parse(i.nodeValue);
+                                } catch (e) {
+                                    data[nn] = i.nodeValue;
+                                }
+                        });
+                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, g.arguments[1]);
+                    }
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
                     } else {
@@ -389,9 +399,9 @@
                     }
                     result = pattern.call(g.tmpl, data);
                     if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
-                    if (pig && (after = pig.getAttribute('tmpl-after'))) eval.call(g.arguments, after);
+                    if (pig && (after = pig.getAttribute('after'))) eval.call(g.arguments, after);
                 } catch( e ) {
-                    console.error( e );
+                    console.error('#', id || str, 'Error:', e );
                     return undefined;
                 }
                 return result;
