@@ -369,7 +369,7 @@
             return source.length ? new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+
                     source.replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r")
                     .replace(/\t=(.*?)%}/g,"',$1,'").split("\t").join("');").split("%}").join("p.push('").split("\r")
-                    .join("\\'")+ "');} return p.join(' ').replace(/<%/g,'{%').replace(/%>/g,'%}');") : undefined;
+                    .join("\\'")+ "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');") : undefined;
             },
             build = function( str, id ) {
                 var isId = typeof id !== 'undefined', pattern = null;
@@ -382,7 +382,7 @@
                         if (before = pig.getAttribute('before')) eval.call(g.arguments, before);
                         var nn = null;
                         Array.prototype.slice.call(pig.attributes).map(function (i) {
-                            if ( i && /^tmpl-*/.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/, '')) )
+                            if ( i && /^tmpl-*/i.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/i, '')) )
                                 try {
                                     data[nn] = JSON.parse(i.nodeValue);
                                 } catch (e) {
