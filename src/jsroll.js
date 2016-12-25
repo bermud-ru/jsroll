@@ -375,12 +375,12 @@
                 var isId = typeof id !== 'undefined', pattern = null;
                 var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
-                var data = g.arguments[1] || {};
+                var data = {};
 
                 try {
                     if (pig) {
                         if (before = pig.getAttribute('before')) eval.call(g.arguments, before);
-                        var nn = null;
+                        var nn = undefined;
                         Array.prototype.slice.call(pig.attributes).map(function (i) {
                             if ( i && /^tmpl-*/i.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/i, '')) )
                                 try {
@@ -391,6 +391,7 @@
                         });
                         if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, g.arguments[1]);
                     }
+                    data = Object.assign(data, g.arguments[1] || {});
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
                     } else {
