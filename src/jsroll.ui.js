@@ -19,12 +19,12 @@
         popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
 
-    var spa = function(instance){
+    var ui = function(instance){
         this.instance = instance || g;
         return this;
-    }; spa.prototype = {
+    }; ui.prototype = {
         create:function(el, v){
-            if (typeof el === 'object') { var o = new spa(el); if (o && typeof v == 'string') g[v]=o; return o }
+            if (typeof el === 'object') { var o = new ui(el); if (o && typeof v == 'string') g[v]=o; return o }
             return null;
         },
         el: function (s, v) {
@@ -33,7 +33,7 @@
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
                 if (el){
-                    if (!el.hasOwnProperty('spa')) { el.spa = new spa(el); el.css = new css(el); }
+                    if (!el.hasOwnProperty('ui')) { el.ui = new ui(el); el.css = new css(el); }
                     if (typeof v === 'string') g[v] = el;
                     else if (typeof v === 'function') v.call(el, arguments);
                 }
@@ -45,8 +45,8 @@
                 var el = this.instance.querySelectorAll(s);
                 if (!el) return [];
                 var a = Array.prototype.slice.call(el), c = 0;
-                return a.map(function (i) { if (!i.hasOwnProperty('spa')) {
-                    i.spa = new spa(i); i.css = new css(i);
+                return a.map(function (i) { if (!i.hasOwnProperty('ui')) {
+                    i.ui = new ui(i); i.css = new css(i);
                     if (typeof fn == 'function') fn.call(g, i, c++);
                     if (typeof fn == 'string' || typeof v == 'string') { if (!g[v]) g[v]=[]; g[v].push(i) }
                 } return i });
@@ -64,7 +64,7 @@
         },
         merge: function () {
             var i = 1, t = arguments[0] || {};
-            if (this.instance.hasOwnProperty('spa')) { t = this.instance; i = 0; }
+            if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
             Array.prototype.slice.call(arguments, i).forEach( function(v, k, a) {
                 Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
                     d[key] = Object.getOwnPropertyDescriptor(v, key);
@@ -74,11 +74,11 @@
             return t;
         },
         get parent(){
-            return new spa(this.instance && this.instance.parentElement)
+            return new ui(this.instance && this.instance.parentElement)
         },
         src: function (e) {
             var el = e ? e : this.instance;
-            return new spa(el.srcElement || el.target);
+            return new ui(el.srcElement || el.target);
         },
         css: function() {
           return g.css.el(this.instance);
@@ -104,7 +104,7 @@
             }
             return xml;
         }
-    };  g.spa = new spa(document);
+    };  g.ui = new ui(document);
 
     var css = function(instance){
         this.instance = instance;
@@ -137,7 +137,7 @@
     }; g.css = new css(document);
 
     var msg = {
-        elem: g.spa.el(g.config.msg.container),
+        elem: g.ui.el(g.config.msg.container),
         show: function (params, close) {
             this.elem.innerHTML = tmpl(g.config.msg.tmpl, params);
             this.elem.style.display = 'inherit';
@@ -147,8 +147,8 @@
 
     var popup = {
         visible: false,
-        wnd: g.spa.el(g.config.popup.wnd),
-        container: g.spa.el(g.config.popup.container),
+        wnd: g.ui.el(g.config.popup.wnd),
+        container: g.ui.el(g.config.popup.container),
         init: function (params) {
             if (typeof params === 'object') {
                 if (params.width) {
@@ -166,14 +166,14 @@
                 this.wnd.style.opacity = '0';
                 params.content && this.container && (this.container.innerHTML = params.content);
                 if (typeof params === 'object') (params.width || params.height) && this.init(params);
-                this.container.spa.els('[role="popup-close"]', function (a) {
-                    a.spa.on('click', function (e) { return popup.hide() })
+                this.container.ui.els('[role="popup-close"]', function (a) {
+                    a.ui.on('click', function (e) { return popup.hide() })
                 });
                 if (params.event && params.event.length) params.event.map(function (a, i) { a.call(popup, i) });
                 this.visible = true;
                 fadeIn(this.wnd, 35);
                 params.cb && params.cb.call(this);
-                this.container.spa.el('[tabindex="1"]', function(){this.focus()});
+                this.container.ui.el('[tabindex="1"]', function(){this.focus()});
             }
         },
         hide: function (param) {
@@ -185,7 +185,7 @@
     }; g.popup = popup;
 
     g.spinner_count = 0;
-    g.spinner_element = g.spa.el(g.config.spinner);
+    g.spinner_element = g.ui.el(g.config.spinner);
     if (g.spinner_element) Object.defineProperty(g, 'spinner', {
         __proto__: null,
         enumerable: false,

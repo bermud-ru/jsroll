@@ -12,6 +12,7 @@
 (function ( g, undefined ) {
     'suspected';
     'use strict';
+    var version = '1.0b';
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
     /**
      * @function uuid
@@ -104,6 +105,155 @@
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
     }; g.fadeIn = fadeIn;
+
+    /**
+     * @function router
+     * Хелпер Маршрутизатор SPA
+     *
+     * @method { function () } frgm
+     * @method { function ( Regex, Callback ) } add
+     * @method { function ( Regex | Callback ) } rm
+     * @method { function ( String ) } chk
+     * @method { function () } lsn
+     * @method { function ( String ) } set
+     *
+     * @result { Object }
+     */
+    function router(r){
+        var isHistory = !!(history.pushState) ? 1 : 0;
+        var root = r;
+        return {
+            root:root, rt:[], itv:0, base:isHistory ? window.location.pathname+window.location.search:'',
+            clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, '') },
+            frgm: isHistory ?
+                function(){
+                    var f = this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
+                    return this.clr(this.root != r ? f.replace(this.root, '') : f);
+                } :
+                function(){
+                    var m = window.location.href.match(/#(.*)$/);
+                    return m ? this.clr(m[1]) : '';
+                },
+            add: function(re, handler) {
+                if (typeof re == 'function') { handler = re; re = ''; }
+                this.rt.push({ re: re, handler: handler});
+                this.rt = this.rt.sort(function(a, b) {
+                    if (a.re.toString().length < b.re.toString().length) return 1;
+                    if (a.re.toString().length > b.re.toString().length) return -1;
+                    return 0;
+                });
+                return this;
+            },
+            rm: function(param) {
+                for(var i in this.rt) {
+                    if(this.rt[i].handler === param || this.rt[i].re.toString() === param.toString()) {
+                        this.rt.splice(i, 1);
+                        return this;
+                    }
+                }
+                return this;
+            },
+            chk: function(fr) {
+                var f = fr || this.frgm();
+                for(var i in this.rt) {
+                    var m = f.match(this.rt[i].re);
+                    if (m) { m.shift(); this.rt[i].handler.apply({}, m); return this }
+                }
+                return this;
+            },
+            lsn: function() {
+                var s = this, c = s.frgm(), fn = function() { if(c !== s.frgm()) { c = s.frgm(); s.chk(c); } return s };
+                clearInterval(s.itv);
+                s.itv = setInterval(fn, 50);
+                return s;
+            },
+            set: isHistory ?
+                function(path) {
+                    history.pushState(null, null, this.root + this.clr((path || '')));
+                    return this;
+                } :
+                function(path) {
+                    window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
+                    return this;
+                }
+        }
+    }; g.router = router('/');
+
+    /**
+     * @class chain
+     * Хелпер Обработчик цепочки асинхронных объектов
+     *
+     * @function done
+     * @function fail
+     */
+    function chain(){
+        var c = {
+            tuple: [], cache: [],
+            donned:function(fn){ return false },
+            failed:function(fn){ return false },
+            pool:function (fn, arg) {
+                this.chain.cache.push(this);
+                if (this.chain.tuple.length == this.chain.cache.length) this.chain.donned.apply(this.chain, this.chain.cache);
+            },
+            done: function(fn){ this.donned = fn },
+            fail: function(fn){ this.failed = fn }
+        };
+        c.tuple = Array.prototype.slice.call(arguments).map(function(fn){
+            fn.onload =  function(){ c.pool.apply(fn, arguments) };
+            fn.chain = c; return fn;
+        });
+        return c;
+    }
+    g.chain = chain;
+
+    /**
+     * @function xhr
+     * Хелпер запросов на основе xmlHttpRequest
+     *
+     * @argument { String } url (Uniform Resource Locator) путь до шаблона
+     * @argument { String } id идентификатор шаблона
+     * @argument { Boolean } async режим XMLHttpRequest
+     * @event { XMLHttpRequest.onload & XMLHttpRequest.process }
+     *
+     * @result { Object }
+     */
+    function xhr(){
+        var x = new xmlHttpRequest();
+        if (!x) return null;
+        if (!x.hasOwnProperty('ref')) x.ref = {};
+        x.request=function(params){
+            var opt = Object.assign({method:'GET'}, params);
+            opt.rs = Object.assign({'Xhr': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
+            var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
+            //TODO: check double request for resurce
+            //TODO: multithreading request and compile by chain algoritрm
+            //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
+            var item = new xhr(); item.isLoad = false;
+            if ((['GET','DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
+            item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
+            if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
+            item.send(opt.data || null);
+            item.id = id;
+            opt.result && (item.result = x.result(opt.result));
+            opt.process && (item.process = x.process(opt.process));
+            return x.ref[id] = item;
+        };
+        //TODO: xmlHttpRequest.abort()
+        x.result=function(fn){
+            x.onload = function(e){
+                this.isLoad = true;
+                if (typeof fn === 'function') return fn.call(this, e);
+            };
+            return this;
+        };
+        x.process = function(fn){
+            x.onreadystatechange = function(e){
+                if (typeof fn === 'function') return fn.call(this, e);
+            };
+            return this;
+        };
+        return x;
+    }; g.xhr = xhr();
 
     /**
      * @function form
@@ -203,155 +353,6 @@
     g.JSON.form = form;
 
     /**
-     * @function router
-     * Хелпер Маршрутизатор SPA
-     *
-     * @method { function () } frgm
-     * @method { function ( Regex, Callback ) } add
-     * @method { function ( Regex | Callback ) } rm
-     * @method { function ( String ) } chk
-     * @method { function () } lsn
-     * @method { function ( String ) } set
-     *
-     * @result { Object }
-     */
-    function router(r){
-        var isHistory = !!(history.pushState) ? 1 : 0;
-        var root = r;
-        return {
-            root:root, rt:[], itv:0, base:isHistory ? window.location.pathname+window.location.search:'',
-            clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, '') },
-            frgm: isHistory ?
-                function(){
-                    var f = this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
-                    return this.clr(this.root != r ? f.replace(this.root, '') : f);
-                } :
-                function(){
-                    var m = window.location.href.match(/#(.*)$/);
-                    return m ? this.clr(m[1]) : '';
-                },
-            add: function(re, handler) {
-                if (typeof re == 'function') { handler = re; re = ''; }
-                this.rt.push({ re: re, handler: handler});
-                this.rt = this.rt.sort(function(a, b) {
-                    if (a.re.toString().length < b.re.toString().length) return 1;
-                    if (a.re.toString().length > b.re.toString().length) return -1;
-                    return 0;
-                });
-                return this;
-            },
-            rm: function(param) {
-                for(var i in this.rt) {
-                    if(this.rt[i].handler === param || this.rt[i].re.toString() === param.toString()) {
-                        this.rt.splice(i, 1);
-                        return this;
-                    }
-                }
-                return this;
-            },
-            chk: function(fr) {
-                var f = fr || this.frgm();
-                for(var i in this.rt) {
-                    var m = f.match(this.rt[i].re);
-                    if (m) { m.shift(); this.rt[i].handler.apply({}, m); return this }
-                }
-                return this;
-            },
-            lsn: function() {
-                var s = this, c = s.frgm(), fn = function() { if(c !== s.frgm()) { c = s.frgm();  s.chk(c); } return s };
-                clearInterval(s.itv);
-                s.itv = setInterval(fn, 50);
-                return s;
-            },
-            set: isHistory ?
-                function(path) {
-                    history.pushState(null, null, this.root + this.clr((path || '')));
-                    return this;
-                } :
-                function(path) {
-                    window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
-                    return this;
-                }
-        }
-    }; g.router = router('/');
-
-    /**
-     * @class chain
-     * Хелпер Обработчик цепочки асинхронных объектов
-     *
-     * @function done
-     * @function fail
-     */
-    function chain(){
-        var c = {
-            tuple: [], cache: [],
-            donned:function(fn){ return false },
-            failed:function(fn){ return false },
-            pool:function (fn, arg) {
-                this.chain.cache.push(this);
-                if (this.chain.tuple.length == this.chain.cache.length) this.chain.donned.apply(this.chain, this.chain.cache);
-            },
-            done: function(fn){ this.donned = fn },
-            fail: function(fn){ this.failed = fn }
-        };
-        c.tuple = Array.prototype.slice.call(arguments).map(function(fn){
-            fn.onload =  function(){ c.pool.apply(fn, arguments) };
-            fn.chain = c; return fn;
-        });
-        return c;
-    }
-    g.chain = chain;
-
-    /**
-     * @function xhr
-     * Хелпер запросов на основе xmlHttpRequest
-     *
-     * @argument { String } url (Uniform Resource Locator) путь до шаблона
-     * @argument { String } id идентификатор шаблона
-     * @argument { Boolean } async режим XMLHttpRequest
-     * @event { XMLHttpRequest.onload & XMLHttpRequest.process }
-     *
-     * @result { Object }
-     */
-    function xhr(){
-        var x = new xmlHttpRequest();
-        if (!x) return null;
-        if (!x.hasOwnProperty('ref')) x.ref = {};
-        x.request=function(params){
-            var opt = Object.assign({method:'GET'}, params);
-            opt.rs = Object.assign({'Content-type':'application/x-www-form-urlencoded'}, params.rs);
-            var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
-            //TODO: check double request for resurce
-            //TODO: multithreading request and compile by chain algoritрm
-            //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
-            var item = new xhr(); item.isLoad = false;
-            if ((['GET','DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
-            item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
-            if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
-            item.send(opt.data || null);
-            item.id = id;
-            opt.result && (item.result = x.result(opt.result));
-            opt.process && (item.process = x.process(opt.process));
-            return x.ref[id] = item;
-        };
-        //TODO: xmlHttpRequest.abort()
-        x.result=function(fn){
-            x.onload = function(e){
-                this.isLoad = true;
-                if (typeof fn === 'function') return fn.call(this, e);
-            };
-            return this;
-        };
-        x.process = function(fn){
-            x.onreadystatechange = function(e){
-                if (typeof fn === 'function') return fn.call(this, e);
-            };
-            return this;
-        };
-        return x;
-    }; g.xhr = xhr();
-
-    /**
      * @function tmpl
      * Хелпер для генерации контескта
      *
@@ -389,7 +390,12 @@
                                     data[nn] = i.nodeValue;
                                 }
                         });
-                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, g.arguments[1]);
+                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data, g.arguments[1]);
+                    }
+                    if (opt && typeof opt.before == 'object') {
+                        data = Object.assign(data, opt.before);
+                    } else if (opt && typeof opt.before == 'function') {
+                        opt.before.call(this, data);
                     }
                     data = Object.assign(data, g.arguments[1] || {});
                     if (isId && g.tmpl.cache[id]) {
@@ -401,6 +407,7 @@
                     result = pattern.call(g.tmpl, data);
                     if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
                     if (pig && (after = pig.getAttribute('after'))) eval.call(g.arguments, after);
+                    if (opt && typeof opt.after == 'function') opt.after.call(pattern || g.tmpl, g.arguments);
                 } catch( e ) {
                     console.error('#', id || str, 'Error:', e );
                     return undefined;
