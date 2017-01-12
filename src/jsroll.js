@@ -12,7 +12,7 @@
 (function ( g, undefined ) {
     'suspected';
     'use strict';
-    var version = '1.0b';
+    var version = '1.0.1b';
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
     /**
      * @function uuid
@@ -218,7 +218,7 @@
         if (!x.hasOwnProperty('ref')) x.ref = {};
         x.request=function(params){
             var opt = Object.assign({method:'GET'}, params);
-            opt.rs = Object.assign({'Xhr': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
+            opt.rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
             var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
             //TODO: check double request for resurce
             //TODO: multithreading request and compile by chain algoritрm
