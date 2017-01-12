@@ -110,7 +110,7 @@
      * @function router
      * Хелпер Маршрутизатор SPA
      *
-     * @method { function () } frgm
+     * @method { function () } fr
      * @method { function ( Regex, Callback ) } add
      * @method { function ( Regex | Callback ) } rm
      * @method { function ( String ) } chk
@@ -124,15 +124,14 @@
         var root = r;
         return {
             root:root, rt:[], itv:0, base:isHistory ? window.location.pathname+window.location.search:'',
-            clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, '') },
-            frgm: isHistory ?
+            clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, ''); },
+            fr: isHistory ?
                 function(){
-                    var f = this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
-                    return this.clr(this.root != r ? f.replace(this.root, '') : f);
-                } :
+                    return this.root + this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
+                }:
                 function(){
                     var m = window.location.href.match(/#(.*)$/);
-                    return m ? this.clr(m[1]) : '';
+                    return this.root + (m ? this.clr(m[1]) : '');
                 },
             add: function(re, handler) {
                 if (typeof re == 'function') { handler = re; re = ''; }
@@ -154,24 +153,20 @@
                 return this;
             },
             chk: function(fr) {
-                var f = fr || this.frgm();
-                for(var i in this.rt) {
-                    var m = f.match(this.rt[i].re);
-                    if (m) { m.shift(); this.rt[i].handler.apply({}, m); return this }
-                }
+                var f = fr || this.fr(), m = false;
+                for(var i in this.rt) if (m = f.match(this.rt[i].re)) { m.shift(); this.rt[i].handler.apply({}, m); return this; }
                 return this;
             },
             lsn: function() {
-                var s = this, c = s.frgm(), fn = function() { if(c !== s.frgm()) { c = s.frgm(); s.chk(c); } return s };
-                clearInterval(s.itv);
-                s.itv = setInterval(fn, 50);
+                var s = this, c = s.fr(), fn = function() { if(c !== s.fr()) { c = s.fr(); s.chk(c); } return s; };
+                clearInterval(s.itv); s.itv = setInterval(fn, 50);
                 return s;
             },
             set: isHistory ?
                 function(path) {
-                    history.pushState(null, null, this.root + this.clr((path || '')));
+                    history.pushState(null, null, this.root + this.clr(path || ''));
                     return this;
-                } :
+                }:
                 function(path) {
                     window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
                     return this;
