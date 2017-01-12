@@ -42,14 +42,13 @@ var ui = function(instance){
     },
     els: function (s, fn, v) {
         if (typeof s === 'string') {
-            var el = this.instance.querySelectorAll(s);
-            if (!el) return [];
-            var a = Array.prototype.slice.call(el), c = 0;
-            return a.map(function (i) { if (!i.hasOwnProperty('ui')) {
-                i.ui = new ui(i); i.css = new css(i);
+            var els = this.instance.querySelectorAll(s), c = 0;
+            if (!els) return []; return Array.prototype.slice.call(els).map(function (i) {
+                if (!i.hasOwnProperty('ui')) { i.ui = new ui(i); i.css = new css(i); }
                 if (typeof fn == 'function') fn.call(g, i, c++);
                 if (typeof fn == 'string' || typeof v == 'string') { if (!g[v]) g[v]=[]; g[v].push(i) }
-            } return i });
+                return i;
+            });
         } else return [];
     },
     attr: function (a, v) {
