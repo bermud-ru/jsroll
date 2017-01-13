@@ -111,7 +111,7 @@ var css = function(instance){
 };
 css.prototype = {
     el: function(i){
-      this.instance = i; return this;
+      this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
     },
     style:function(k,v){
         this.instance.style[k] = v;
