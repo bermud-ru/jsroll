@@ -35,10 +35,11 @@
      * @result { Array }
      */
     var params = function(search) {
-        var re=/[?&]([^=#]+)=([^&#]*)/g,p={},m;
+        console.log('s',g.location.search);
+        var re=/[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
-        }catch(e){return null}
+        } catch(e) { return null }
         return p;
     }; g.location.params = params;
 
@@ -124,6 +125,7 @@
         var root = r;
         return {
             root:root, rt:[], itv:0, base:isHistory ? window.location.pathname+window.location.search:'',
+            referrer:root,
             clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, ''); },
             fr: isHistory ?
                 function(){
@@ -154,7 +156,7 @@
             },
             chk: function(fr) {
                 var f = fr || this.fr(), m = false;
-                for(var i in this.rt) if (m = f.match(this.rt[i].re)) { m.shift(); this.rt[i].handler.apply({}, m); return this; }
+                for(var i in this.rt) if (m = f.match(this.rt[i].re)) { this.rt[i].handler.call(m || {}, f); return this; }
                 return this;
             },
             lsn: function() {
@@ -164,10 +166,12 @@
             },
             set: isHistory ?
                 function(path) {
+                    this.referrer = window.location.pathname+window.location.search;
                     history.pushState(null, null, this.root + this.clr(path || ''));
                     return this;
                 }:
                 function(path) {
+                    this.referrer = window.location.pathname+window.location.search;
                     window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
                     return this;
                 }
