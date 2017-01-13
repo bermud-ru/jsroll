@@ -19,7 +19,7 @@ g.config = {
     popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
 };
 
-var ui = function(instance){
+var ui = function(instance) {
     this.instance = instance || g;
     return this;
 }; ui.prototype = {
@@ -86,7 +86,7 @@ var ui = function(instance){
         this.instance.addEventListener(evnt, fn, opt || true);
         return this.instance;
     },
-    xml:function(d, mime){
+    xml:function(d, mime) {
         var xml, tmp;
         if ( !d || typeof d !== 'string' ) return null;
         try {
@@ -110,10 +110,10 @@ var css = function(instance){
     return this;
 };
 css.prototype = {
-    el: function(i){
+    el: function(i) {
       this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
     },
-    style:function(k,v){
+    style:function(k,v) {
         this.instance.style[k] = v;
     },
     re: function (s, g) { return new RegExp(s, g || 'g') },
