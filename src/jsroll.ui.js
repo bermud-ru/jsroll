@@ -32,12 +32,9 @@ var ui = function(instance){
         if (typeof s === 'string') {
             if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
             else el = this.instance.querySelector(s);
-        } else  if (typeof s === 'object') {     console.log('t', s); el = s }
+        } else if (typeof s === 'object') { el = s }
         if (el) {
-            if (!el.hasOwnProperty('ui')) {
-
-                el.ui = new ui(el); el.css = new css(el);
-            }
+            if (!el.hasOwnProperty('ui')) { el.ui = new ui(el); el.css = new css(el); }
             if (typeof v === 'string') g[v] = el;
             else if (typeof v === 'function') v.call(el, arguments);
         }
