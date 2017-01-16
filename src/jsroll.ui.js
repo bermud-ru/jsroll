@@ -83,7 +83,7 @@ var ui = function(instance) {
       return g.css.el(this.instance);
     },
     on: function (evnt, fn, opt) {
-        this.instance.addEventListener(evnt, fn, opt || true);
+        this.instance.addEventListener(evnt, fn, !!opt);
         return this.instance;
     },
     xml:function(d, mime) {
