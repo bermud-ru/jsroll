@@ -118,19 +118,21 @@ css.prototype = {
     },
     re: function (s, g) { return new RegExp(s, g || 'g') },
     has: function(c){
-        return this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'));
+       return this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'));
     },
     add: function (c) {
-        if (!this.has(c)) this.instance.className += ' ' + c;
+        if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
         return this;
     },
     del: function (c) {
-        this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
+        if (this.instance) this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
         return this;
     },
     tgl: function (c) {
-        if (!this.has(c)) this.instance.className += ' ' + c;
-        else this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
+        if (this.instance) {
+            if (!this.has(c)) this.instance.className += ' ' + c;
+            else  this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
+        }
         return this;
     }
 }; g.css = new css(document);

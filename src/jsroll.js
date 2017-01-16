@@ -263,21 +263,34 @@
      * @returns {result:Object, data: String}}
      */
 
-    function form(f, validator) {
+    function form(f) {
         f.setAttribute('valid', 1);
-        f.xhr = null;
-        f.prepare = function(validator){
+        f.response = null;
+        f.method = f.method || 'GET';
+        f.validator = f.validator || null;
+        f.opt = f.opt || {};
+        f.done = f.done || null;
+
+        f.prepare = function(validator) {
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
                 for (var i=0; i < f.elements.length; i++) data.push((f.elements[i].name || i) + '=' + (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0)));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
-        f.validator = validator || f.validator;
-        f.fail=function (res) {
+
+        f.update = function(data) {
+            for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
+            else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
+                if (field && data[field]) f.elements[i].value = data[field];
+            }
+            return f;
+        };
+
+        f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
             if (res.form) for (var i =0; i < this.elements.length; i++) {
-                if (res.form.hasOwnProperty(this.elements[i].name)) css.el(this.elements[i].parentElement).add('has-error');
-                else css.el(this.elements[i].parentElement).del('has-error');
+                if (res.form.hasOwnProperty(this.elements[i].name)) g.css.el(this.elements[i].parentElement).add('has-error');
+                else g.css.el(this.elements[i].parentElement).del('has-error');
                 //if (!!res.form[f.elements[i].name] || !!res.form[/\[([^\]]+)\]/.exec(f.elements[i].name)[1]]) g.css.el(f.elements[i].parentElement).add('has-error');
                 //else g.css.el(f.elements[i].parentElement).del('has-error');
                 return true;
@@ -285,71 +298,35 @@
             return false;
         };
 
-        f.release = function(p){
-            var data = f.prepare(p && p.validator || f.validator);
+        f.send = function(callback) {
+            var data = f.prepare(f.validator);
             if (f.getAttribute('valid') != 0) {
-                g.xhr.request(Object.assign({method: p && p.method || f.method, url: p && p.url || f.action, data: data}, {rs:p.rs || {}}))
-                    .result(p && p.callback || function() {
+               g.xhr.request(Object.assign({method: f.method, url: f.action, data: data}, f.opt))
+                    .result(callback || function(arg) {
                             var res = {result:'error'};
-                            if ([200, 206].indexOf(this.status) < 0) res.message = this.status + ': ' + this.statusText;
+                            f.response = this.responseText;
+
+                            if ([200, 206].indexOf(this.status) < 0)
+                                res.message = this.status + ': ' + this.statusText;
                             else try {
-                                f.xhr = res = JSON.parse(this.responseText);
+                               res = JSON.parse(this.responseText);
                             } catch (e) {
-                                res.message = 'Cервер вернул не коректные данные';
+                               res.message = 'Cервер вернул не коректные данные';
                             }
-                            f.xhr = res;
+
                             if (res.result == 'error' ) {
-                                if (p && typeof p.fail == 'function') p.fail.call(f, res);
-                                else f.fail(res);
+                                if (typeof f.fail == 'function') f.fail.call(f, res);
                             } else if (res.result == 'ok') {
-                                if (p && typeof p.done == 'function') p.done.call(f, res);
+                                if (typeof f.done == 'function') f.done.call(f, res);
                             }
                             return f;
                         });
             }
             return f;
         };
-        f.insert= function(data){
-            for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
-            else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
-                if (field && data[field]) f.elements[i].value = data[field];
-            }
-            return f;
-        };
-        f.setup = function(p){
-            if (p) switch (true){
-                case p.hasOwnProperty('form'):
-                    if (typeof p.form === 'object') {
-                        f.insert(p.form);
-                        var validator = (p && p.validator || f.validator);
-                        if (typeof validator == 'function') validator.call(f, p.data);
-                    } break;
-                case p.hasOwnProperty('xhr'):
-                    g.xhr.request({method: p.xhr.method || 'GET', url: p.xhr.url, data: p.xhr.data || null, rs: p.xhr.rs || {}})
-                        .result(p.xhr.callback || function() {
-                                var res = {result:'error'};
-                                if ([200, 206].indexOf(this.status) < 0) {
-                                    res.message = this.status + ': ' + this.statusText;
-                                } else try {
-                                    res = JSON.parse(this.responseText);
-                                    f.insert(res.data || {});
-                                    var validator = (p && p.validator || f.validator);
-                                    if (typeof validator == 'function') validator.call(f, res.data);
-                                } catch (e) {
-                                    res.message = 'Cервер вернул не коректные данные';
-                                }
-                                f.xhr = res;
-                                if (p && typeof p.fn == 'function') p.fn.call(f, res);
-                                return f;
-                            });
-                    break;
-                default: f.reset();
-            } else f.reset();
-            return f;
-        };
+
         return f;
-    }
-    g.JSON.form = form;
+    }; g.JSON.form = form;
 
     /**
      * @function tmpl
