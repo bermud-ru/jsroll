@@ -353,6 +353,7 @@
                 var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
                 var data = {};
+                var context;
 
                 try {
                     if (pig) {
@@ -381,9 +382,10 @@
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
                     result = pattern.call(g.tmpl, data);
-                    if (typeof cb == 'function') cb.call(pattern || g.tmpl, result);
-                    if (pig && (after = pig.getAttribute('after'))) eval.call(g.arguments, after);
-                    if (opt && typeof opt.after == 'function') opt.after.call(pattern || g.tmpl, g.arguments);
+                    if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
+                    else if (typeof cb == 'object' && (context = cb)) context.innerHTML = result;
+                    if (pig && (after = pig.getAttribute('after'))) (function(){return eval(after)}).apply(context, g.arguments);
+                    if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
                     console.error('#', id || str, 'Error:', e );
                     return undefined;
