@@ -35,7 +35,6 @@
      * @result { Array }
      */
     var params = function(search) {
-        console.log('s',g.location.search);
         var re=/[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
