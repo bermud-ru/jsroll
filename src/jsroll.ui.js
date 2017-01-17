@@ -10,6 +10,7 @@
  */
 
 (function ( g, undefined ) {
+'suspected';
 'use strict';
 
 g.config = {
