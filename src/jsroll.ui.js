@@ -21,11 +21,13 @@ g.config = {
 };
 
 var ui = function(instance) {
+    this._parent = null;
+    this._css = null;
     this.instance = instance || g;
     return this;
 }; ui.prototype = {
     create:function(el, v){
-        if (typeof el === 'object') { var o = new ui(el); if (o && typeof v == 'string') g[v]=o; return o }
+        if (typeof el === 'object') { var o = new ui(el); if (o && typeof v == 'string') g[v]=o; return o; }
         return null;
     },
     el: function (s, v) {
@@ -35,7 +37,7 @@ var ui = function(instance) {
             else el = this.instance.querySelector(s);
         } else if (typeof s === 'object') { el = s }
         if (el) {
-            if (!el.hasOwnProperty('ui')) { el.ui = new ui(el); el.css = new css(el); }
+            if (!el.hasOwnProperty('ui')) el.ui = new ui(el);
             if (typeof v === 'string') g[v] = el;
             else if (typeof v === 'function') v.call(el, arguments);
         }
@@ -45,7 +47,7 @@ var ui = function(instance) {
         if (typeof s === 'string') {
             var els = this.instance.querySelectorAll(s), c = 0;
             if (!els) return []; return Array.prototype.slice.call(els).map(function (i) {
-                if (!i.hasOwnProperty('ui')) { i.ui = new ui(i); i.css = new css(i); }
+                if (!i.hasOwnProperty('ui')) i.ui = new ui(i);
                 if (typeof fn == 'function') fn.call(g, i, c++);
                 if (typeof fn == 'string' || typeof v == 'string') { if (!g[v]) g[v]=[]; g[v].push(i) }
                 return i;
@@ -73,15 +75,15 @@ var ui = function(instance) {
         });
         return t;
     },
-    get parent(){
-        return new ui(this.instance && this.instance.parentElement)
+    get parent() {
+        return this._parent || (this._parent = new ui(this.instance && this.instance.parentElement));
     },
     src: function (e) {
         var el = e ? e : this.instance;
         return new ui(el.srcElement || el.target);
     },
-    css: function() {
-      return g.css.el(this.instance);
+    get css() {
+        return this._css || (this._css = new css(this.instance));
     },
     on: function (evnt, fn, opt) {
         this.instance.addEventListener(evnt, fn, !!opt);
@@ -104,18 +106,18 @@ var ui = function(instance) {
         }
         return xml;
     }
-};  g.ui = new ui(document);
+}; g.ui = new ui(document);
 
 var css = function(instance){
     this.instance = instance;
     return this;
-};
-css.prototype = {
+}; css.prototype = {
     el: function(i) {
       this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
     },
     style:function(k,v) {
         this.instance.style[k] = v;
+        return this;
     },
     re: function (s, g) { return new RegExp(s, g || 'g') },
     has: function(c){
@@ -158,45 +160,6 @@ var msg = {
         if (typeof close == 'undefined' || !close) fadeOut(this.elem, 90);
     }
 }; g.msg = msg;
-
-var popup = {
-    visible: false,
-    wnd: ui.el(g.config.popup.wnd),
-    container: ui.el(g.config.popup.container),
-    init: function (params) {
-        if (typeof params === 'object') {
-            if (params.width) {
-                this.container.style.width = params.width + 'px';
-                this.container.style.marginLeft = (params.width / (-2)) + 'px';
-            }
-            if (params.height) {
-                this.container.style.height = params.height + 'px';
-                this.container.style.marginTop = (params.height / (-2)) + 'px';
-            }
-        }
-    },
-    show: function (params) {
-        if (this.wnd) {
-            this.wnd.style.opacity = '0';
-            params.content && this.container && (this.container.innerHTML = params.content);
-            if (typeof params === 'object') (params.width || params.height) && this.init(params);
-            this.container.ui.els('[role="popup-close"]', function (a) {
-                a.ui.on('click', function (e) { return popup.hide() })
-            });
-            if (params.event && params.event.length) params.event.map(function (a, i) { a.call(popup, i) });
-            this.visible = true;
-            fadeIn(this.wnd, 35);
-            params.cb && params.cb.call(this);
-            this.container.ui.el('[tabindex="1"]', function(){this.focus()});
-        }
-    },
-    hide: function (param) {
-        if (this.wnd) {
-            this.visible = false;
-            fadeOut(this.wnd, param || 35);
-        }
-    }
-}; g.popup = popup;
 
 g.spinner_count = 0;
 g.spinner_element = ui.el(g.config.spinner);
