@@ -216,58 +216,56 @@
      *
      * @result { Object }
      */
-    function xhr(){
+    function xhr(params){
         var x = new xmlHttpRequest();
         if (!x) return null;
-        if (!x.hasOwnProperty('ref')) x.ref = {};
-        x.request = function(params) {
-            var opt = Object.assign({method:'GET'}, params);
-            opt.rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
-            var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
-            //TODO: check double request for resurce
-            //TODO: multithreading request and compile by chain algoritрm methods DONE & FAIL
-            //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
-            try {
-                var item = new xhr();
-                item.isLoad = false;
-                if (typeof opt.done == 'function') item.done = x.done(opt.done);
-                if (typeof opt.fail == 'function') item.fail = x.fail(opt.fail);
-                if (typeof opt.process == 'function') item.process = x.process(opt.process);
-                if ((['GET', 'DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data) {
-                    opt.url = (opt.url || g.location) + '?' + opt.data;
-                    opt.data = null
-                }
-                item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
-                if (opt.rs) for (var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
-                item.send(opt.data || null);
-                item.id = id;
-            } catch (e) {
-                if (item) item.abort(); (item || x).fail.call(item || x, e);
-            }
-            return x.ref[id] = item;
-        };
 
         //TODO: xmlHttpRequest.abort()
+
         x.fail=function(fn) {
-            this.isLoad = false;
-            if (typeof fn === 'function') return fn.call(this, e);
+            if (typeof x.after == 'function') x.after.call(x);
+            if (typeof fn === 'function') return fn.call(x, e);
             return this;
         };
+
         x.done=function(fn) {
-            x.onload = function(e){
-                this.isLoad = true;
-                if (typeof fn === 'function') return fn.call(this, e);
-            };
+            if (typeof fn === 'function') return fn.call(this);
             return this;
         };
+
         x.process = function(fn){
             x.onreadystatechange = function(e){
                 if (typeof fn === 'function') return fn.call(this, e);
             };
             return this;
         };
-        return x;
-    }; g.xhr = xhr();
+
+        x.onload = function(e){
+            if (typeof x.after == 'function') x.after.call(x);
+            return x.done.call(x, e);
+        };
+
+        var opt = Object.assign({method:'GET'}, params);
+        var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
+        var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
+
+        try {
+            for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
+
+            if ((['GET', 'DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data) {
+                opt.url = (opt.url || g.location) + '?' + opt.data;
+                opt.data = null
+            }
+            if (typeof x.before == 'function') x.before.call(x, opt);
+            x.open(opt.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
+            for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
+            x.send(opt.data || null);
+            x.id = id;
+        } catch (e) {
+            x.abort(); x.fail.call(x, e);
+        }
+        return g.xhr.ref[id] = x;
+    }; xhr.ref = {}; g.xhr = xhr;
 
     /**
      * @function form
@@ -316,26 +314,25 @@
         f.send = function(callback) {
             var data = f.prepare(f.validator);
             if (f.getAttribute('valid') != 0) {
-               g.xhr.requexst(Object.assign({method: f.method, url: f.action, data: data}, f.opt))
-                    .done(callback || function(arg) {
-                            var res = {result:'error'};
-                            f.response = this.responseText;
+               g.xhr(Object.assign({method: f.method, url: f.action, data: data, done: callback || function(arg) {
+                   var res = {result:'error'};
+                   f.response = this.responseText;
 
-                            if ([200, 206].indexOf(this.status) < 0)
-                                res.message = this.status + ': ' + this.statusText;
-                            else try {
-                               res = JSON.parse(this.responseText);
-                            } catch (e) {
-                               res.message = 'Cервер вернул не коректные данные';
-                            }
+                   if ([200, 206].indexOf(this.status) < 0)
+                       res.message = this.status + ': ' + this.statusText;
+                   else try {
+                       res = JSON.parse(this.responseText);
+                   } catch (e) {
+                       res.message = 'Cервер вернул не коректные данные';
+                   }
 
-                            if (res.result == 'error' ) {
-                                if (typeof f.fail == 'function') f.fail.call(f, res);
-                            } else if (res.result == 'ok') {
-                                if (typeof f.done == 'function') f.done.call(f, res);
-                            }
-                            return f;
-                        });
+                   if (res.result == 'error' ) {
+                       if (typeof f.fail == 'function') f.fail.call(f, res);
+                   } else if (res.result == 'ok') {
+                       if (typeof f.done == 'function') f.done.call(f, res);
+                   }
+                   return f;
+               }}, f.opt));
             }
             return f;
         };
@@ -416,10 +413,10 @@
         switch ( true ) {
             case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
-                return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).done(function(e){
+                return g.xhr(Object.assign({url:str, async: (typeof cb == 'function'), done:function(e) {
                     if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
-                });
+                }}, opt));
             case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
             default: return build( str );
         }
