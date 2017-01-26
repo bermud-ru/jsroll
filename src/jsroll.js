@@ -16,6 +16,18 @@
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
 
     /**
+     * @function uuid
+     * Генерация Universally Unique Identifier 16-байтный (128-битный) номер
+     *
+     * @result { String }
+     */
+    var uuid = function() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
+        });
+    }; g.uuid = uuid;
+
+    /**
      * @function params
      * Возвращает массив (Хеш-таблица) параметров
      *
@@ -112,15 +124,15 @@
         var isHistory = !!(history.pushState) ? 1 : 0;
         var root = r;
         return {
-            root:root, rt:[], itv:0, base:isHistory ? window.location.pathname+window.location.search:'',
+            root:root, rt:[], itv:0, base:isHistory ? g.location.pathname+g.location.search:'',
             referrer:root,
             clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, ''); },
             fr: isHistory ?
                 function(){
-                    return this.root + this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
+                    return this.root + this.clr(decodeURI(g.location.pathname + g.location.search)).replace(/\?(.*)$/, '');
                 }:
                 function(){
-                    var m = window.location.href.match(/#(.*)$/);
+                    var m = g.location.href.match(/#(.*)$/);
                     return this.root + (m ? this.clr(m[1]) : '');
                 },
             add: function(re, handler) {
@@ -154,13 +166,13 @@
             },
             set: isHistory ?
                 function(path) {
-                    this.referrer = window.location.pathname+window.location.search;
+                    this.referrer = g.location.pathname+g.location.search;
                     history.pushState(null, null, this.root + this.clr(path || ''));
                     return this;
                 }:
                 function(path) {
-                    this.referrer = window.location.pathname+window.location.search;
-                    window.location.href = window.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
+                    this.referrer = g.location.pathname+g.location.search;
+                    window.location.href = g.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
                     return this;
                 }
         }
@@ -208,25 +220,40 @@
         var x = new xmlHttpRequest();
         if (!x) return null;
         if (!x.hasOwnProperty('ref')) x.ref = {};
-        x.request=function(params){
+        x.request = function(params) {
             var opt = Object.assign({method:'GET'}, params);
             opt.rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
             var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
             //TODO: check double request for resurce
-            //TODO: multithreading request and compile by chain algoritрm
+            //TODO: multithreading request and compile by chain algoritрm methods DONE & FAIL
             //if (x.ref.hasOwnProperty(id) && !!x.ref[id].isLoad) return x.ref[id];
-            var item = new xhr(); item.isLoad = false;
-            if ((['GET','DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data){ opt.url = (opt.url || g.location)+'?'+opt.data; opt.data = null }
-            item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
-            if (opt.rs) for(var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
-            item.send(opt.data || null);
-            item.id = id;
-            opt.result && (item.result = x.result(opt.result));
-            opt.process && (item.process = x.process(opt.process));
+            try {
+                var item = new xhr();
+                item.isLoad = false;
+                if (typeof opt.done == 'function') item.done = x.done(opt.done);
+                if (typeof opt.fail == 'function') item.fail = x.fail(opt.fail);
+                if (typeof opt.process == 'function') item.process = x.process(opt.process);
+                if ((['GET', 'DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data) {
+                    opt.url = (opt.url || g.location) + '?' + opt.data;
+                    opt.data = null
+                }
+                item.open(opt.method, opt.url || g.location, opt.async || true, opt.username || undefined, opt.password || undefined);
+                if (opt.rs) for (var m in opt.rs) item.setRequestHeader(m.trim(), opt.rs[m].trim());
+                item.send(opt.data || null);
+                item.id = id;
+            } catch (e) {
+                if (item) item.abort(); (item || x).fail.call(item || x, e);
+            }
             return x.ref[id] = item;
         };
+
         //TODO: xmlHttpRequest.abort()
-        x.result=function(fn){
+        x.fail=function(fn) {
+            this.isLoad = false;
+            if (typeof fn === 'function') return fn.call(this, e);
+            return this;
+        };
+        x.done=function(fn) {
             x.onload = function(e){
                 this.isLoad = true;
                 if (typeof fn === 'function') return fn.call(this, e);
@@ -289,8 +316,8 @@
         f.send = function(callback) {
             var data = f.prepare(f.validator);
             if (f.getAttribute('valid') != 0) {
-               g.xhr.request(Object.assign({method: f.method, url: f.action, data: data}, f.opt))
-                    .result(callback || function(arg) {
+               g.xhr.requexst(Object.assign({method: f.method, url: f.action, data: data}, f.opt))
+                    .done(callback || function(arg) {
                             var res = {result:'error'};
                             f.response = this.responseText;
 
@@ -357,12 +384,15 @@
                         });
                         if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data, g.arguments[1]);
                     }
+
                     if (opt && typeof opt.before == 'object') {
                         data = Object.assign(data, opt.before);
                     } else if (opt && typeof opt.before == 'function') {
                         opt.before.call(this, data);
                     }
+
                     data = Object.assign(data, g.arguments[1] || {});
+
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
                     } else {
@@ -370,8 +400,10 @@
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
                     result = pattern.call(g.tmpl, data);
+
                     if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
                     else if (typeof cb == 'object' && (context = cb)) context.innerHTML = result;
+
                     if (pig && (after = pig.getAttribute('after'))) (function(){return eval(after)}).apply(context, g.arguments);
                     if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
@@ -382,9 +414,9 @@
             };
 
         switch ( true ) {
-            case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i)? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
+            case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
-                return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).result(function(e){
+                return g.xhr.request(Object.assign({url:str, async: (typeof cb == 'function')}, opt)).done(function(e){
                     if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);
                 });

@@ -155,9 +155,10 @@ if ( typeof ui === 'undefined' ) return false;
 var msg = {
     elem: ui.el(g.config.msg.container),
     show: function (params, close) {
-        this.elem.innerHTML = tmpl(g.config.msg.tmpl, params);
-        this.elem.style.display = 'inherit';
+        tmpl(g.config.msg.tmpl, params, this.elem);
+        fadeIn(this.elem, 0);
         if (typeof close == 'undefined' || !close) fadeOut(this.elem, 90);
+        return this.elem;
     }
 }; g.msg = msg;
 
