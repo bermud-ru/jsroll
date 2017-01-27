@@ -314,25 +314,32 @@
         f.send = function(callback) {
             var data = f.prepare(f.validator);
             if (f.getAttribute('valid') != 0) {
-               g.xhr(Object.assign({method: f.method, url: f.action, data: data, done: callback || function(arg) {
-                   var res = {result:'error'};
-                   f.response = this.responseText;
+                if (typeof f.before == 'function') f.before.call(this);
+                g.xhr(Object.assign({method: f.method, url: f.action, data: data, done: typeof callback == 'function' ?
+                    function() {
+                        if (typeof f.after == 'function') f.after.call(this);
+                        return  callback.apply(this, arguments);
+                    } :
+                    function(arg) {
+                        if (typeof f.after == 'function') f.after.call(this, arg);
+                        var res = {result:'error'};
+                        f.response = this.responseText;
+                        if ([200, 206].indexOf(this.status) < 0)
+                           res.message = this.status + ': ' + this.statusText;
+                        else try {
+                           res = JSON.parse(this.responseText);
+                        } catch (e) {
+                           res.message = 'Cервер вернул не коректные данные';
+                        }
 
-                   if ([200, 206].indexOf(this.status) < 0)
-                       res.message = this.status + ': ' + this.statusText;
-                   else try {
-                       res = JSON.parse(this.responseText);
-                   } catch (e) {
-                       res.message = 'Cервер вернул не коректные данные';
-                   }
-
-                   if (res.result == 'error' ) {
-                       if (typeof f.fail == 'function') f.fail.call(f, res);
-                   } else if (res.result == 'ok') {
-                       if (typeof f.done == 'function') f.done.call(f, res);
-                   }
-                   return f;
-               }}, f.opt));
+                        if (res.result == 'error' ) {
+                           if (typeof f.fail == 'function') f.fail.call(f, res);
+                        } else if (res.result == 'ok') {
+                           if (typeof f.done == 'function') f.done.call(f, res);
+                        }
+                        return f;
+                    }
+                }, f.opt));
             }
             return f;
         };
