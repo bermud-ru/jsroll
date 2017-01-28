@@ -106,10 +106,10 @@ var ui = function(instance) {
         }
         return xml;
     },
-    focus(id) {
+    focus: function(s) {
         var el;
-        if (id) el = typeof id == 'string' ?  g.querySelector(id) : id; else el = this.instance;
-        if (el) g.setTimeout(function() { el.focus(); }, 0);
+        if (s) el = (typeof s == 'string' ?  g.querySelector(s) : s); else el = this.instance;
+        if (el) g.setTimeout(function() { el.focus(); return false }, 0);
         return el;
     }
 }; g.ui = new ui(document);
