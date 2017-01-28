@@ -362,26 +362,26 @@ if (element) {
 var inputer = function(el) {
 if (el && !el.instance.hasOwnProperty('status')) {
     var parent = el.parent;
-    el.instance.chk = parent.el('span');
+    el.instance.chk = parent.el('span').ui;
     Object.defineProperty(el.instance, 'status', {
         set: function status(stat) {
-            parent.css().add('has-feedback').del('has-error').del('has-warning').del('has-success');
-            if (this.chk)  this.chk.css.del( 'glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
+            parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
+            if (this.chk)  this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
             switch (stat) {
                 case 'error':
                     this._status = 'error';
                     if (this.chk) this.chk.css.add('glyphicon-remove');
-                    parent.css().add('has-error');
+                    parent.css.add('has-error');
                     break;
                 case 'warning':
                     this._status = 'warning';
                     if (this.chk) this.chk.css.add('glyphicon-warning-sign');
-                    parent.css().add('has-warning');
+                    parent.css.add('has-warning');
                     break;
                 case 'success':
                     this._status = 'success';
                     if (this.chk) this.chk.css.add('glyphicon-ok');
-                    parent.css().add('has-success');
+                    parent.css.add('has-success');
                     break;
                 case 'spinner':
                     this._status = 'spinner';
