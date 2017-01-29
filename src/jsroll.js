@@ -257,6 +257,7 @@
                 opt.data = null
             }
             if (typeof x.before == 'function') x.before.call(x, opt);
+            x.method = opt.method;
             x.open(opt.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
             x.send(opt.data || null);
