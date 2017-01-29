@@ -211,7 +211,7 @@ var result = true;
 for (var i =0; i < this.elements.length; i++) result = result & test(this.elements[i]);
 
 if (!result) {
-    spinner = false;
+    if (spinner) spinner = false;
     msg.show({message: 'неверно заполнены поля формы!'});
 }
 return result;

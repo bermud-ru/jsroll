@@ -342,7 +342,7 @@
                         return f;
                     }
                 }, f.opt));
-            }
+            } else f.setAttribute('valid',1);
             return f;
         };
 
