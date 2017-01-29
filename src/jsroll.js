@@ -279,7 +279,7 @@
     function form(f) {
         f.setAttribute('valid', 1);
         f.response = null;
-        f.method = f.method || 'GET';
+        f.method = f.rest = f.getAttribute('rest') || 'POST';
         f.validator = f.validator || null;
         f.opt = f.opt || {};
         f.done = f.done || null;
@@ -315,7 +315,7 @@
             var data = f.prepare(f.validator);
             if (f.getAttribute('valid') != 0) {
                 if (typeof f.before == 'function') f.before.call(this);
-                g.xhr(Object.assign({method: f.method, url: f.action, data: data, done: typeof callback == 'function' ?
+                g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof callback == 'function' ?
                     function() {
                         if (typeof f.after == 'function') f.after.call(this);
                         return  callback.apply(this, arguments);
