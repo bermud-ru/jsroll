@@ -241,8 +241,9 @@
         };
 
         x.onload = function(e){
+            x.done.call(x, e);
             if (typeof x.after == 'function') x.after.call(x);
-            return x.done.call(x, e);
+            return x;
         };
 
         var opt = Object.assign({method:'GET'}, params);
@@ -322,7 +323,6 @@
                         return  callback.apply(this, arguments);
                     } :
                     function(arg) {
-                        if (typeof f.after == 'function') f.after.call(this, arg);
                         var res = {result:'error'};
                         f.response = this.responseText;
                         if ([200, 206].indexOf(this.status) < 0)
@@ -338,6 +338,7 @@
                         } else if (res.result == 'ok') {
                            if (typeof f.done == 'function') f.done.call(f, res);
                         }
+                        if (typeof f.after == 'function') f.after.call(this, arg);
                         return f;
                     }
                 }, f.opt));
