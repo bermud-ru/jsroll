@@ -281,7 +281,7 @@
     function form(f) {
         f.setAttribute('valid', 1);
         f.response = null;
-        f.method = f.rest = f.getAttribute('rest') || 'POST';
+        f.rest = f.getAttribute('rest') || f.method;
         f.validator = f.validator || null;
         f.opt = f.opt || {};
         f.done = f.done || null;
