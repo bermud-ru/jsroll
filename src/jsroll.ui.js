@@ -89,9 +89,9 @@ var ui = function(instance) {
         this.instance.addEventListener(evnt, fn, !!opt);
         return this.instance;
     },
-    xml: function(d, mime) {
+    dom: function(d, mime) {
         if ( !d || typeof d !== 'string' ) return null;
-        return g.dom.parseFromString(d, mine);
+        return g.dom(d, mine);
     },
     focus: function(s) {
         var el;
@@ -178,11 +178,12 @@ var test = function(element){
         if ((element.getAttribute('required') !== null) && !element.value) res = false;
         else if ((element.getAttribute('required') === null) && !element.value) res = true;
         else if (element.getAttribute('pattern') === null) res = true;
-        else { try {
-            var pattern = /[?\/]([^\/]+)\/([^\/]*)/g.exec(element.getAttribute('pattern')) || [];
-            var re = new RegExp(pattern[1], pattern[2]);
-            res = re.test(element.value.trim());
-        } catch(e) { res = false }
+        else { 
+            try {
+                var pattern = /[?\/]([^\/]+)\/([^\/]*)/g.exec(element.getAttribute('pattern')) || [];
+                var re = new RegExp(pattern[1], pattern[2]);
+                res = re.test(element.value.trim());
+            } catch(e) { res = false }
         }
 
         var el = inputer(element.hasOwnProperty('ui') ? element.ui : ui.create(element));
@@ -212,7 +213,7 @@ if (element) {
             var self = this.owner;
             this.index = 0; this.key = self.value.toLowerCase() || 'null';
             if (self.pannel) {
-                var n = ui.xml(tmpl(this.opt.tmpl, {data:data})).firstChild;
+                var n = ui.dom(tmpl(this.opt.tmpl, {data:data})).firstChild;
                 if (n) self.pannel.innerHTML = n.innerHTML;
             } else {
                 self.ui.parent.instance.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));

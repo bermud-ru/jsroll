@@ -75,8 +75,8 @@
         var st = null, d = 8,
         fn = function fn (d, cb) {
             this.style.opacity = g.fadeRule[d];
-            if (d-- <= 0){if (typeof cb === 'function') cb.call(this);this.style.display = 'none';clearTimeout(st)}
-            else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+            if (d-- <= 0){ this.style.display = 'none'; clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
+            else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
         };
         if (el) {
             el.style.display = 'inherit'; el.style.opacity = 1;
@@ -95,14 +95,17 @@
         var st = null, d = 1,
         fn = function fn (d, cb) {
             this.style.opacity = g.fadeRule[d];
-            if (d++ >= 9){if (typeof cb === 'function') cb.call(this);clearTimeout(st)}
-            else st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
+            if (d++ >= 9){ clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
+            else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
         };
         if (el) {
             el.style.display = 'inherit'; el.style.opacity = 0;
-            st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
+            return st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
     }; g.fadeIn = fadeIn;
+
+
+
 
     /**
      * @function router
@@ -470,40 +473,38 @@
 
     /**
      * @function dom
-     * Создаёт объект c методом parseFromString преобразующий string в объект DOM
+     * Создаёт объект DOM из string
      *
-     * @result { DOM | undefined }
-     * @method { function (sting, string) } parseFromString
+     * @result { DOM | null }
      */
     var dom = function () {
-        var p = {};
+        var p;
         try {
             if ( g.DOMParser ) {
-                p.instance = new DOMParser();
-                p.parseFromString = function(d, mime) {
+                p = new DOMParser();
+                return function(d, mime) {
                     try {
-                        return this.instance.parseFromString( d, mime || 'text/xml' );
+                        return p.parseFromString( d, mime || 'text/xml' );
                     } catch (e) {
                         return null;
                     }
                 };
             } else {
-                p.instance = new ActiveXObject( 'Microsoft.XMLDOM' );
-                p.instance.async = 'false';
-                p.parseFromString = function(d, mime) {
+                p = new ActiveXObject( 'Microsoft.XMLDOM' );
+                p.async = 'false';
+                return function(d, mime) {
                     try {
-                        this.instance.loadXML(d);
-                        return this.instance;
+                        p.instance.loadXML(d);
+                        return p;
                     } catch (e) {
                         return null;
                     }
                 };
             }
         } catch ( e ) {
-            p = undefined;
+            return undefined;
         }
 
-        return p;
     }; g.dom = dom();
 
 }(window));
