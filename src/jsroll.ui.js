@@ -89,22 +89,9 @@ var ui = function(instance) {
         this.instance.addEventListener(evnt, fn, !!opt);
         return this.instance;
     },
-    xml:function(d, mime) {
-        var xml, tmp;
+    xml: function(d, mime) {
         if ( !d || typeof d !== 'string' ) return null;
-        try {
-            if ( g.DOMParser ) {
-                tmp = new DOMParser();
-                xml = tmp.parseFromString( d, mime || 'text/xml' );
-            } else {
-                xml = new ActiveXObject( 'Microsoft.XMLDOM' );
-                xml.async = 'false';
-                xml.loadXML( d );
-            }
-        } catch ( e ) {
-            xml = undefined;
-        }
-        return xml;
+        return g.dom.parseFromString(d, mine);
     },
     focus: function(s) {
         var el;

@@ -59,10 +59,7 @@
         if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
         for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
         var res = []; for (var a in p) res.push(a+'='+p[a]);
-        if (res.length) if (!u.length && !h.length) return url + '?'+res.join('&');
-            else if (u.length && !h.length) return u[0] + '?'+res.join('&');
-            else if (u.length && h.length) return u[0] + '?'+res.join('&') + h[1];
-            else if (!u.length && h.length) return h[0] + '?'+res.join('&') + h[1];
+        if (res.length) return ((!u.length && !h.length) ? url : (u.length?u[0]:h[0])) + '?' + res.join('&') + (h.length ? h[1] : '');
         return url;
     }; g.location.update = update;
 
@@ -470,5 +467,43 @@
         }
         return s;
     }; g.storage = storage();
+
+    /**
+     * @function dom
+     * Создаёт объект c методом parseFromString преобразующий string в объект DOM
+     *
+     * @result { DOM | undefined }
+     * @method { function (sting, string) } parseFromString
+     */
+    var dom = function () {
+        var p = {};
+        try {
+            if ( g.DOMParser ) {
+                p.instance = new DOMParser();
+                p.parseFromString = function(d, mime) {
+                    try {
+                        return this.instance.parseFromString( d, mime || 'text/xml' );
+                    } catch (e) {
+                        return null;
+                    }
+                };
+            } else {
+                p.instance = new ActiveXObject( 'Microsoft.XMLDOM' );
+                p.instance.async = 'false';
+                p.parseFromString = function(d, mime) {
+                    try {
+                        this.instance.loadXML(d);
+                        return this.instance;
+                    } catch (e) {
+                        return null;
+                    }
+                };
+            }
+        } catch ( e ) {
+            p = undefined;
+        }
+
+        return p;
+    }; g.dom = dom();
 
 }(window));
