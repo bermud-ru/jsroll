@@ -63,49 +63,27 @@
         return url;
     }; g.location.update = update;
 
-    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
     /**
-     * @function fadeOut
-     * Функция плавного скрытия элемента - свойство opacity = 0
+     * @function timer
+     * Кратное выполнение функции с заданным интервалом времени
      *
-     * @param el элемент DOM
-     * @param cb callback функция
+     * @argument { Number } t итервал в милисекунах до вызова функции f
+     * @argument { Number } c количество вызовов функции f
+     * @argument { Function } f функция
+     * @argument { undefined | Function } done функуиф вызвается по завершению всх циклов или сигнала exit
      */
-    function fadeOut(el, cb){
-        var st = null, d = 8,
-        fn = function fn (d, cb) {
-            this.style.opacity = g.fadeRule[d];
-            if (d-- <= 0){ this.style.display = 'none'; clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
-            else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-        };
-        if (el) {
-            el.style.display = 'inherit'; el.style.opacity = 1;
-            st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
+    function timer(t, c, f, done) {
+        if (t && c && typeof f === 'function') {
+            var fn = function fn (c, f, done) {
+                    var r = f.call(this, c);
+                    if (!c || (r !== undefined && !r)) { clearTimeout(thread); if (typeof done === 'function') done.call(this); return null; }
+                    else return thread = setTimeout(fn.bind(this, --c, f, done), t);
+                },
+                thread = setTimeout(fn.bind(this, c, f, done), t);
+            return thread;
         }
-    }; g.fadeOut = fadeOut;
-
-    /**
-     * @function fadeIn
-     * Функция плавного отображения элемента - свойство opacity = 1
-     *
-     * @param el элемент DOM
-     * @param cb callback функция
-     */
-    function fadeIn(el, cb){
-        var st = null, d = 1,
-        fn = function fn (d, cb) {
-            this.style.opacity = g.fadeRule[d];
-            if (d++ >= 9){ clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
-            else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-        };
-        if (el) {
-            el.style.display = 'inherit'; el.style.opacity = 0;
-            return st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
-        }
-    }; g.fadeIn = fadeIn;
-
-
-
+        return undefined;
+    }; g.timer = timer;
 
     /**
      * @function router
