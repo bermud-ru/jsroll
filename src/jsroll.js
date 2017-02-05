@@ -230,10 +230,10 @@
 
         try {
             for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
-
             if ((['GET', 'DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data) {
-                opt.url = (opt.url || g.location) + '?' + opt.data;
-                opt.data = null
+                var u = opt.url || g.location;
+                opt.url = u  + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
+                opt.data = null;
             }
             if (typeof x.before == 'function') x.before.call(x, opt);
             x.method = opt.method;
