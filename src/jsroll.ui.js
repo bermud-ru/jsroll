@@ -140,6 +140,18 @@
         }
     });
 
+    function selecting() {
+        if (window.getSelection) {
+            if (window.getSelection().empty) {  // Chrome
+                window.getSelection().empty();
+            } else if (window.getSelection().removeAllRanges) {  // Firefox
+                window.getSelection().removeAllRanges();
+            }
+        } else if (document.selection) {  // IE?
+            document.selection.empty();
+        }
+    }; g.selecting = selecting;
+
     g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
         // g.fadeRule.reverse();
     /**
@@ -488,14 +500,17 @@
             if (this.ui.attr('placeholder').length && !this.value) {
                 this.value = this.ui.attr('placeholder');
                 this.e1 = this.selectionEnd = this.selectionStart = this.s1 = 0;
+            } else {
+                this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
             }
 
             var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
+            if ([27,82].indexOf(key) != -1) return true;
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : String.fromCharCode(key);
-            this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
+
             switch (key) {
                 case 8:
-                    if (selected ) {
+                    if (selected) {
                         var pos = this.value.indexOf(selected);
                         this.value = this.value.substr(0,pos)+this.ui.attr('placeholder').substr(pos, selected.length)+
                             this.value.substr(pos+selected.length, this.value.length);
@@ -525,39 +540,37 @@
                     this.s1 = ++this.selectionStart;
                     break
                 case 46:
+                    var sl = this.value.slice(this.selectionStart),
+                        tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
                     if (selected) {
-                        var pos = this.value.indexOf(selected);
+                        tt = (this.value.substr(this.selectionStart+selected.length, this.value.length).match(/\d+/g)||[]).join('');
+                        this.e1 = this.s1;
                     } else {
-                        var sl = this.value.slice(this.selectionStart);
-                        var ts = this.ui.attr('placeholder').slice(this.selectionStart);
-                        var tt = (this.value.slice(this.selectionStart).match(/\d+/g)||[]).join('').slice(1);
-                        for (var i in tt) ts = ts.replace('_',tt[i]);
-                        this.value = this.value.replace(sl,ts);
-                        this.selectionStart = this.s1 ; this.selectionEnd = this.e1;
+                        tt = (this.value.slice(this.selectionStart).match(/\d+/g)||[]).join('').slice(1);
                     }
+                    for (var i in tt) ts = ts.replace('_', tt[i]);
+                    this.value = this.value.replace(sl, ts);
+                    this.selectionStart = this.s1 ; this.selectionEnd = this.e1;
                     break
-                case 27:
-                case 82: return true;
                 default: this.insertDigit(dg, selected);
             }
             e.preventDefault(); e.stopPropagation();
             return /d/.test(dg);
-        }, false).ui.on('focus', function (e) {
+        }).ui.on('focus', function (e) {
             this.init(false); e.preventDefault(); e.stopPropagation();
             return false;
-        }, false).ui.on('blur',function(e){
+        }).ui.on('blur',function(e){
             if (this.value.match(/[\d]+/g)) this.value = this.value.replace(/\_/g, '');
             else this.value = '';
             e.preventDefault(); e.stopPropagation();
             return false;
-        }, false).ui.on('paste',function(e){
+        }).ui.on('paste',function(e){
             var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : ''
             //TODO pate afte cursor position & past selected pice
-            var selected = window.getSelection().toString();
             for (var i in dgs) this.insertDigit(dgs[i], selected);
             e.preventDefault(); e.stopPropagation();
             return false;
-        }, false);
+        });
     }
     return el;
     }; g.maskedigits = maskedigits;
