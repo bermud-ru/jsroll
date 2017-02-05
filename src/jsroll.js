@@ -200,27 +200,27 @@
 
         //TODO: xmlHttpRequest.abort()
 
-        x.fail=function(fn) {
-            if (typeof x.after == 'function') x.after.call(x);
-            if (typeof fn === 'function') return fn.call(x, e);
+        x.fail = function(fn) {
+            if (typeof x.after == 'function') x.after.call(this);
+            if (typeof fn === 'function') return fn.call(this, x);
             return this;
         };
 
-        x.done=function(fn) {
+        x.done = function(fn) {
             if (typeof fn === 'function') return fn.call(this);
             return this;
         };
 
         x.process = function(fn){
-            x.onreadystatechange = function(e){
+            x.onreadystatechange = function(e) {
                 if (typeof fn === 'function') return fn.call(this, e);
             };
             return this;
         };
 
-        x.onload = function(e){
-            x.done.call(x, e);
-            if (typeof x.after == 'function') x.after.call(x);
+        x.onload = function(e) {
+            x.done.call(this, e);
+            if (typeof x.after == 'function') x.after.call(this, e);
             return x;
         };
 
@@ -316,7 +316,7 @@
                         } else if (res.result == 'ok') {
                            if (typeof f.done == 'function') f.done.call(f, res);
                         }
-                        if (typeof f.after == 'function') f.after.call(this, arg);
+                        if (typeof f.after == 'function') f.after.call(f, res, res.result == 'ok');
                         return f;
                     }
                 }, f.opt));
