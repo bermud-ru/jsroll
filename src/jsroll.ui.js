@@ -45,16 +45,23 @@
         },
         els: function (s, fn, v) {
             if (typeof s === 'string') {
-                var els = this.instance.querySelectorAll(s), c = 0;
-                if (!els) return []; return Array.prototype.slice.call(els).map(function (i) {
-                    if (!i.hasOwnProperty('ui')) i.ui = new ui(i);
-                    if (typeof fn == 'function') fn.call(g, i, c++);
-                    if (typeof fn == 'string' || typeof v == 'string') { if (!g[v]) g[v]=[]; g[v].push(i) }
+                var els = this.instance.querySelectorAll(s);
+                if (!els) return []; var r = Array.prototype.slice.call(els).map(function (e,i,a) {
+                    if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
+                    if (typeof fn == 'function') fn.call(e,i,a);
                     return i;
                 });
+                if (typeof fn == 'string') g[fn]=r; else if (typeof v == 'string') g[v]=r;
+                return r;
             } else return [];
         },
         attr: function (a, v) {
+            if (!a) {
+                var attrs = {}, n;
+                for (var i in this.instance.attributes)
+                    attrs[(n = this.instance.attributes[i].nodeName)] = this.instance.getAttribute(n);
+                return attrs;
+            }
             if (a && typeof v === 'undefined') try {
                 return JSON.parse(this.instance.getAttribute(a));
             } catch (e) {
@@ -95,7 +102,7 @@
         },
         focus: function(s) {
             var el;
-            if (s) el = (typeof s == 'string' ?  g.querySelector(s) : s); else el = this.instance;
+            if (s) el = (typeof s == 'string' ?  this.instance.querySelector(s) : s); else el = this.instance;
             if (el) g.setTimeout(function() { el.focus(); return false }, 0);
             return el;
         }
@@ -274,8 +281,8 @@
                     self.ui.parent.css().add('dropdown');
                     self.pannel = self.ui.parent.el('.dropdown-menu.list');
                 }
-                self.ui.parent.els('.dropdown-menu.list li', function (i) {
-                    i.ui.on('mousedown', function (e) {
+                self.ui.parent.els('.dropdown-menu.list li', function () {
+                    this.ui.on('mousedown', function (e) {
                         self.value = this.innerHTML;
                         if (self.typeahead.opt.key) self.typeahead.opt.key.value = this.ui.attr('value');
                         return false;
