@@ -203,6 +203,172 @@
 }( window ));
 
 (function ( g, ui, undefined ) {
+    'suspected';
+    'use strict';
+
+    if ( typeof ui === 'undefined' ) return false;
+
+    /**
+     * Application
+     * @param instance
+     * @returns {app}
+     */
+    var app = function(instance){
+        this.route = router;
+        //this.route.cfg({ mode: 'history'})
+        this.registry = {};
+        this.dim = {};
+        this.instance = instance || g;
+        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
+        return this;
+    }; app.prototype = {
+        bootstrap: function(rt) {
+            this.route.set(rt).chk(rt).lsn();
+            return this;
+        },
+        widget: function (cfg, t, d, opt) {
+            var self = this, root = typeof cfg.root == 'string' ? g.ui.el(cfg.root) : cfg.root;
+            tmpl(t, d, function (c) {
+                if (root && c && (root.innerHTML = c)) {
+                    self.implement(root, cfg.event || []);
+                    self.inject(cfg.root, root, cfg.code || opt && opt.code);
+                }
+            }, opt);
+            return this;
+        },
+        event: function (s, map) {
+            this.registry[s] = map;
+            return this;
+        },
+        implement: function (p, s){
+            var self = this;
+            (s || []).map(function (a, i) {
+                for (var b in self.registry[a]) {
+                    switch  (typeof self.registry[a][b]) {
+                        case 'object': p.ui.els(a, function(){ this.ui.on(self.registry[a][b][0], self.registry[a][b][1]);}); break;
+                        case 'string': p.ui.els(a, function(){ this.ui.on(self.registry[a][0], self.registry[a][1]);}); return;
+                        case 'function': self.registry[a][b].call(p.ui.els(a), self.dim[a] || {});
+                    }
+                };
+            });
+            return self;
+        },
+        variable: function (el, id) {
+            if (el && !el.hasOwnProperty('dim')) Object.defineProperty(el, 'dim', {
+                get: function () {
+                    return g.app.dim[id] || (g.app.dim[id] = {});
+                }
+            });
+            return el;
+        },
+        inject: function (root, el, fn) {
+            if (typeof fn === 'function') {
+                this.dim[root] = this.dim[root] || {};
+                fn.apply(this.variable(el, root), arguments);
+            }
+        },
+        elem: ui.el(g.config.msg.container),
+        msg: {
+            show: function (params, close) {
+                tmpl(g.config.msg.tmpl, params, g.app.elem);
+                fadeIn(g.app.elem, 0);
+                if (typeof close == 'undefined' || !close) fadeOut(g.app.elem, 90);
+                return g.app.elem;
+            }
+        },
+        spinner_count: 0,
+        spinner_element: ui.el(g.config.spinner),
+        set spinner (v) {
+            v ? this.spinner_count++ : this.spinner_count--;
+            this.spinner_count > 0 ? this.spinner_element.style.display = 'block' : this.spinner_element.style.display = 'none';
+        },
+        get spinner() {
+            if (this.spinner_element.style.display == 'none') return false;
+            return true;
+        },
+        before: function () {
+            g.app.spinner = true;
+        },
+        after: function () {
+            g.app.spinner = false;
+        },
+
+        popup: function (id, data, opt) {
+            this.wnd = this.wnd || ui.el(g.config.popup.wnd);
+            if (arguments.length && !this.wnd.visible) {
+                this.container = this.container || ui.el(g.config.popup.container);
+                tmpl(id, data, this.variable(this.container, id), opt);
+                fadeIn(this.wnd, 35);
+                this.wnd.visible = true;
+            } else {
+                if (this.wnd.visible) fadeOut(this.wnd, 35);
+                this.wnd.visible = false;
+            }
+            return this.container;
+        },
+
+        fader: function (el, v, context) {
+            var app = this, self = v ? ui.el(el, v) : ui.el(el);
+            if (self && !self.hasOwnProperty('fade')) {
+                self.sleep = 35;
+                self.faded = false;
+                self.fade_context = context ? self.ui.el(context) : self;
+                self.fade = function (id, data, opt) {
+                    if (arguments.length && !self.faded) {
+                        tmpl(id, data, app.variable(self.fade_context, id), opt);
+                        fadeIn(self, this.sleep); self.faded = true;
+                    } else if (!arguments.length && self.faded) {
+                        fadeOut(self, this.sleep); self.faded = false;
+                    }
+                    return self;
+                };
+            }
+            return self;
+        }
+
+    }; g.app = new app(g.document);
+
+    var crud = function (route, methods, opt) {
+        if (!route) return undefined;
+
+        var rt =  route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
+        var rest = function (self, method, data) {
+            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+data[i]); data = raw.join('&') }
+            return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
+        };
+        var p = {
+            methods: methods ? methods : ['GET','POST','PUT','DELETE'],
+            route: route,
+            opt: opt,
+            rs: {},
+            error: {},
+            proc: null,
+            before: null,
+            after: null,
+            abort:function () {
+                if (this.proc) this.proc.abort(); this.proc = null;
+            },
+            done:function (data,  method) {
+                return this.rs[method] = data;
+            },
+            fail:function (data,  method) {
+                return this.error = data;
+            }
+        }; for (var n in methods) {
+            var l = methods[n].toLowerCase(), u = l.toUpperCase();
+            p.rs[u] = null;
+            p[l] = (function(u){ return function(data) { this.rs[u] = null; return this.proc = rest(this,u,data); }}).apply(p,[u]);
+            Object.defineProperty(p, u, { get: function() { return this.rs[u]; }});
+        }
+
+        if (rt) return p;
+        else console.warn('Can\'t resolve route:' ,route);
+        return {};
+    }; g.crud = crud;
+
+}( window, window.ui ));
+
+(function ( g, ui, undefined ) {
     'use strict';
     if ( typeof ui === 'undefined' ) return false;
 
