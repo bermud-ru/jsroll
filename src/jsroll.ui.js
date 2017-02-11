@@ -21,6 +21,7 @@
     };
 
     var ui = function(instance) {
+        this.events = [];
         this._parent = null;
         this._css = null;
         this.instance = instance || g;
@@ -92,8 +93,9 @@
         get css() {
             return this._css || (this._css = new css(this.instance));
         },
-        on: function (evnt, fn, opt) {
-            this.instance.addEventListener(evnt, fn, !!opt);
+        on: function (event, fn, opt) {
+            if (this.events.indexOf(event) == -1) this.instance.addEventListener(event, fn, !!opt);
+            this.events.push(event);
             return this.instance;
         },
         dom: function(d, mime) {
@@ -119,22 +121,21 @@
             this.instance.style[k] = v;
             return this;
         },
-        re: function (s, g) { return new RegExp(s, g || 'g') },
         has: function(c){
-           return this.instance.className.match(this.re('(?:^|\\s)' + c + '(?!\\S)'));
+           return this.instance.className.match(re('(?:^|\\s)' + c + '(?!\\S)'));
         },
         add: function (c) {
             if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
             return this;
         },
         del: function (c) {
-            if (this.instance) this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
+            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
             return this;
         },
         tgl: function (c) {
             if (this.instance) {
                 if (!this.has(c)) this.instance.className += ' ' + c;
-                else  this.instance.className = this.instance.className.replace(this.re('(?:^|\\s)' + c + '(?!\\S)'), '');
+                else  this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
             }
             return this;
         }

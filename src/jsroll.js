@@ -16,6 +16,20 @@
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
 
     /**
+     * @function re
+     * Создание регулярного выражения из строки
+     *
+     * @argument { String } s - регулярное выражение
+     * @argument { String } f - flags
+     *      g — глобальный поиск (обрабатываются все совпадения с шаблоном поиска);
+     *      i — не различать строчные и заглавные буквы;
+     *      m — многострочный поиск.
+     *
+     * @result { RegExp }
+     */
+    var re = function (s, f) { return new RegExp(s, f || 'g') }; g.re = re;
+
+    /**
      * @function uuid
      * Генерация Universally Unique Identifier 16-байтный (128-битный) номер
      *
@@ -201,8 +215,8 @@
         //TODO: xmlHttpRequest.abort()
 
         x.fail = function(fn) {
-            if (typeof x.after == 'function') x.after.call(this);
             if (typeof fn === 'function') return fn.call(this, x);
+            if (typeof x.after == 'function') x.after.call(this);
             return this;
         };
 
@@ -292,15 +306,16 @@
         };
 
         f.send = function(callback) {
-            var data = f.prepare(f.validator);
+            var data = f.prepare(f.validator), before = true;
             if (f.getAttribute('valid') != 0) {
-                if (typeof f.before == 'function') f.before.call(this);
-                g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof callback == 'function' ?
+                if (typeof f.before == 'function') before = f.before.call(this);
+                if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof callback == 'function' ?
                     function() {
-                        if (typeof f.after == 'function') f.after.call(this);
-                        return  callback.apply(this, arguments);
+                        var result = callback.apply(this, arguments);
+                        if (typeof f.after == 'function') return f.after.call(this, result);
+                        return f;
                     } :
-                    function(arg) {
+                    function() {
                         var res = {result:'error'};
                         f.response = this.responseText;
                         if ([200, 206].indexOf(this.status) < 0)
