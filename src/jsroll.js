@@ -90,8 +90,13 @@
         if (t && c && typeof f === 'function') {
             var fn = function fn (c, f, done) {
                     var r = f.call(this, c);
-                    if (!c || (r !== undefined && !r)) { clearTimeout(thread); if (typeof done === 'function') done.call(this); return null; }
-                    else return thread = setTimeout(fn.bind(this, --c, f, done), t);
+                    if (!c || (r !== undefined && !r)) {
+                        clearTimeout(thread);
+                        if (typeof done === 'function') return done.call(this, r);
+                        return null;
+                    } else {
+                        return thread = setTimeout(fn.bind(this, --c, f, done), t);
+                    }
                 },
                 thread = setTimeout(fn.bind(this, c, f, done), t);
             return thread;
@@ -172,7 +177,7 @@
 
     /**
      * @class chain
-     * Хелпер Обработчик цепочки асинхронных объектов
+     * Хелпер Обработчик цепочки асинхронных объектов поддерживающих интерфейс done, fail
      *
      * @function done
      * @function fail

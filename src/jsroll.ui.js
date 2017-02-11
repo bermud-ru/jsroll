@@ -255,11 +255,21 @@
             return self;
         },
         variable: function (el, id) {
-            if (el && !el.hasOwnProperty('dim')) Object.defineProperty(el, 'dim', {
-                get: function () {
-                    return g.app.dim[id] || (g.app.dim[id] = {});
-                }
-            });
+            if (el && !el.hasOwnProperty('dim')) {
+                Object.defineProperty(el, 'dim', {
+                    get: function () {
+                        try {
+                            return g.app.dim[id] || (g.app.dim[id] = JSON.parse(storage.getItem(id) || ''));
+                        } catch (e) { return  (g.app.dim[id] = {}); }
+                    }
+                });
+                el.store = function (fields) {
+                    var s = {};
+                    Object.keys(g.app.dim[id]).map(function(k){if(fields.indexOf(k) != -1) s[k] = g.app.dim[id][k];});
+                    storage.setItem(id, JSON.stringify(s));
+                    return this;
+                };
+            }
             return el;
         },
         inject: function (root, el, fn) {
