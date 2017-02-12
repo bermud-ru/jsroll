@@ -408,7 +408,7 @@
                     if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
                     else if (typeof cb == 'object' && (context = cb)) context.innerHTML = result;
 
-                    if (pig && (after = pig.getAttribute('after'))) (function(){return eval(after)}).apply(context, g.arguments);
+                    if (context && pig && (after = pig.getAttribute('after'))) (function(){return eval(after)}).apply(context, g.arguments);
                     if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
                     console.error('#', id || str, 'Error:', e );

@@ -104,7 +104,7 @@
         },
         focus: function(s) {
             var el;
-            if (s) el = (typeof s == 'string' ?  this.instance.querySelector(s) : s); else el = this.instance;
+            if (s) el = (typeof s == 'string' ? document.querySelector(s) : s); else el = this.instance;
             if (el) g.setTimeout(function() { el.focus(); return false }, 0);
             return el;
         }
@@ -689,7 +689,7 @@
             }
 
             var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-            if ([27,82].indexOf(key) != -1) return true;
+            if ([13,27,82].indexOf(key) != -1) return true;
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : String.fromCharCode(key);
 
             switch (key) {
