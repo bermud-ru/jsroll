@@ -409,8 +409,7 @@
         }
     });
 
-    g.formvalidator = function(res) {
-    var test = function(element){
+    var input_validator = function(element){
         if (element) {
             var res = true;
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
@@ -431,15 +430,57 @@
             return res;
         }
         return false;
-    };
+    };  g.input_validator = input_validator;
 
-    var result = true;
-    for (var i =0; i < this.elements.length; i++) result = result & test(this.elements[i]);
+    var inputer = function(el) {
+        if (el && !el.instance.hasOwnProperty('status')) {
+            var parent = el.parent;
+            el.instance.chk = parent.el('span').ui;
+            Object.defineProperty(el.instance, 'status', {
+                set: function status(stat) {
+                    parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
+                    if (this.chk)  this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
+                    switch (stat) {
+                        case 'error':
+                            this._status = 'error';
+                            if (this.chk) this.chk.css.add('glyphicon-remove');
+                            parent.css.add('has-error');
+                            break;
+                        case 'warning':
+                            this._status = 'warning';
+                            if (this.chk) this.chk.css.add('glyphicon-warning-sign');
+                            parent.css.add('has-warning');
+                            break;
+                        case 'success':
+                            this._status = 'success';
+                            if (this.chk) this.chk.css.add('glyphicon-ok');
+                            parent.css.add('has-success');
+                            break;
+                        case 'spinner':
+                            this._status = 'spinner';
+                            if (this.chk) this.chk.css.add('spinner');
+                            break;
+                        case 'none':
+                        default:
+                            this._status = 'none';
+                    }
+                },
+                get: function status() {
+                    return this._status;
+                }
+            });
+        }
+        return el;
+    }; g.inputer = inputer;
+    
+    g.formvalidator = function(res) {
+        var result = true;
+        for (var i =0; i < this.elements.length; i++) result = result & input_validator(this.elements[i]);
 
-    if (!result) {
-        if (spinner) spinner = false;
-        msg.show({message: 'неверно заполнены поля формы!'});
-    }
+        if (!result) {
+            if (spinner) spinner = false;
+            msg.show({message: 'неверно заполнены поля формы!'});
+        }
     return result;
     };
 
@@ -584,47 +625,6 @@
         return instance;
     }
     }; g.typeahead = typeahead;
-
-    var inputer = function(el) {
-    if (el && !el.instance.hasOwnProperty('status')) {
-        var parent = el.parent;
-        el.instance.chk = parent.el('span').ui;
-        Object.defineProperty(el.instance, 'status', {
-            set: function status(stat) {
-                parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
-                if (this.chk)  this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
-                switch (stat) {
-                    case 'error':
-                        this._status = 'error';
-                        if (this.chk) this.chk.css.add('glyphicon-remove');
-                        parent.css.add('has-error');
-                        break;
-                    case 'warning':
-                        this._status = 'warning';
-                        if (this.chk) this.chk.css.add('glyphicon-warning-sign');
-                        parent.css.add('has-warning');
-                        break;
-                    case 'success':
-                        this._status = 'success';
-                        if (this.chk) this.chk.css.add('glyphicon-ok');
-                        parent.css.add('has-success');
-                        break;
-                    case 'spinner':
-                        this._status = 'spinner';
-                        if (this.chk) this.chk.css.add('spinner');
-                        break;
-                    case 'none':
-                    default:
-                        this._status = 'none';
-                }
-            },
-            get: function status() {
-                return this._status;
-            }
-        });
-    }
-    return el;
-    }; g.inputer = inputer;
 
     var maskedigits = function(elemetn, pattern) {
     var el = inputer(elemetn);
