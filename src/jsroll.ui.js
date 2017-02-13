@@ -21,7 +21,6 @@
     };
 
     var ui = function(instance) {
-        this.events = [];
         this._parent = null;
         this._css = null;
         this.instance = instance || g;
@@ -50,7 +49,7 @@
                 if (!els) return []; var r = Array.prototype.slice.call(els).map(function (e,i,a) {
                     if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                     if (typeof fn == 'function') fn.call(e,i,a);
-                    return i;
+                    return e;
                 });
                 if (typeof fn == 'string') g[fn]=r; else if (typeof v == 'string') g[v]=r;
                 return r;
@@ -94,8 +93,7 @@
             return this._css || (this._css = new css(this.instance));
         },
         on: function (event, fn, opt) {
-            if (this.events.indexOf(event) == -1) this.instance.addEventListener(event, fn, !!opt);
-            this.events.push(event);
+            this.instance.addEventListener(event, fn, !!opt);
             return this.instance;
         },
         dom: function(d, mime) {
@@ -259,10 +257,11 @@
                 Object.defineProperty(el, 'dim', {
                     get: function () {
                         try {
-                            return g.app.dim[id] || (g.app.dim[id] = JSON.parse(storage.getItem(id) || ''));
-                        } catch (e) { return  (g.app.dim[id] = {}); }
+                            return g.app.dim[id] || (g.app.dim[id] = Object.assign(JSON.parse(storage.getItem(id)||''),{self:el}));
+                        } catch (e) { g.app.dim[id] = {}; g.app.dim[id].self = el; return g.app.dim[id]; }
                     }
                 });
+                g.app.dim[id] = {}; g.app.dim[id].self = el;
                 el.store = function (fields) {
                     var s = {};
                     Object.keys(g.app.dim[id]).map(function(k){if(fields.indexOf(k) != -1) s[k] = g.app.dim[id][k];});
@@ -347,10 +346,19 @@
             var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+data[i]); data = raw.join('&') }
             return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
         };
+
         var p = {
             methods: methods ? methods : ['GET','POST','PUT','DELETE'],
             route: route,
             opt: opt,
+            filter: [],
+            initFilter: function (els) {
+                var filter = this.filter;
+                if (els) els.map(function (e,i,a) {
+                    e.ui.el('input', function (e) { filter.push(this); });
+                });
+                return this;
+            },
             rs: {},
             error: {},
             proc: null,
