@@ -436,7 +436,7 @@
             var el = inputer(element.hasOwnProperty('ui') ? element.ui : ui.create(element));
             if (!res) el.instance.status = 'error';
             else if (!el.instance.hasAttribute('disabled'))
-                if (element.value.length) el.instance.status = 'success'; else el.instance.status = null;
+                if (element.value.length) el.instance.status = 'success'; else el.instance.status = 'none';
             return res;
         }
         return false;

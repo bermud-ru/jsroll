@@ -42,20 +42,35 @@
     }; g.uuid = uuid;
 
     /**
-     * @function params
-     * Возвращает массив (Хеш-таблица) параметров
+     * @function decoder
+     * Возвращает объект (Хеш-таблица) параметров
      *
      * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
      *
-     * @result { Array }
+     * @result { Object }
      */
-    var params = function(search) {
+    var decoder = function(search) {
         var re=/[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
         } catch(e) { return null }
         return p;
-    }; g.location.params = params;
+    }; g.location.decoder = decoder;
+
+    /**
+     * @function encoder
+     * Возвращает строку вида ключ=значение разделёных &
+     *
+     * @argument { Object } Хеш-таблица параметров
+     *
+     * @result { String }
+     */
+    var encoder = function(params, divider) {
+        if (typeof params === 'object') return Object.keys(params).map(function(e,i,a) {
+            return encodeURIComponent(e) + '=' + encodeURIComponent(params[e])
+        }).join(divider || '&');
+        return undefined;
+    }; g.location.encoder = encoder;
 
     /**
      * @function update
@@ -69,7 +84,7 @@
     var update = function(search, params) {
         var u = [], h = [], url = g.location.search, kv = params || {};
         if (typeof search === 'string' ) url = search; else kv = search;
-        var p = g.location.params(url);
+        var p = g.location.decoder(url);
         if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
         for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
         var res = []; for (var a in p) res.push(a+'='+p[a]);
