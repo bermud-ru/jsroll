@@ -273,7 +273,6 @@
         },
         inject: function (root, el, fn) {
             if (typeof fn === 'function') {
-                this.dim[root] = this.dim[root] || {};
                 fn.apply(this.variable(el, root), arguments);
             }
         },
@@ -352,10 +351,13 @@
             route: route,
             opt: opt,
             filter: [],
-            initFilter: function (els) {
+            initFilter: function (els, v) {
                 var filter = this.filter;
                 if (els) els.map(function (e,i,a) {
-                    e.ui.el('input', function (e) { filter.push(this); });
+                    e.ui.el('input', function (e) {
+                        filter.push(this);
+                        if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
+                    });
                 });
                 return this;
             },
