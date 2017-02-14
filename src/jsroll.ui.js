@@ -356,7 +356,11 @@
                 if (els) els.map(function (e,i,a) {
                     e.ui.el('input', function (e) {
                         filter.push(this);
-                        if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
+                        if (typeof v === 'object' && v.hasOwnProperty(this.name)) {
+                            this.value = v[this.name];
+                            //TODO: validate and check response error data
+                            input_validator(this);
+                        }
                     });
                 });
                 return this;
