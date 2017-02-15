@@ -338,21 +338,25 @@
     }; g.app = new app(g.document);
 
     var filter = function (els, v) {
-        var elements = [], index = 0, valid = true;
+        var elements = [], index = 0;
         if (els) {
             if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
             els.map(function (e, i, a) {
                 e.ui.el('input', function (e) {
                     elements.push(this);
                     if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
-                    valid = valid & input_validator(this);
+                    input_validator(this);
                 });
             });
 
             return {
                 el: elements,
                 index: index,
-                valid: valid,
+                get valid(){
+                    var valid = true;
+                    this.el.map(function (e,i,a) { valid = valid & input_validator(e) });
+                    return valid;
+                },
                 set params(v) {
                     var params = {};
                     if (typeof v === 'object') params = v; else if (typeof v === 'string') params = location.decoder(v);
@@ -361,7 +365,7 @@
                     this.el.map(function (e,i,a) {
                         if (params.hasOwnProperty(e.name)) e.value = params[e.name];
                         else e.value = '';
-                        this.valid = this.valid & input_validator(e);
+                        input_validator(e);
                     });
                 },
                 get params() {
