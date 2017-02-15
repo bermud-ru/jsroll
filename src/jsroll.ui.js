@@ -337,6 +337,58 @@
 
     }; g.app = new app(g.document);
 
+    var filter = function (els, v) {
+        var elements = [], index = 0, valid = true;
+        if (els) {
+            if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
+            els.map(function (e, i, a) {
+                e.ui.el('input', function (e) {
+                    elements.push(this);
+                    if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
+                    valid = valid & input_validator(this);
+                });
+            });
+
+            return {
+                el: elements,
+                index: index,
+                valid: valid,
+                set params(v) {
+                    var params = {};
+                    if (typeof v === 'object') params = v; else if (typeof v === 'string') params = location.decoder(v);
+                    this.valid = true;
+                    if (params.hasOwnProperty('page')) this.index = params['page'];
+                    this.el.map(function (e,i,a) {
+                        if (params.hasOwnProperty(e.name)) e.value = params[e.name];
+                        else e.value = '';
+                        this.valid = this.valid & input_validator(e);
+                    });
+                },
+                get params() {
+                    var params = {};
+                    this.valid = true, self = this;
+                    this.el.map(function (e,i,a) {
+                        if (e.value) params[e.name] = e.value;
+                        self.valid = self.valid & input_validator(e);
+                    });
+                    return params;
+                },
+                // diff: function (a, b) {
+                //     return Object.keys(a).concat(Object.keys(b)).reduce(function(map, k) {
+                //         if (a[k] !== b[k]) map[k] = b[k];
+                //         return map;
+                //     }, {});
+                // },
+                get uri() {
+                    var p = this.params;
+                    p['page'] = this.index;
+                    return location.encoder(p);
+                }
+            };
+        }
+        return null;
+    }; g.filter = filter;
+
     var crud = function (route, methods, opt) {
         if (!route) return undefined;
 
@@ -350,21 +402,6 @@
             methods: methods ? methods : ['GET','POST','PUT','DELETE'],
             route: route,
             opt: opt,
-            filter: [],
-            initFilter: function (els, v) {
-                var filter = this.filter;
-                if (els) els.map(function (e,i,a) {
-                    e.ui.el('input', function (e) {
-                        filter.push(this);
-                        if (typeof v === 'object' && v.hasOwnProperty(this.name)) {
-                            this.value = v[this.name];
-                            //TODO: validate and check response error data
-                            input_validator(this);
-                        }
-                    });
-                });
-                return this;
-            },
             rs: {},
             error: {},
             proc: null,
