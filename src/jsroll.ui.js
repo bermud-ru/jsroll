@@ -369,11 +369,10 @@
                     });
                 },
                 get params() {
-                    var params = {};
-                    this.valid = true, self = this;
+                    var params = {}, self = this;
                     this.el.map(function (e,i,a) {
                         if (e.value) params[e.name] = e.value;
-                        self.valid = self.valid & input_validator(e);
+                        input_validator(e);
                     });
                     return params;
                 },
