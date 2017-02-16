@@ -20,14 +20,49 @@
         popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
 
+    var css = function(instance){
+        this.instance = instance;
+        return this;
+    }; css.prototype = {
+        el: function(i) {
+            this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
+        },
+        style:function(k,v) {
+            this.instance.style[k] = v;
+            return this;
+        },
+        has: function(c){
+            return this.instance.className.match(re('(?:^|\\s)' + c + '(?!\\S)'));
+        },
+        add: function (c) {
+            if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
+            return this;
+        },
+        del: function (c) {
+            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
+            return this;
+        },
+        tgl: function (c) {
+            if (this.instance) {
+                if (!this.has(c)) this.instance.className += ' ' + c;
+                else  this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
+            }
+            return this;
+        }
+    }; g.css = new css(g);
+
     var ui = function(instance) {
+        if (instance.hasOwnProperty('ui')) return instance;
         this._parent = null;
-        this._css = null;
         this.instance = instance || g;
+        if (instance) this.instance.css = new css(this.instance);
         return this;
     }; ui.prototype = {
-        create:function(el, v){
-            if (typeof el === 'object') { var o = new ui(el); if (o && typeof v == 'string') g[v]=o; return o; }
+        wrap:function(el, v){
+            if (typeof el === 'object') {
+                if (el.hasOwnProperty('ui')) return el;
+                el.ui = new ui(el); if (el && typeof v == 'string') g[v]=el; return el;
+            }
             return null;
         },
         el: function (s, v) {
@@ -83,14 +118,11 @@
             return t;
         },
         get parent() {
-            return this._parent || (this._parent = new ui(this.instance && this.instance.parentElement));
+            return this._parent || (this._parent = this.wrap(this.instance.parentElement));
         },
         src: function (e) {
             var el = e ? e : this.instance;
             return new ui(el.srcElement || el.target);
-        },
-        get css() {
-            return this._css || (this._css = new css(this.instance));
         },
         on: function (event, fn, opt) {
             this.instance.addEventListener(event, fn, !!opt);
@@ -107,37 +139,6 @@
             return el;
         }
     }; g.ui = new ui(document);
-
-    var css = function(instance){
-        this.instance = instance;
-        return this;
-    }; css.prototype = {
-        el: function(i) {
-          this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
-        },
-        style:function(k,v) {
-            this.instance.style[k] = v;
-            return this;
-        },
-        has: function(c){
-           return this.instance.className.match(re('(?:^|\\s)' + c + '(?!\\S)'));
-        },
-        add: function (c) {
-            if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
-            return this;
-        },
-        del: function (c) {
-            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
-            return this;
-        },
-        tgl: function (c) {
-            if (this.instance) {
-                if (!this.has(c)) this.instance.className += ' ' + c;
-                else  this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
-            }
-            return this;
-        }
-    }; g.css = new css(document);
 
     Object.defineProperty(g, 'selected', {
         get: function selected() {
@@ -376,12 +377,13 @@
                     });
                     return params;
                 },
-                // diff: function (a, b) {
-                //     return Object.keys(a).concat(Object.keys(b)).reduce(function(map, k) {
-                //         if (a[k] !== b[k]) map[k] = b[k];
-                //         return map;
-                //     }, {});
-                // },
+                diff: function (b) {
+                    var a = this.params;
+                    return Object.keys(a).concat(Object.keys(b)).reduce(function(map, k) {
+                        if (a[k] !== b[k]) map[k] = b[k];
+                        return map;
+                    }, {});
+                },
                 get uri() {
                     var p = this.params;
                     p['page'] = this.index;
@@ -477,38 +479,37 @@
                 } catch(e) { res = false }
             }
 
-            var el = inputer(element.hasOwnProperty('ui') ? element.ui : ui.create(element));
-            if (!res) el.instance.status = 'error';
-            else if (!el.instance.hasAttribute('disabled'))
-                if (element.value.length) el.instance.status = 'success'; else el.instance.status = 'none';
+            var el = inputer(ui.wrap(element));
+            if (!res) el.status = 'error';
+            else if (!el.hasAttribute('disabled'))
+                if (element.value.length) el.status = 'success'; else el.status = 'none';
             return res;
         }
         return false;
     };  g.input_validator = input_validator;
 
     var inputer = function(el) {
-        if (el && !el.instance.hasOwnProperty('status')) {
-            var parent = el.parent;
-            el.instance.chk = parent.el('span').ui;
-            Object.defineProperty(el.instance, 'status', {
+        if (el && !el.hasOwnProperty('status')) {
+            el.chk = el.ui.parent.ui.el('span');
+            Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
-                    if (this.chk)  this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
+                    this.ui.parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
+                    if (this.chk) this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
                             if (this.chk) this.chk.css.add('glyphicon-remove');
-                            parent.css.add('has-error');
+                            this.ui.parent.css.add('has-error');
                             break;
                         case 'warning':
                             this._status = 'warning';
                             if (this.chk) this.chk.css.add('glyphicon-warning-sign');
-                            parent.css.add('has-warning');
+                            this.ui.parent.css.add('has-warning');
                             break;
                         case 'success':
                             this._status = 'success';
                             if (this.chk) this.chk.css.add('glyphicon-ok');
-                            parent.css.add('has-success');
+                            this.ui.parent.css.add('has-success');
                             break;
                         case 'spinner':
                             this._status = 'spinner';
@@ -551,7 +552,7 @@
                 } else {
                     self.ui.parent.instance.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
                     self.ui.parent.css().add('dropdown');
-                    self.pannel = self.ui.parent.el('.dropdown-menu.list');
+                    self.pannel = self.ui.parent.ui.el('.dropdown-menu.list');
                 }
                 self.ui.parent.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
@@ -673,20 +674,20 @@
         instance.typeahead = th;
         th.opt = Object.assign(th.opt, opt);
         instance.typeahead.owner = element;
-        inputer(instance.ui).on('focus',th.onFocus).ui.on('input',th.onInput)
+        inputer(instance.ui).ui.on('focus',th.onFocus).ui.on('input',th.onInput)
             .ui.on('blur',th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change',th.onChange);
         if (!instance.ui.attr('tabindex')) instance.ui.attr('tabindex', '0');
         return instance;
     }
     }; g.typeahead = typeahead;
 
-    var maskedigits = function(elemetn, pattern) {
-    var el = inputer(elemetn);
-    if (el.instance.tagName === 'INPUT') {
-        if (pattern) el.instance.maxLength = el.attr('placeholder', pattern || '').attr('placeholder').length;
-        if (!el.attr('tabindex')) el.attr('tabindex', '0');
-        if (el && !el.instance.hasOwnProperty('insertDigit')) {
-            el.instance.insertDigit = function(dg, selected) {
+    var maskedigits = function(element, pattern) {
+    if (element.tagName === 'INPUT') {
+        var el = inputer(element);
+        if (pattern) el.maxLength = el.ui.attr('placeholder', pattern || '').attr('placeholder').length;
+        if (!el.ui.attr('tabindex')) el.ui.attr('tabindex', '0');
+        if (el && !el.hasOwnProperty('insertDigit')) {
+            el.insertDigit = function(dg, selected) {
                 if (selected) {
                     var pos = this.value.indexOf(selected);
                     var digitOffset = /\d/.test(dg) ? 1 : 0;
@@ -715,7 +716,7 @@
                 }
                 return this.selectionStart;
             };
-            el.instance.init = function (clear) {
+            el.init = function (clear) {
                 var text = this.value;
                 var pos = 0;
                 if (text) {
@@ -733,8 +734,8 @@
                 return this.e1 = this.selectionEnd = this.selectionStart = this.s1 = (pos > -1 ? pos : this.value.length);
             };
         };
-        el.instance.init(true);
-        el.on('keydown', function (e) {
+        el.init(true);
+        el.ui.on('keydown', function (e) {
             if (this.ui.attr('placeholder').length && !this.value) {
                 this.value = this.ui.attr('placeholder');
                 this.e1 = this.selectionEnd = this.selectionStart = this.s1 = 0;
@@ -767,7 +768,7 @@
                     var el = false; var way = e.shiftKey ? -1 : 1;
                     var index = parseInt(this.ui.attr('tabindex'));
                     if (index > 0) while (el = ui.el('[tabindex="'+index+'"]'))
-                        if (el.ui.attr('disabled')) index += way; else { el.focus(); break; }
+                        if (el.ui.attr('disabled')) index += way; else { el.ui.focus(); break; }
                     if (index <= 1 && way < 0) return e.preventDefault();
                     e.stopPropagation();
                     return false;
