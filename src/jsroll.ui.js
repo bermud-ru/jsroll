@@ -540,7 +540,7 @@
 
     var typeahead = function (element, opt) {
     if (element) {
-        var instance = element.hasOwnProperty('ui') ? element : ui.create(element).instance;
+        var instance = ui.wrap(element);
         var th = {
             tmpl:function(data){
                 var self = this.owner;
@@ -561,32 +561,38 @@
                     });
                 });
             },
+            //TODO: timer for 800ms waite to reqeust on detector keypressed
             xhr:function(){
                 var self = this.owner, params = {};
                 params[self.name] = self.value;
                 var index = self.value ? self.value.toLowerCase() : 'null';
                 if (!this.cache.hasOwnProperty(index) || index == 'null'){
                     self.status = 'spinner';
-                    xhr.request({url: location.update(self.ui.attr('url'), params), rs: {'Hash': acl.user.hash}})
-                        .result(function (d) {
+                    xhr({url: location.update(self.ui.attr('url'), params),
+                        rs: {'Hash': acl.user.hash},
+                        before: null,after: null,
+                        done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
                                 msg.show({error: 'ОШИБКА', message: this.status + ': ' + this.statusText});
                             } else {
                                 try {
                                     var res = JSON.parse(this.responseText);
                                     if (res.result == 'error') {
-                                        msg.show(res);
+                                        self.status = 'error';
                                     } else {
                                         self.typeahead.cache[index] = res.data;
                                         self.typeahead.show(res.data);
+                                        self.status = 'none';
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
                                 }
                             }
-                            self.status = 'none';
+                            if (!self.value) self.status = 'none';
                             return this;
-                        });
+                        },
+                        fail: function (e) { console.error('typeahead',e); }
+                    });
                 } else {
                     self.typeahead.show(this.cache[index]);
                 }
@@ -673,7 +679,7 @@
         instance.typeahead = th;
         th.opt = Object.assign(th.opt, opt);
         instance.typeahead.owner = element;
-        inputer(instance.ui).ui.on('focus',th.onFocus).ui.on('input',th.onInput)
+        inputer(instance).ui.on('focus',th.onFocus).ui.on('input',th.onInput)
             .ui.on('blur',th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change',th.onChange);
         if (!instance.ui.attr('tabindex')) instance.ui.attr('tabindex', '0');
         return instance;
