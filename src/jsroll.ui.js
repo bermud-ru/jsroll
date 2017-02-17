@@ -55,15 +55,14 @@
         if (instance.hasOwnProperty('ui')) return instance;
         this._parent = null;
         this.instance = instance || g;
-        if (instance) this.instance.css = new css(this.instance);
+        if (instance) { this.instance.css = new css(this.instance); this.wrap(this.instance.parentElement); }
         return this;
     }; ui.prototype = {
         wrap:function(el, v){
-            if (typeof el === 'object') {
-                if (el.hasOwnProperty('ui')) return el;
-                el.ui = new ui(el); if (el && typeof v == 'string') g[v]=el; return el;
+            if (el && typeof el === 'object' && !el.hasOwnProperty('ui')) {
+                el.ui = new ui(el); if (typeof v == 'string') g[v]=el;
             }
-            return null;
+            return el;
         },
         el: function (s, v) {
             var el = null;
@@ -91,19 +90,22 @@
             } else return [];
         },
         attr: function (a, v) {
-            if (!a) {
+            if (a == undefined) {
                 var attrs = {}, n;
                 for (var i in this.instance.attributes)
                     attrs[(n = this.instance.attributes[i].nodeName)] = this.instance.getAttribute(n);
                 return attrs;
-            }
-            if (a && typeof v === 'undefined') try {
+            } else if (typeof a === 'object' && typeof v === 'undefined') {
+                for (var i in a) this.instance.setAttribute(i,a[i]);
+                return this;
+            } else if (typeof a === 'string' && typeof v === 'undefined') try {
                 return JSON.parse(this.instance.getAttribute(a));
             } catch (e) {
                 return this.instance.getAttribute(a);
-            } else if (a && v)
+            } else if (typeof a === 'string' && v) {
                 if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
                 else this.instance.setAttribute(a, v);
+            }
             return this;
         },
         merge: function () {
@@ -116,9 +118,6 @@
                 }, {}));
             });
             return t;
-        },
-        get parent() {
-            return this._parent || (this._parent = this.wrap(this.instance.parentElement));
         },
         src: function (e) {
             var el = e ? e : this.instance;
@@ -490,26 +489,26 @@
 
     var inputer = function(el) {
         if (el && !el.hasOwnProperty('status')) {
-            el.chk = el.ui.parent.ui.el('span');
+            el.chk = el.parentElement.ui.el('span');
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    this.ui.parent.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
+                    this.parentElement.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
                     if (this.chk) this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
                             if (this.chk) this.chk.css.add('glyphicon-remove');
-                            this.ui.parent.css.add('has-error');
+                            this.parentElement.css.add('has-error');
                             break;
                         case 'warning':
                             this._status = 'warning';
                             if (this.chk) this.chk.css.add('glyphicon-warning-sign');
-                            this.ui.parent.css.add('has-warning');
+                            this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
                             this._status = 'success';
                             if (this.chk) this.chk.css.add('glyphicon-ok');
-                            this.ui.parent.css.add('has-success');
+                            this.parentElement.css.add('has-success');
                             break;
                         case 'spinner':
                             this._status = 'spinner';
@@ -550,11 +549,11 @@
                     var n = ui.dom(tmpl(this.opt.tmpl, {data:data})).firstChild;
                     if (n) self.pannel.innerHTML = n.innerHTML;
                 } else {
-                    self.ui.parent.instance.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
-                    self.ui.parent.css().add('dropdown');
-                    self.pannel = self.ui.parent.ui.el('.dropdown-menu.list');
+                    self.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
+                    self.parentElement.css.add('dropdown');
+                    self.pannel = self.parentElement.ui.el('.dropdown-menu.list');
                 }
-                self.ui.parent.els('.dropdown-menu.list li', function () {
+                self.parentElement.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         self.value = this.innerHTML;
                         if (self.typeahead.opt.key) self.typeahead.opt.key.value = this.ui.attr('value');
@@ -681,9 +680,10 @@
     }
     }; g.typeahead = typeahead;
 
-    var maskedigits = function(element, pattern) {
+    var maskedigits = function(element, pattern, cleared) {
     if (element.tagName === 'INPUT') {
         var el = inputer(element);
+        el.cleared = cleared == undefined ? true : !!cleared ;
         if (pattern) el.maxLength = el.ui.attr('placeholder', pattern || '').attr('placeholder').length;
         if (!el.ui.attr('tabindex')) el.ui.attr('tabindex', '0');
         if (el && !el.hasOwnProperty('insertDigit')) {
@@ -799,7 +799,7 @@
             this.init(false); e.preventDefault(); e.stopPropagation();
             return false;
         }).ui.on('blur',function(e){
-            if (this.value.match(/[\d]+/g)) this.value = this.value.replace(/\_/g, '');
+            if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             e.preventDefault(); e.stopPropagation();
             return false;
