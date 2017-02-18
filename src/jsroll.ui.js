@@ -560,7 +560,6 @@
                 var self = this.owner;
                 this.index = 0; this.key = self.value.toLowerCase() || 'null';
                 if (self.pannel) {
-                    //TODO: tmpl(this.opt.tmpl, {data:data}, self.pannel)
                     var n = ui.dom(tmpl(this.opt.tmpl, {data:data}));
                     if (n) self.pannel.innerHTML = n.innerHTML;
                 } else {
@@ -568,7 +567,7 @@
                     self.parentElement.css.add('dropdown');
                     self.pannel = self.parentElement.ui.el('.dropdown-menu.list');
                 }
-                self.parentElement.els('.dropdown-menu.list li', function () {
+                self.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         self.value = this.innerHTML;
                         if (self.typeahead.opt.key) self.typeahead.opt.key.value = this.ui.attr('value');
