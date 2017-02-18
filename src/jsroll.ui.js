@@ -98,10 +98,23 @@
             } else if (typeof a === 'object' && typeof v === 'undefined') {
                 for (var i in a) this.instance.setAttribute(i,a[i]);
                 return this;
-            } else if (typeof a === 'string' && typeof v === 'undefined') try {
-                return JSON.parse(this.instance.getAttribute(a));
-            } catch (e) {
-                return this.instance.getAttribute(a);
+            } else if (typeof a === 'string' && typeof v === 'undefined') {
+                var mask = a.indexOf('*') != -1 ? re(a.split('*')[0], 'i') : null;
+                if (mask) {
+                    var data = {}
+                    Array.prototype.slice.call(this.instance.attributes).map(function (e, i, a) {
+                        var name = e.nodeName.toString();
+                        if (mask.test(name) && (name = name.replace(mask, '')))
+                            data[name] = e.nodeValue
+                    });
+                    return data;
+                } else {
+                    try {
+                        return JSON.parse(this.instance.getAttribute(a));
+                    } catch (e) {
+                        return this.instance.getAttribute(a);
+                    }
+                }
             } else if (typeof a === 'string' && v) {
                 if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
                 else this.instance.setAttribute(a, v);
@@ -129,7 +142,8 @@
         },
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
-            return g.dom(d, mine);
+            var nodes = g.dom(d, mime).childNodes;
+            return nodes.length > 1 ? nodes : nodes[0];
         },
         focus: function(s) {
             var el;
@@ -539,14 +553,15 @@
     };
 
     var typeahead = function (element, opt) {
-    if (element) {
+    if (element && element.tagName === 'INPUT') {
         var instance = ui.wrap(element);
         var th = {
             tmpl:function(data){
                 var self = this.owner;
                 this.index = 0; this.key = self.value.toLowerCase() || 'null';
                 if (self.pannel) {
-                    var n = ui.dom(tmpl(this.opt.tmpl, {data:data})).firstChild;
+                    //TODO: tmpl(this.opt.tmpl, {data:data}, self.pannel)
+                    var n = ui.dom(tmpl(this.opt.tmpl, {data:data}));
                     if (n) self.pannel.innerHTML = n.innerHTML;
                 } else {
                     self.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
@@ -566,7 +581,7 @@
                 var self = this.owner, params = {};
                 params[self.name] = self.value;
                 var index = self.value ? self.value.toLowerCase() : 'null';
-                if (!this.cache.hasOwnProperty(index) || index == 'null'){
+                if ((!this.cache.hasOwnProperty(index) || index == 'null') && self.ui.attr('url')) {
                     self.status = 'spinner';
                     xhr({url: location.update(self.ui.attr('url'), params),
                         rs: {'Hash': acl.user.hash},
@@ -582,7 +597,7 @@
                                     } else {
                                         self.typeahead.cache[index] = res.data;
                                         self.typeahead.show(res.data);
-                                        self.status = 'none';
+                                        input_validator(self);
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
@@ -595,11 +610,12 @@
                     });
                 } else {
                     self.typeahead.show(this.cache[index]);
+                    input_validator(self);
                 }
             },
             show:function(data){
                 var self = this.owner;
-                if (self === g.document.activeElement) if (Object.keys(data).length) {
+                if (self === g.document.activeElement) if (Object.keys(data||{}).length) {
                     this.tmpl(data);
                     return fadeIn(self.pannel);
                 } else {
@@ -643,7 +659,7 @@
                         }
                         return false;
                     case 13:
-                        this.status = 'none';
+                        input_validator(this);
                         fadeOut(this.pannel);
                         e.preventDefault();
                         return e.stopPropagation();
