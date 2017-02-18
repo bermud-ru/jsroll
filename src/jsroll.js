@@ -110,10 +110,10 @@
                         if (typeof done === 'function') return done.call(this, r);
                         return null;
                     } else {
-                        return thread = setTimeout(fn.bind(this, --c, f, done), t);
+                        return thread = g.setTimeout(fn.bind(this, --c, f, done), t);
                     }
                 },
-                thread = setTimeout(fn.bind(this, c, f, done), t);
+                thread = g.setTimeout(fn.bind(this, c, f, done), t);
             return thread;
         }
         return undefined;

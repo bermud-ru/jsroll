@@ -554,8 +554,23 @@
 
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
-        var instance = ui.wrap(element);
         var th = {
+            delta: 800,
+            timer: null,
+            request: null,
+            delayed: function () {
+                if (!this.timer) {
+                    var fn = function fn () {
+                            this.xhr();
+                            this.timer = null
+                            if (this.request != this.owner.value) {
+                                this.request = this.owner.value;
+                                this.timer = g.setTimeout(fn.bind(this), this.delta);
+                            }
+                        };
+                    this.timer = g.setTimeout(fn.bind(this), this.delta);
+                }
+            },
             tmpl:function(data){
                 var self = this.owner;
                 this.index = 0; this.key = self.value.toLowerCase() || 'null';
@@ -575,7 +590,6 @@
                     });
                 });
             },
-            //TODO: timer for 800ms waite to reqeust on detector keypressed
             xhr:function(){
                 var self = this.owner, params = {};
                 params[self.name] = self.value;
@@ -660,8 +674,6 @@
                     case 13:
                         input_validator(this);
                         fadeOut(this.pannel);
-                        // e.preventDefault();
-                        // e.stopPropagation();
                         return true;
                     default: return false;
                 }
@@ -679,11 +691,11 @@
                 return false;
             },
             onFocus:function(e){
-                this.typeahead.xhr();
+                this.typeahead.delayed();
                 return false;
             },
             onInput:function(e){
-                this.typeahead.xhr();
+                this.typeahead.delayed();
                 return false;
             },
             onBlur:function(e){
@@ -691,14 +703,16 @@
                 return false;
             }
         };
+
+        //TODO: relise master & slave data
         th.index = 0; th.key = null; th.cache = {}; th.opt = {master:[], slave:[], tmpl:'typeahead-tmpl'};
-        instance.typeahead = th;
+        element.typeahead = th;
         th.opt = Object.assign(th.opt, opt);
-        instance.typeahead.owner = element;
-        inputer(instance).ui.on('focus',th.onFocus).ui.on('input',th.onInput)
-            .ui.on('blur',th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change',th.onChange);
-        if (!instance.ui.attr('tabindex')) instance.ui.attr('tabindex', '0');
-        return instance;
+        element.typeahead.owner = inputer(element);
+        element.ui.on('focus',th.onFocus).ui.on('input',th.onInput).ui.on('blur',th.onBlur).ui.on('keydown', th.onKeydown)
+            .ui.on('change',th.onChange);
+        if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
+        return element;
     }
     }; g.typeahead = typeahead;
 
