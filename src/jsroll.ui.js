@@ -661,8 +661,9 @@
                     case 13:
                         input_validator(this);
                         fadeOut(this.pannel);
-                        e.preventDefault();
-                        return e.stopPropagation();
+                        // e.preventDefault();
+                        // e.stopPropagation();
+                        return true;
                     default: return false;
                 }
             },
