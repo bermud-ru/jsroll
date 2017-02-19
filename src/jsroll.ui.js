@@ -576,14 +576,18 @@
                 }
             },
             activeItem:function () {
-                var owner = this.owner;
+                var owner = this.owner, cache = this.cache[this.key] || {};
                 if (owner.pannel) {
                     owner.pannel.ui.el('.active', function () {
                         this.css.del('active')
                     });
-                    owner.pannel.ui.el('[value="'+(Object.values(this.cache[this.key]||{}).indexOf(owner.value)+1)+'"]', function () {
-                        this.css.add('active');
-                    });
+                    var values = Object.keys(cache).map(function(k){return cache[k]});
+                    var idx = values.indexOf(owner.value);
+                    if (idx != -1) {
+                        owner.pannel.ui.el('[value="' + (Object.keys(cache)[idx]) + '"]', function () {
+                            this.css.add('active');
+                        });
+                    }
                 }
             },
             tmpl:function(data){
@@ -617,7 +621,7 @@
                         before: null,after: null,
                         done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
-                                msg.show({error: 'ОШИБКА', message: this.status + ': ' + this.statusText});
+                                msg.show({message: this.status + ': ' + this.statusText});
                             } else {
                                 try {
                                     var res = JSON.parse(this.responseText);
@@ -631,6 +635,7 @@
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
+                                    console.log({message: 'сервер вернул не коректные данные'});
                                 }
                             }
                             if (!owner.value) owner.status = 'none';
