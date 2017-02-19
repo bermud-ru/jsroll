@@ -558,7 +558,7 @@
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
         var th = {
-            delta: 800,
+            delta: 700,
             timer: null,
             request: null,
             delayed: function () {
