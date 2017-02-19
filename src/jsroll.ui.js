@@ -563,7 +563,7 @@
                     var fn = function fn () {
                             this.xhr();
                             this.timer = null
-                            if (this.request != this.owner.value) {
+                            if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
                                 this.timer = g.setTimeout(fn.bind(this), this.delta);
                             }
@@ -572,31 +572,31 @@
                 }
             },
             tmpl:function(data){
-                var self = this.owner;
-                this.index = 0; this.key = self.value.toLowerCase() || 'null';
-                if (self.pannel) {
+                var owner = this.owner;
+                this.index = 0; this.key = owner.value.toLowerCase() || 'null';
+                if (owner.pannel) {
                     var n = ui.dom(tmpl(this.opt.tmpl, {data:data}));
-                    if (n) self.pannel.innerHTML = n.innerHTML;
+                    if (n) owner.pannel.innerHTML = n.innerHTML;
                 } else {
-                    self.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
-                    self.parentElement.css.add('dropdown');
-                    self.pannel = self.parentElement.ui.el('.dropdown-menu.list');
+                    owner.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
+                    owner.parentElement.css.add('dropdown');
+                    owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
-                self.parentElement.ui.els('.dropdown-menu.list li', function () {
+                owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
-                        self.value = this.innerHTML;
-                        if (self.typeahead.opt.key) self.typeahead.opt.key.value = this.ui.attr('value');
+                        owner.value = this.innerHTML;
+                        if (owner.typeahead.opt.key) owner.typeahead.opt.key.value = this.ui.attr('value');
                         return false;
                     });
                 });
             },
             xhr:function(){
-                var self = this.owner, params = {};
-                params[self.name] = self.value;
-                var index = self.value ? self.value.toLowerCase() : 'null';
-                if ((!this.cache.hasOwnProperty(index) || index == 'null') && self.ui.attr('url')) {
-                    self.status = 'spinner';
-                    xhr({url: location.update(self.ui.attr('url'), params),
+                var owner = this.owner, params = {};
+                params[owner.name] = owner.value;
+                var index = owner.value ? owner.value.toLowerCase() : 'null';
+                if ((!this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
+                    owner.status = 'spinner';
+                    xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: {'Hash': acl.user.hash},
                         before: null,after: null,
                         done: function (e) {
@@ -606,66 +606,68 @@
                                 try {
                                     var res = JSON.parse(this.responseText);
                                     if (res.result == 'error') {
-                                        self.status = 'error';
+                                        owner.status = 'error';
                                     } else {
-                                        self.typeahead.cache[index] = res.data;
-                                        self.typeahead.show(res.data);
-                                        input_validator(self);
+                                        owner.typeahead.cache[index] = res.data;
+                                        owner.typeahead.show(res.data);
+                                        input_validator(owner);
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
                                 }
                             }
-                            if (!self.value) self.status = 'none';
+                            if (!owner.value) owner.status = 'none';
                             return this;
                         },
                         fail: function (e) { console.error('typeahead',e); }
                     });
                 } else {
-                    self.typeahead.show(this.cache[index]);
-                    input_validator(self);
+                    owner.typeahead.show(this.cache[index]);
+                    input_validator(owner);
                 }
             },
             show:function(data){
-                var self = this.owner;
-                if (self === g.document.activeElement) if (Object.keys(data||{}).length) {
+                var owner = this.owner;
+                if (owner === g.document.activeElement) if (Object.keys(data||{}).length) {
                     this.tmpl(data);
-                    return fadeIn(self.pannel);
+                    return fadeIn(owner.pannel);
                 } else {
-                    if (self.pannel) {
-                        self.pannel.innerHTML = null;
-                        fadeOut(self.pannel);
+                    if (owner.pannel) {
+                        owner.pannel.innerHTML = null;
+                        fadeOut(owner.pannel);
                     }
                 }
                 return false;
             },
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-                var th = this.typeahead, cashe = th.cache[th.key],cnt = Object.keys(cashe || {}).length - 1,y = 0;
+                var th = this.typeahead, caсhe = th.cache[th.key],cnt = Object.keys(caсhe || {}).length - 1,y = 0;
                 switch (key) {
                     case 38:
-                        for (var x in cashe) {
+                        for (var x in caсhe) {
                             if (y == th.index) {
-                                this.value = cashe[x];
+                                this.value = caсhe[x];
+                                input_validator(this);
                                 if (th.opt.key) th.opt.key.value = x;
                                 this.selectionStart = this.selectionEnd = this.value.length;
+                                this.pannel.ui.el('.active', function(){this.css.del('active')});
+                                this.pannel.ui.el('[value="'+(parseInt(th.index)+1)+'"]').css.add('active');
                                 if (th.index > 0) th.index--; else th.index = cnt;
-                                e.preventDefault();
-                                e.stopPropagation();
                                 return false;
                             }
                             y++;
                         }
                         return false;
                     case 40:
-                        for (var x in cashe) {
+                        for (var x in caсhe) {
                             if (y == th.index) {
-                                this.value = cashe[x];
+                                this.value = caсhe[x];
+                                input_validator(this);
                                 if (th.opt.key) th.opt.key.value = x;
                                 this.selectionStart = this.selectionEnd = this.value.length;
+                                this.pannel.ui.el('.active', function(){this.css.del('active')});
+                                this.pannel.ui.el('[value="'+(parseInt(th.index)+1)+'"]').css.add('active');
                                 if (th.index < cnt) th.index++; else th.index = 0;
-                                e.preventDefault();
-                                e.stopPropagation();
                                 return false;
                             }
                             y++;
