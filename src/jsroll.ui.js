@@ -562,6 +562,7 @@
             timer: null,
             request: null,
             delayed: function () {
+                input_validator(this.owner);
                 if (!this.timer) {
                     var fn = function fn () {
                             this.xhr();
@@ -626,14 +627,7 @@
                                         owner.typeahead.cache[index] = res.data;
                                         owner.typeahead.show(res.data);
                                         input_validator(owner);
-                                        if (owner.pannel) {
-                                            owner.pannel.ui.el('.active', function () {
-                                                this.css.del('active')
-                                            });
-                                            owner.pannel.ui.el('[value="'+(Object.values(owner.typeahead.cache[owner.typeahead.key]||{}).indexOf(owner.value)+1)+'"]', function () {
-                                                this.css.add('active');
-                                            });
-                                        }
+                                        owner.typeahead.activeItem();
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
