@@ -145,6 +145,9 @@
             var nodes = g.dom(d, mime).childNodes;
             return nodes.length > 1 ? nodes : nodes[0];
         },
+        get active() {
+            return this.instance === g.document.activeElement;
+        },
         focus: function(s) {
             var el;
             if (s) el = (typeof s == 'string' ? document.querySelector(s) : s); else el = this.instance;
@@ -571,6 +574,17 @@
                     this.timer = g.setTimeout(fn.bind(this), this.delta);
                 }
             },
+            activeItem:function () {
+                var owner = this.owner;
+                if (owner.pannel) {
+                    owner.pannel.ui.el('.active', function () {
+                        this.css.del('active')
+                    });
+                    owner.pannel.ui.el('[value="'+(Object.values(this.cache[this.key]||{}).indexOf(owner.value)+1)+'"]', function () {
+                        this.css.add('active');
+                    });
+                }
+            },
             tmpl:function(data){
                 var owner = this.owner;
                 this.index = 0; this.key = owner.value.toLowerCase() || 'null';
@@ -582,6 +596,7 @@
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
+                this.activeItem();
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
@@ -611,6 +626,14 @@
                                         owner.typeahead.cache[index] = res.data;
                                         owner.typeahead.show(res.data);
                                         input_validator(owner);
+                                        if (owner.pannel) {
+                                            owner.pannel.ui.el('.active', function () {
+                                                this.css.del('active')
+                                            });
+                                            owner.pannel.ui.el('[value="'+(Object.values(owner.typeahead.cache[owner.typeahead.key]||{}).indexOf(owner.value)+1)+'"]', function () {
+                                                this.css.add('active');
+                                            });
+                                        }
                                     }
                                 } catch (e) {
                                     msg.show({message: 'сервер вернул не коректные данные'});
@@ -628,66 +651,55 @@
             },
             show:function(data){
                 var owner = this.owner;
-                if (owner === g.document.activeElement) if (Object.keys(data||{}).length) {
-                    this.tmpl(data);
-                    return fadeIn(owner.pannel);
-                } else {
-                    if (owner.pannel) {
-                        owner.pannel.innerHTML = null;
-                        fadeOut(owner.pannel);
+                if (owner.ui.active) {
+                    if (Object.keys(data||{}).length) {
+                        this.tmpl(data);
+                        fadeIn(owner.pannel)
+                    } else {
+                        if (owner.pannel) {
+                            //owner.pannel.innerHTML = null;
+                            fadeOut(owner.pannel);
+                        }
                     }
                 }
                 return false;
             },
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-                var th = this.typeahead, caсhe = th.cache[th.key],cnt = Object.keys(caсhe || {}).length - 1,y = 0;
+                var th = this.typeahead, x = 0;
+
                 switch (key) {
                     case 38:
-                        for (var x in caсhe) {
-                            if (y == th.index) {
-                                this.value = caсhe[x];
-                                input_validator(this);
-                                if (th.opt.key) th.opt.key.value = x;
-                                this.selectionStart = this.selectionEnd = this.value.length;
-                                this.pannel.ui.el('.active', function(){this.css.del('active')});
-                                this.pannel.ui.el('[value="'+(parseInt(th.index)+1)+'"]').css.add('active');
-                                if (th.index > 0) th.index--; else th.index = cnt;
-                                return false;
-                            }
-                            y++;
-                        }
-                        return false;
+                        if (th.index > 0) th.index--; else th.index = Object.keys(th.cache[th.key]||{}).length - 1;
+                        break;
                     case 40:
-                        for (var x in caсhe) {
-                            if (y == th.index) {
-                                this.value = caсhe[x];
-                                input_validator(this);
-                                if (th.opt.key) th.opt.key.value = x;
-                                this.selectionStart = this.selectionEnd = this.value.length;
-                                this.pannel.ui.el('.active', function(){this.css.del('active')});
-                                this.pannel.ui.el('[value="'+(parseInt(th.index)+1)+'"]').css.add('active');
-                                if (th.index < cnt) th.index++; else th.index = 0;
-                                return false;
-                            }
-                            y++;
-                        }
-                        return false;
+                        if (th.index < Object.keys(th.cache[th.key]||{}).length - 1) th.index++; else th.index = 0;
+                        break;
                     case 13:
                         input_validator(this);
                         fadeOut(this.pannel);
-                        return true;
                     default: return false;
                 }
+
+                this.value = th.cache[th.key][(x=Object.keys(th.cache[th.key])[th.index])];
+                if (input_validator(this) && th.opt.key) th.opt.key.value = x;
+                this.selectionStart = this.selectionEnd = this.value.length;
+                if (this.pannel) {
+                    this.pannel.ui.el('.active',function (){this.css.del('active')});
+                    this.pannel.ui.el('[value="'+x+'"]',function (){this.css.add('active')});
+                }
+                return false;
             },
             onChange: function (e) {
                 var th = this.typeahead;
                 if (th.opt.key) {
                     th.opt.key.value = '';
-                    if (this.value && th.cache.hasOwnProperty(this.value.toLowerCase())) {
-                        var ds = this.typeahead.cache[this.value.toLowerCase()];
-                        for (var x in ds) if (ds[x].toLowerCase() === this.value.toLowerCase()) th.opt.key.value = x;
+                    var idx;
+                    if ((idx = this.value.toLowerCase()) && th.cache.hasOwnProperty(idx)) {
+                        var ds = this.typeahead.cache[idx];
+                        for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
+
                     return th.opt.key.value;
                 }
                 return false;
