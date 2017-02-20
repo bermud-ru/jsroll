@@ -79,12 +79,14 @@
         },
         els: function (s, fn, v) {
             if (typeof s === 'string') {
-                var els = this.instance.querySelectorAll(s);
-                if (!els) return []; var r = Array.prototype.slice.call(els).map(function (e,i,a) {
-                    if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
-                    if (typeof fn == 'function') fn.call(e,i,a);
-                    return e;
-                });
+                var r = [];
+                s.split(',').map((function (x) {
+                    r.concat(Array.prototype.slice.call(this.instance.querySelectorAll(x)||{}).map(function (e, i, a) {
+                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
+                        if (typeof fn == 'function') fn.call(e, i, a);
+                        return e;
+                    }));
+                }).bind(this));
                 if (typeof fn == 'string') g[fn]=r; else if (typeof v == 'string') g[v]=r;
                 return r;
             } else return [];
