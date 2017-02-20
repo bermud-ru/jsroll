@@ -81,7 +81,7 @@
             if (typeof s === 'string') {
                 var r = [];
                 s.split(',').map((function (x) {
-                    r.concat(Array.prototype.slice.call(this.instance.querySelectorAll(x)||{}).map(function (e, i, a) {
+                    r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x)||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                         if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
@@ -608,6 +608,7 @@
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
                         if (owner.typeahead.opt.key) owner.typeahead.opt.key.value = this.ui.attr('value');
+                        input_validator(owner);
                         return false;
                     });
                 });
@@ -700,7 +701,6 @@
                         var ds = this.typeahead.cache[idx];
                         for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
-
                     return th.opt.key.value;
                 }
                 return false;
