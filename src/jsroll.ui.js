@@ -368,7 +368,6 @@
                     input_validator(this);
                 }) || e.ui.el('select', function (e) {
                     elements.push(this);
-
                     if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
                 });
             });
@@ -395,8 +394,12 @@
                 get params() {
                     var params = {}, self = this;
                     this.el.map(function (e,i,a) {
-                        if (e.value) params[e.name] = e.value;
-                        input_validator(e);
+                        if (e.value) switch (e.tagName) {
+                            case 'INPUT': params[e.name] = e.value; input_validator(e);
+                                break;
+                            case 'SELECT': if (e.value != 0) params[e.name] = e.value;
+                                break;
+                            }
                     });
                     return params;
                 },
