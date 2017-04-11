@@ -357,7 +357,6 @@
     }; g.app = new app(g.document);
 
     var filter = function (els, v) {
-        console.log(els);
         var elements = [], index = 0;
         if (els) {
             if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
@@ -727,7 +726,7 @@
             }
         };
 
-        if (typeof element.typeahead === 'object') {
+        if (!element.typeahead) {
             //TODO: relise master & slave data
             th.index = 0;
             th.key = null;
@@ -828,10 +827,10 @@
                     }
                     break;
                 case 9:
-                    var el = false; var way = e.shiftKey ? -1 : 1;
-                    var index = parseInt(this.ui.attr('tabindex'));
+                    var el = null; var way = e.shiftKey ? -1 : 1;
+                    var index = parseInt(this.ui.attr('tabindex')) + way;
                     if (index > 0) while (el = ui.el('[tabindex="'+index+'"]'))
-                        if (el.ui.attr('disabled')) index += way; else { el.ui.focus(); break; }
+                        if (el.ui.attr('disabled')) { index += way } else { el.ui.focus(); break; }
                     if (index <= 1 && way < 0) return e.preventDefault();
                     e.stopPropagation();
                     return false;
