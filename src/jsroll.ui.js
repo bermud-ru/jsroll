@@ -719,14 +719,18 @@
             }
         };
 
-        //TODO: relise master & slave data
-        th.index = 0; th.key = null; th.cache = {}; th.opt = {master:[], slave:[], tmpl:'typeahead-tmpl'};
-        element.typeahead = th;
-        th.opt = Object.assign(th.opt, opt);
-        element.typeahead.owner = inputer(element);
-        element.ui.on('focus',th.onFocus).ui.on('input',th.onInput).ui.on('blur',th.onBlur).ui.on('keydown', th.onKeydown)
-            .ui.on('change',th.onChange);
-        if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
+        if (typeof element.typeahead === 'object') {
+            //TODO: relise master & slave data
+            th.index = 0;
+            th.key = null;
+            th.cache = {};
+            th.opt = {master: [], slave: [], tmpl: 'typeahead-tmpl'};
+            element.typeahead = th;
+            th.opt = Object.assign(th.opt, opt);
+            element.typeahead.owner = inputer(element);
+            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change', th.onChange);
+            if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
+        }
         return element;
     }
     }; g.typeahead = typeahead;
