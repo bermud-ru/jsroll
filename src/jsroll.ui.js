@@ -357,6 +357,7 @@
     }; g.app = new app(g.document);
 
     var filter = function (els, v) {
+        console.log(els);
         var elements = [], index = 0;
         if (els) {
             if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
@@ -367,6 +368,7 @@
                     input_validator(this);
                 }) || e.ui.el('select', function (e) {
                     elements.push(this);
+
                     if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
                 });
             });
