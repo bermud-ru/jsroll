@@ -607,7 +607,7 @@
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
-                        if (owner.typeahead.opt.key) owner.typeahead.opt.key.value = this.ui.attr('value');
+                        if (typeof owner.typeahead.opt.key === 'object') owner.typeahead.opt.key.value = this.ui.attr('value');
                         input_validator(owner);
                         return false;
                     });
