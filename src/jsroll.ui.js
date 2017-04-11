@@ -484,7 +484,7 @@
     });
 
     var input_validator = function(element){
-        if (element) {
+        if (element && (element.tagName === 'INPUT')) {
             var res = true;
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
@@ -503,7 +503,7 @@
                 if (element.value.length) el.status = 'success'; else el.status = 'none';
             return res;
         }
-        return false;
+        return true;
     };  g.input_validator = input_validator;
 
     var inputer = function(el) {
