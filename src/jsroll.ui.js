@@ -365,6 +365,9 @@
                     elements.push(this);
                     if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
                     input_validator(this);
+                }) || e.ui.el('select', function (e) {
+                    elements.push(this);
+                    if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
                 });
             });
 
