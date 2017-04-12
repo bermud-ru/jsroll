@@ -492,7 +492,10 @@
 
     var input_validator = function(element){
         if (element && (element.tagName === 'INPUT')) {
-            var res = true;
+            var res = true, validator = null;
+            if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
+                element.validator = new Function('return '+validator+'.apply(this, arguments)');
+            }
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
             else if (element.getAttribute('pattern') === null) res = true;
@@ -503,7 +506,7 @@
                     res = re.test(element.value.trim());
                 } catch(e) { res = false }
             }
-
+            if (res && element.hasOwnProperty('validator')) res = element.validator(element.value);
             var el = inputer(ui.wrap(element));
             if (!res) el.status = 'error';
             else if (!el.hasAttribute('disabled'))
