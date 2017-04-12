@@ -374,20 +374,20 @@
             return {
                 el: elements,
                 index: index,
+                __valid: true,
                 get valid(){
-                    var valid = true;
-                    this.el.map(function (e,i,a) { valid = valid & input_validator(e) });
-                    return valid;
+                    var self = this; self.__valid = true;
+                    this.el.map(function (e,i,a) { self.__valid &= input_validator(e) });
+                    return this.__valid ;
                 },
                 set params(v) {
-                    var params = {};
+                    var params = {}, self = this; self.__valid = true;
                     if (typeof v === 'object') params = v; else if (typeof v === 'string') params = location.decoder(v);
-                    this.valid = true;
                     if (params.hasOwnProperty('page')) this.index = params['page'];
                     this.el.map(function (e,i,a) {
                         if (params.hasOwnProperty(e.name)) e.value = params[e.name];
                         else e.value = '';
-                        input_validator(e);
+                        self.__valid &= input_validator(e);
                     });
                 },
                 get params() {
@@ -507,10 +507,12 @@
                 } catch(e) { res = false }
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator(element.value);
-            var el = inputer(ui.wrap(element));
-            if (!res) el.status = 'error';
-            else if (!el.hasAttribute('disabled'))
-                if (element.value.length) el.status = 'success'; else el.status = 'none';
+            if (element.type != 'hidden') {
+                var el = inputer(ui.wrap(element));
+                if (!res) el.status = 'error';
+                else if (!el.hasAttribute('disabled'))
+                    if (element.value.length) el.status = 'success'; else el.status = 'none';
+            }
             return res;
         }
         return true;
@@ -600,6 +602,7 @@
                             this.css.add('active');
                         });
                     }
+                    if (this.opt.key) this.opt.key.value = Object.keys(cache)[idx]||'';
                 }
             },
             tmpl:function(data){
@@ -694,12 +697,13 @@
                 }
 
                 this.value = th.cache[th.key][(x=Object.keys(th.cache[th.key])[th.index])];
-                if (input_validator(this) && th.opt.key) th.opt.key.value = x;
+                if (th.opt.key) th.opt.key.value = x;
                 this.selectionStart = this.selectionEnd = this.value.length;
                 if (this.pannel) {
-                    this.pannel.ui.el('.active',function (){this.css.del('active')});
-                    this.pannel.ui.el('[value="'+x+'"]',function (){this.css.add('active')});
+                    this.pannel.ui.el('.active', function(){this.css.del('active')});
+                    this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
                 }
+                e.stopPropagation();
                 return false;
             },
             onChange: function (e) {
@@ -711,6 +715,7 @@
                         var ds = this.typeahead.cache[idx];
                         for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
+
                     return th.opt.key.value;
                 }
                 return false;
