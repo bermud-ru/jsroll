@@ -20,28 +20,70 @@
         popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
 
+    /**
+     *  class css - Helper for Cascading Style Sheets properties of HTMLelements
+     *
+     * @param instance
+     * @returns {css}
+     */
     var css = function(instance){
         this.instance = instance;
         return this;
     }; css.prototype = {
+        /**
+         * css.el setup instance of HTMLelements
+         *
+         * @param i
+         * @returns {css}
+         */
         el: function(i) {
             this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
         },
+        /**
+         * css.style - setup value of Cascading Style Sheets properties of HTMLelement
+         *
+         * @param k
+         * @param v
+         * @returns {css}
+         */
         style:function(k,v) {
             this.instance.style[k] = v;
             return this;
         },
+        /**
+         * css.has return TRUE | FALSE is exist Cascading Style Sheets class in HTMLelement
+         *
+         * @param c
+         * @returns {Array|{index: number, input: string}}
+         */
         has: function(c){
             return this.instance.className.match(re('(?:^|\\s)' + c + '(?!\\S)'));
         },
+        /**
+         * css.add - Add Cascading Style Sheets class to HTMLelement
+         * @param c
+         * @returns {css}
+         */
         add: function (c) {
             if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
             return this;
         },
+        /**
+         * css.del - Delete Cascading Style Sheets class from HTMLelement
+         *
+         * @param c
+         * @returns {css}
+         */
         del: function (c) {
             if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
             return this;
         },
+        /**
+         * css.tgl - Toggle Cascading Style Sheets class of HTMLelement
+         *
+         * @param c
+         * @returns {css}
+         */
         tgl: function (c) {
             if (this.instance) {
                 if (!this.has(c)) this.instance.className += ' ' + c;
@@ -51,6 +93,12 @@
         }
     }; g.css = new css(g);
 
+    /**
+     * class ui - Web object Extention
+     *
+     * @param instance
+     * @returns {*}
+     */
     var ui = function(instance) {
         if (instance.hasOwnProperty('ui')) return instance;
         this._parent = null;
@@ -58,6 +106,13 @@
         if (instance) { this.instance.css = new css(this.instance); this.wrap(this.instance.parentElement); }
         return this;
     }; ui.prototype = {
+        /**
+         * ui.wrap
+         * 
+         * @param el
+         * @param v
+         * @returns {*}
+         */
         wrap:function(el, v){
             if (el && typeof el === 'object' && !el.hasOwnProperty('ui')) {
                 el.ui = new ui(el); if (typeof v == 'string') g[v]=el;
@@ -158,6 +213,9 @@
         }
     }; g.ui = new ui(document);
 
+    /**
+     * Fix
+     */
     Object.defineProperty(g, 'selected', {
         get: function selected() {
             return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
@@ -165,6 +223,9 @@
         }
     });
 
+    /**
+     * Fix
+     */
     function selecting() {
         if (window.getSelection) {
             if (window.getSelection().empty) {  // Chrome
@@ -349,13 +410,19 @@
                         fadeOut(self, this.sleep); self.faded = false;
                     }
                     return self;
-                };
+                }
             }
             return self;
         }
 
     }; g.app = new app(g.document);
 
+    /**
+     *
+     * @param els
+     * @param v
+     * @returns {*}
+     */
     var filter = function (els, v) {
         var elements = [], index = 0;
         if (els) {
@@ -419,6 +486,13 @@
         return null;
     }; g.filter = filter;
 
+    /**
+     *
+     * @param route
+     * @param methods
+     * @param opt
+     * @returns {*}
+     */
     var crud = function (route, methods, opt) {
         if (!route) return undefined;
 
@@ -490,6 +564,12 @@
         }
     });
 
+    /**
+     * input_validator
+     *
+     * @param element
+     * @returns {boolean}
+     */
     var input_validator = function(element){
         if (element && (element.tagName === 'INPUT')) {
             var res = true, validator = null;
@@ -518,6 +598,12 @@
         return true;
     };  g.input_validator = input_validator;
 
+    /**
+     * inputer
+     *
+     * @param el
+     * @returns {*}
+     */
     var inputer = function(el) {
         if (el && !el.hasOwnProperty('status')) {
             el.chk = el.parentElement.ui.el('span');
@@ -569,6 +655,13 @@
     return result;
     };
 
+    /**
+     * typeahead
+     *
+     * @param element
+     * @param opt
+     * @returns {*}
+     */
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
         var th = {
@@ -750,6 +843,13 @@
     }
     }; g.typeahead = typeahead;
 
+    /**
+     *
+     * @param element
+     * @param pattern
+     * @param cleared
+     * @returns {*}
+     */
     var maskedigits = function(element, pattern, cleared) {
     if (element.tagName === 'INPUT') {
         var el = inputer(element);
