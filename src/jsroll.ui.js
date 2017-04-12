@@ -108,7 +108,7 @@
     }; ui.prototype = {
         /**
          * ui.wrap
-         * 
+         *
          * @param el
          * @param v
          * @returns {*}
@@ -392,6 +392,7 @@
             } else {
                 if (this.wnd.visible) fadeOut(this.wnd, 35);
                 this.wnd.visible = false;
+                ui.focus('[tabindex]');
             }
             return this.container;
         },
