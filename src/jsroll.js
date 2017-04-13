@@ -42,6 +42,22 @@
     }; g.uuid = uuid;
 
     /**
+     * @function func
+     * Создание фкнкции из строки или выполнение кода из строки в контексте
+     *
+     * @param str Текстовая строка содержащая определение функцц или содержащий JS код
+     * @param self Контекст в котором будет выполнен код
+     * @returns {*}
+     */
+    var func = function (str, self, args) {
+        if (typeof str !== 'string') return console.error('func: Source of context not defined!');
+        switch ( true ) {
+            case /^\s*function.*[}|;]\s*$/i.test(str) : return new Function('return ' + str + '.apply(this, arguments)');
+            default: return (function () { return eval(str) }).apply(self||this, args||self);
+        }
+    }; g.func = func;
+
+    /**
      * @function decoder
      * Возвращает объект (Хеш-таблица) параметров
      *
@@ -423,7 +439,7 @@
                     if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
                     else if (typeof cb == 'object' && (context = cb)) context.innerHTML = result;
 
-                    if (context && pig && (after = pig.getAttribute('after'))) (function(){return eval(after)}).apply(context, g.arguments);
+                    if (context && pig && (after = pig.getAttribute('after'))) func(after, context, g.arguments);
                     if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
                     console.error('#', id || str, 'Error:', e );

@@ -575,7 +575,7 @@
         if (element && (element.tagName === 'INPUT')) {
             var res = true, validator = null;
             if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
-                element.validator = new Function('return '+validator+'.apply(this, arguments)');
+                element.validator = func(validator);
             }
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
