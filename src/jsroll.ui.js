@@ -194,7 +194,8 @@
             return new ui(el.srcElement || el.target);
         },
         on: function (event, fn, opt) {
-            this.instance.addEventListener(event, fn, !!opt);
+            var self = this;
+            event.split(',').map( function(e) {self.instance.addEventListener(e, fn, !!opt)} );
             return this.instance;
         },
         dom: function(d, mime) {
@@ -286,6 +287,20 @@
     'use strict';
 
     if ( typeof ui === 'undefined' ) return false;
+
+    var group = function (master, opt) {
+        if (master && typeof master === 'object' && typeof (opt||{}).slave === 'object') {
+            var opt = Object.assign({slave:[], event:null, eh:null}, opt);
+            g.ui.wrap(master).slave = opt.slave;
+            if (opt.eh) master.slave.map(function (e, i, a) { e.ui.on(opt.event, opt.eh) });
+            master.ui.on(opt.event, function (event) {
+                var type = event.type;
+                this.slave.map(function (e, i, a) { e.dispatchEvent(new Event(type)) });
+            });
+            return master;
+        }
+        return undefined;
+    }; g.group = group;
 
     /**
      * Application
@@ -829,11 +844,10 @@
         };
 
         if (!element.typeahead) {
-            //TODO: relise master & slave data
             th.index = 0;
             th.key = null;
             th.cache = {};
-            th.opt = {master: [], slave: [], tmpl: 'typeahead-tmpl'};
+            th.opt = {tmpl: 'typeahead-tmpl'};
             element.typeahead = th;
             th.opt = Object.assign(th.opt, opt);
             element.typeahead.owner = inputer(element);
