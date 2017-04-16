@@ -801,27 +801,28 @@
             },
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-                var th = this.typeahead, x = 0;
+                var th = this.typeahead, x = 0, ch = th.cache[th.key];
+                    if (typeof ch === 'object') {
+                    switch (key) {
+                        case 38:
+                            if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
+                            break;
+                        case 40:
+                            if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
+                            break;
+                        case 13:
+                            input_validator(this);
+                            fadeOut(this.pannel);
+                        default: return false;
+                    }
 
-                switch (key) {
-                    case 38:
-                        if (th.index > 0) th.index--; else th.index = Object.keys(th.cache[th.key]||{}).length - 1;
-                        break;
-                    case 40:
-                        if (th.index < Object.keys(th.cache[th.key]||{}).length - 1) th.index++; else th.index = 0;
-                        break;
-                    case 13:
-                        input_validator(this);
-                        fadeOut(this.pannel);
-                    default: return false;
-                }
-
-                this.value = th.cache[th.key][(x=Object.keys(th.cache[th.key])[th.index])];
-                if (th.opt.key) th.opt.key.value = x;
-                this.selectionStart = this.selectionEnd = this.value.length;
-                if (this.pannel) {
-                    this.pannel.ui.el('.active', function(){this.css.del('active')});
-                    this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
+                    this.value = ch[(x=Object.keys(ch)[th.index])];
+                    if (th.opt.key) th.opt.key.value = x;
+                    this.selectionStart = this.selectionEnd = this.value.length;
+                    if (this.pannel) {
+                        this.pannel.ui.el('.active', function(){this.css.del('active')});
+                        this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
+                    }
                 }
                 e.stopPropagation();
                 return false;
