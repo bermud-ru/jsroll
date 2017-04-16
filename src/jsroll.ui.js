@@ -496,6 +496,17 @@
                     var p = this.params;
                     p['page'] = this.index;
                     return location.encoder(p);
+                },
+                callback:function (res) {
+                    if (typeof res === 'undefined') return true;
+                    if (res.error) {
+                        var er = Object.keys(res.error), res = true;
+                        for (var i in this.el) if (this.el[i].name.indexOf(er) >-1) { this.el[i].status='error'; res &= false }
+                        else res &= input_validator(this.el[i]);
+                        return res;
+                    } else if(res.filter) {
+                        //TODO: release
+                    }
                 }
             };
         }
