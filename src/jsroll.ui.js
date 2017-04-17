@@ -348,7 +348,8 @@
             return self;
         },
         variable: function (el, id) {
-            if (el && !el.hasOwnProperty('dim')) {
+            if (!el) return undefined;
+            if (!el.hasOwnProperty('dim')) {
                 Object.defineProperty(el, 'dim', {
                     get: function () {
                         try {
@@ -401,7 +402,7 @@
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (arguments.length && !this.wnd.visible) {
                 this.container = this.container || ui.el(g.config.popup.container);
-                tmpl(id, data, this.variable(this.container, id), opt);
+                tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
                 fadeIn(this.wnd, 35);
                 this.wnd.visible = true;
             } else {
