@@ -609,12 +609,12 @@
             else if (element.getAttribute('pattern') === null) res = true;
             else {
                 try {
-                    var pattern = /[?\/]([^\/]+)\/([^\/]*)/g.exec(element.getAttribute('pattern')) || [];
-                    var re = new RegExp(pattern[1], pattern[2]);
+                    var pattern = /[?\/](.+)(\/([igum]+$))/.exec(element.getAttribute('pattern')) || [];
+                    var re = new RegExp(pattern[1],pattern[3]||'g');
                     res = re.test(element.value.trim());
                 } catch(e) { res = false }
             }
-            if (res && element.hasOwnProperty('validator')) res = element.validator(element.value);
+            if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
             if (element.type != 'hidden') {
                 var el = inputer(ui.wrap(element));
                 if (!res) el.status = 'error';
