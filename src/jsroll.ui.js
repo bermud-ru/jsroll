@@ -571,7 +571,7 @@
         show: function (params, close) {
             tmpl(g.config.msg.tmpl, params, this.elem);
             fadeIn(this.elem, 0);
-            if (typeof close == 'undefined' || !close) fadeOut(this.elem, 90);
+            if (typeof close == 'undefined' || !close) fadeOut(this.elem, 125);
             return this.elem;
         }
     }; g.msg = msg;
@@ -616,10 +616,16 @@
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
             if (element.type != 'hidden') {
-                var el = inputer(ui.wrap(element));
-                if (!res) el.status = 'error';
-                else if (!el.hasAttribute('disabled'))
-                    if (element.value.length) el.status = 'success'; else el.status = 'none';
+                inputer(ui.wrap(element));
+                if (!res) {
+                    element.status = 'error'
+                } else {
+                    if (!element.disabled) {
+                        if (element.value.length) { element.status = 'success' } else { element.status = 'none' }
+                    } else {
+                        element.status = 'none'
+                    }
+                }
             }
             return res;
         }
@@ -634,7 +640,7 @@
      */
     var inputer = function(el) {
         if (el && !el.hasOwnProperty('status')) {
-            el.chk = el.parentElement.ui.el('span');
+            el.chk = el.parentElement.ui.el('span.form-control-feedback');
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
@@ -803,7 +809,7 @@
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
                 var th = this.typeahead, x = 0, ch = th.cache[th.key];
-                    if (typeof ch === 'object') {
+                if (ch && typeof ch === 'object') {
                     switch (key) {
                         case 38:
                             if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
@@ -824,7 +830,7 @@
                         this.pannel.ui.el('.active', function(){this.css.del('active')});
                         this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
                     }
-                }
+                } else { if (th.opt.key) th.opt.key.value = ''; }
                 e.stopPropagation();
                 return false;
             },
@@ -834,7 +840,7 @@
                     th.opt.key.value = '';
                     var idx;
                     if ((idx = this.value.toLowerCase()) && th.cache.hasOwnProperty(idx)) {
-                        var ds = this.typeahead.cache[idx];
+                        var ds = th.cache[idx];
                         for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
 
@@ -851,8 +857,19 @@
                 return false;
             },
             onBlur:function(e){
+                var th=this.typeahead;
+                if (th.timer) clearTimeout(th.timer);
                 fadeOut(this.pannel);
-                return false;
+                if (th.opt.key) {
+                    var ch = th.cache[th.key];
+                    if (ch && typeof ch === 'object') {
+                        var v = this.value; th.opt.key.value = '';
+                        Object.keys(ch).map(function(k){ if (ch[k] == v) th.opt.key.value = k; });
+                    } else {
+                       th.opt.key.value = '';
+                    }
+                }
+                return input_validator(this);
             }
         };
 
