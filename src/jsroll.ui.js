@@ -703,11 +703,10 @@
             timer: null,
             request: null,
             delayed: function () {
-                input_validator(this.owner);
                 if (!this.timer) {
                     var fn = function fn () {
                             this.xhr();
-                            this.timer = null
+                            if (this.timer) clearTimeout(this.timer); this.timer = null;
                             if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
                                 this.timer = g.setTimeout(fn.bind(this), this.delta);
@@ -748,7 +747,7 @@
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
                         if (typeof owner.typeahead.opt.key === 'object') owner.typeahead.opt.key.value = this.ui.attr('value');
-                        input_validator(owner);
+                        // input_validator(owner);
                         return false;
                     });
                 });
@@ -773,12 +772,11 @@
                                     } else {
                                         owner.typeahead.cache[index] = res.data;
                                         owner.typeahead.show(res.data);
-                                        input_validator(owner);
+                                        // input_validator(owner);
                                         owner.typeahead.activeItem();
                                     }
                                 } catch (e) {
-                                    msg.show({message: 'сервер вернул не коректные данные'});
-                                    console.log({message: 'сервер вернул не коректные данные'});
+                                    console.error(e,'сервер вернул не коректные данные');
                                 }
                             }
                             if (!owner.value) owner.status = 'none';
@@ -788,7 +786,7 @@
                     });
                 } else {
                     owner.typeahead.show(this.cache[index]);
-                    input_validator(owner);
+                    // input_validator(owner);
                 }
             },
             show:function(data){
@@ -818,11 +816,11 @@
                             if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
                             break;
                         case 13:
-                            input_validator(this);
+                            if (th.timer) clearTimeout(th.timer);
                             fadeOut(this.pannel);
+                            // input_validator(this);
                         default: return false;
                     }
-
                     this.value = ch[(x=Object.keys(ch)[th.index])];
                     if (th.opt.key) th.opt.key.value = x;
                     this.selectionStart = this.selectionEnd = this.value.length;
@@ -830,8 +828,8 @@
                         this.pannel.ui.el('.active', function(){this.css.del('active')});
                         this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
                     }
-                } else { if (th.opt.key) th.opt.key.value = ''; }
-                e.stopPropagation();
+                } else { if (th.opt.key && key != 9) th.opt.key.value = ''; }
+                //e.stopPropagation();
                 return false;
             },
             onChange: function (e) {
@@ -843,17 +841,18 @@
                         var ds = th.cache[idx];
                         for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
-
                     return th.opt.key.value;
                 }
                 return false;
             },
             onFocus:function(e){
+                if ( this.typeahead.timer) clearTimeout( this.typeahead.timer); this.typeahead.timer = null;
                 this.typeahead.delayed();
                 return false;
             },
             onInput:function(e){
                 this.typeahead.delayed();
+                input_validator(this);
                 return false;
             },
             onBlur:function(e){
@@ -865,11 +864,10 @@
                     if (ch && typeof ch === 'object') {
                         var v = this.value; th.opt.key.value = '';
                         Object.keys(ch).map(function(k){ if (ch[k] == v) th.opt.key.value = k; });
-                    } else {
-                       th.opt.key.value = '';
                     }
                 }
-                return input_validator(this);
+                input_validator(this);
+                return false;
             }
         };
 
