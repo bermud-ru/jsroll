@@ -706,7 +706,7 @@
                 if (!this.timer) {
                     var fn = function fn () {
                             this.xhr();
-                            if (this.timer) clearTimeout(this.timer); this.timer = null;
+                            clearTimeout(this.timer); this.timer = null;
                             if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
                                 this.timer = g.setTimeout(fn.bind(this), this.delta);
@@ -857,7 +857,7 @@
             },
             onBlur:function(e){
                 var th=this.typeahead;
-                if (th.timer) clearTimeout(th.timer);
+                if (th.timer) { clearTimeout(th.timer); th.timer = null; }
                 fadeOut(this.pannel);
                 if (th.opt.key) {
                     var ch = th.cache[th.key];
