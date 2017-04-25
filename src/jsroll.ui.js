@@ -598,8 +598,8 @@
      * @param element
      * @returns {boolean}
      */
-    var input_validator = function(element){
-        if (element && (element.tagName === 'INPUT')) {
+    var input_validator = function(element, tags){
+        if (element && (tags ? (tags.indexOf(element.tagName) >-1) : (element.tagName === 'INPUT'))) {
             var res = true, validator = null;
             if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
                 element.validator = func(validator);
@@ -680,7 +680,7 @@
     
     g.formvalidator = function(res) {
         var result = true;
-        for (var i =0; i < this.elements.length; i++) result = result & input_validator(this.elements[i]);
+        for (var i =0; i < this.elements.length; i++) result = result & input_validator(this.elements[i],['INPUT','TEXTAREA']);
 
         if (!result) {
             if (spinner) spinner = false;
