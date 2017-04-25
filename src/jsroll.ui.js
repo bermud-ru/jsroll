@@ -846,7 +846,7 @@
                 return false;
             },
             onFocus:function(e){
-                if ( this.typeahead.timer) clearTimeout( this.typeahead.timer); this.typeahead.timer = null;
+                if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
                 this.typeahead.delayed();
                 return false;
             },
@@ -857,7 +857,7 @@
             },
             onBlur:function(e){
                 var th=this.typeahead;
-                if (th.timer) { clearTimeout(th.timer); th.timer = null; }
+                if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
                 fadeOut(this.pannel);
                 if (th.opt.key) {
                     var ch = th.cache[th.key];
