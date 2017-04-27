@@ -847,7 +847,7 @@
             },
             onFocus:function(e){
                 if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
-                this.typeahead.delayed();
+                if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) this.typeahead.delayed();
                 return false;
             },
             onInput:function(e){
