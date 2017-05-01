@@ -407,7 +407,7 @@
 
                 try {
                     if (pig) {
-                        if (before = pig.getAttribute('before')) eval.call(g.arguments, before);
+                        if (before = pig.getAttribute('before')) func(before, pig, [data]);
                         var nn = undefined;
                         Array.prototype.slice.call(pig.attributes).map(function (i) {
                             if ( i && /^tmpl-*/i.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/i, '')) )
