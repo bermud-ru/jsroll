@@ -313,7 +313,7 @@
         this.registry = {};
         this.dim = {};
         this.instance = instance || g;
-        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
+        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); if (chatbot) chatbot.fade(); });
         return this;
     }; app.prototype = {
         bootstrap: function(rt) {
@@ -422,9 +422,11 @@
                 self.fade = function (id, data, opt) {
                     if (arguments.length && !self.faded) {
                         tmpl(id, data, app.variable(self.fade_context, id), opt);
-                        fadeIn(self, this.sleep); self.faded = true;
+                        fadeIn(self, this.sleep);
+                        return self.faded = true;
                     } else if (!arguments.length && self.faded) {
-                        fadeOut(self, this.sleep); self.faded = false;
+                        fadeOut(self, this.sleep);
+                        return self.faded = false;
                     }
                     return self;
                 }
@@ -600,19 +602,29 @@
      */
     var input_validator = function(element, tags){
         if (element && (tags ? (tags.indexOf(element.tagName) >-1) : (element.tagName === 'INPUT'))) {
-            var res = true, validator = null;
+            var res = true, validator = null, pattern;
             if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
                 element.validator = func(validator);
             }
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
-            else if (element.getAttribute('pattern') === null) res = true;
+            else if ((pattern = element.getAttribute('pattern')) === null) res = true;
             else {
-                try {
-                    var pattern = /[?\/](.+)(\/([igum]+$))/.exec(element.getAttribute('pattern')) || [];
-                    var re = new RegExp(pattern[1],pattern[3]||'g');
-                    res = re.test(element.value.trim());
-                } catch(e) { res = false }
+                // try {
+                //     var pattern = /[?\/](.+)(\/([igum]*$))/.exec(element.getAttribute('pattern')) || [];
+                //     var re = new RegExp(pattern[1],pattern[3]||'g');
+                //     res = re.test(element.value.trim());
+                // } catch(e) { res = false }
+                if (!element.hasOwnProperty('testPattern')) {
+                    try {
+                        var p = /[?\/](.+)(\/([igum]*$))/.exec(pattern) || [];
+                        element.regex = new RegExp(p[1]||pattern,p[3]||'');
+                        Object.defineProperty(element, 'testPattern', {
+                            get: function testPattern() { this.regex.lastIndex=0; return this.regex.test(this.value.trim()) }
+                        });
+                    } catch(e) { element['testPattern'] = false; console.error(element,pattern,e) }
+                }
+                res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
             if (element.type != 'hidden') {
@@ -683,7 +695,7 @@
         for (var i =0; i < this.elements.length; i++) result = result & input_validator(this.elements[i],['INPUT','TEXTAREA']);
 
         if (!result) {
-            if (spinner) spinner = false;
+            if (g.spinner) g.spinner = false;
             msg.show({message: 'неверно заполнены поля формы!'});
         }
     return result;
