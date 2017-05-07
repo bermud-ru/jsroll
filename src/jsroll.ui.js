@@ -1054,11 +1054,12 @@
             this.init(false); e.preventDefault(); e.stopPropagation();
             return false;
         }).ui.on('change', function (e) {
-            this.init(false);
+            this.init(false); input_validator(this);
             return false;
         }).ui.on('blur',function(e){
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
+            input_validator(this);
             e.preventDefault(); e.stopPropagation();
             return false;
         }).ui.on('paste',function(e){
