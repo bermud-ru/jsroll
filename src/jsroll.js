@@ -30,6 +30,17 @@
     var re = function (s, f) { return new RegExp(s, f || 'g') }; g.re = re;
 
     /**
+     * @function coalesce
+     * Return first not null or undefined in the function arguments
+     *
+     * @returns {variant | null}
+     */
+    var coalesce = function() {
+        for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null) return arguments[i] };
+        return null;
+    }; g.coalesce = coalesce;
+
+    /**
      * @function uuid
      * Генерация Universally Unique Identifier 16-байтный (128-битный) номер
      *

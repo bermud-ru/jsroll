@@ -208,7 +208,7 @@
         },
         focus: function(s) {
             var el;
-            if (s) el = (typeof s == 'string' ? document.querySelector(s) : s); else el = this.instance;
+            if (s) el = (typeof s == 'string' ? this.el(s) : s); else el = this.instance;
             if (el) g.setTimeout(function() { el.focus(); return false }, 0);
             return el;
         }
@@ -397,20 +397,22 @@
         after: function () {
             g.app.spinner = false;
         },
-
+        list: g,
         popup: function (id, data, opt) {
+
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (arguments.length && !this.wnd.visible) {
                 this.container = this.container || ui.el(g.config.popup.container);
                 tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
+                this.container.css.del('has-error').del('has-info').del('has-warning').del('has-success');
                 fadeIn(this.wnd, 35);
                 this.wnd.visible = true;
             } else {
                 if (this.wnd.visible) fadeOut(this.wnd, 35);
                 this.wnd.visible = false;
-                ui.focus('[role="popup-box"]');
+                if (this.list) this.list.ui.focus('[role="popup-box"]');
             }
-            return this.container;
+            return this;
         },
 
         fader: function (el, v, context) {
@@ -573,7 +575,8 @@
         show: function (params, close) {
             tmpl(g.config.msg.tmpl, params, this.elem);
             fadeIn(this.elem, 0);
-            if (typeof close == 'undefined' || !close) fadeOut(this.elem, 125);
+            var el = this.elem;
+            if (typeof close == 'undefined' || !close) setTimeout(function(){fadeOut(el, 125)}, 3000);
             return this.elem;
         }
     }; g.msg = msg;
@@ -691,14 +694,17 @@
     }; g.inputer = inputer;
     
     g.formvalidator = function(res) {
-        var result = true;
-        for (var i =0; i < this.elements.length; i++) result = result & input_validator(this.elements[i],['INPUT','TEXTAREA']);
+        var result = [];
+        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i],['INPUT','TEXTAREA'])) result.push(this.elements[i].name+': '+(this.elements[i].value||'поле с неверными данными или нет значения!'));
 
-        if (!result) {
+        if (result.length) {
             if (g.spinner) g.spinner = false;
-            msg.show({message: 'неверно заполнены поля формы!'});
+            result.unshift('<b>ФОРМА: неверно заполнены поля формы!</b>');
+            msg.show({message: result});
+            return false;
         }
-    return result;
+
+        return true;
     };
 
     /**
