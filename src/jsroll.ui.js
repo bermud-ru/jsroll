@@ -767,7 +767,7 @@
                             this.css.add('active');
                         });
                     }
-                    if (this.opt.key) this.opt.key.value = Object.keys(cache)[idx]||'';
+                    if (this.opt.key) { this.opt.key.value = Object.keys(cache)[idx]||''; this.opt.key.dispatchEvent(new Event('change')) }
                 }
             },
             tmpl:function(data){
@@ -785,7 +785,7 @@
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
-                        if (typeof owner.typeahead.opt.key === 'object') owner.typeahead.opt.key.value = this.ui.attr('value');
+                        if (typeof owner.typeahead.opt.key === 'object') { owner.typeahead.opt.key.value = this.ui.attr('value'); owner.typeahead.opt.key.dispatchEvent(new Event('change')) }
                         // input_validator(owner);
                         return false;
                     });
@@ -861,13 +861,13 @@
                         default: return false;
                     }
                     this.value = ch[(x=Object.keys(ch)[th.index])];
-                    if (th.opt.key) th.opt.key.value = x;
+                    if (th.opt.key) { th.opt.key.value = x; th.opt.key.dispatchEvent(new Event('change')) }
                     this.selectionStart = this.selectionEnd = this.value.length;
                     if (this.pannel) {
                         this.pannel.ui.el('.active', function(){this.css.del('active')});
                         this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
                     }
-                } else { if (th.opt.key && key != 9) th.opt.key.value = ''; }
+                } else { if (th.opt.key && key != 9) { th.opt.key.value = ''; th.opt.key.dispatchEvent(new Event('change')) }}
                 //e.stopPropagation();
                 return false;
             },
@@ -880,6 +880,7 @@
                         var ds = th.cache[idx];
                         for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
                     }
+                    th.opt.key.dispatchEvent(new Event('change'));
                     return th.opt.key.value;
                 }
                 return false;
@@ -905,6 +906,7 @@
                         var v = this.value; th.opt.key.value = '';
                         Object.keys(ch).map(function(k){ if (ch[k] == v) th.opt.key.value = k; });
                     }
+                    th.opt.key.dispatchEvent(new Event('change'));
                 }
                 input_validator(this);
                 return false;
@@ -1051,13 +1053,16 @@
         }).ui.on('focus', function (e) {
             this.init(false); e.preventDefault(); e.stopPropagation();
             return false;
+        }).ui.on('change', function (e) {
+            this.init(false);
+            return false;
         }).ui.on('blur',function(e){
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             e.preventDefault(); e.stopPropagation();
             return false;
         }).ui.on('paste',function(e){
-            var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : ''
+            var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : '';
             //TODO pate afte cursor position & past selected pice
             for (var i in dgs) this.insertDigit(dgs[i], selected);
             e.preventDefault(); e.stopPropagation();
