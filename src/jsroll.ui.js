@@ -576,7 +576,7 @@
             tmpl(g.config.msg.tmpl, params, this.elem);
             fadeIn(this.elem, 0);
             var el = this.elem;
-            if (typeof close == 'undefined' || !close) setTimeout(function(){fadeOut(el, 125)}, 3000);
+            if (typeof close == 'undefined' || !close) el.timer = setTimeout(function(){fadeOut(el, 125)}, 3000);
             return this.elem;
         }
     }; g.msg = msg;
