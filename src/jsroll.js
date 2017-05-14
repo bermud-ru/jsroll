@@ -424,7 +424,7 @@
                         Array.prototype.slice.call(pig.attributes).map(function (i) {
                             if ( i && /^tmpl-*/i.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/i, '')) )
                                 try {
-                                    data[nn] = JSON.parse(i.nodeValue);
+                                    data[nn] = JSON.parse(i.value); //JSON.parse(i.nodeValue);
                                 } catch (e) {
                                     data[nn] = i.nodeValue;
                                 }

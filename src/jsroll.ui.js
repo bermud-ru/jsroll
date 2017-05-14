@@ -162,7 +162,7 @@
                     Array.prototype.slice.call(this.instance.attributes).map(function (e, i, a) {
                         var name = e.nodeName.toString();
                         if (mask.test(name) && (name = name.replace(mask, '')))
-                            data[name] = e.nodeValue
+                            data[name] = e.value; //.e.nodeValue
                     });
                     return data;
                 } else {
@@ -198,6 +198,12 @@
             event.split(',').map( function(e) {self.instance.addEventListener(e, fn, !!opt)} );
             return this.instance;
         },
+        event: function (e) {
+            var event = g.document.createEvent('Event');
+            //event.initEvent(type, bubbles, cancelable);
+            event.initEvent(e, true, false);
+            return event;
+        },
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
             var nodes = g.dom(d, mime).childNodes;
@@ -215,29 +221,30 @@
     }; g.ui = new ui(document);
 
     /**
-     * Fix
+     * Fix not work in FF
      */
     Object.defineProperty(g, 'selected', {
         get: function selected() {
-            return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
-                document.selection.createRange().text; // IE, используем объект selection
+            return  g.getSelection ? g.getSelection().toString() : g.document.selection.createRange().text;
+            // return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
+            //     g.document.selection.createRange().text; // IE, используем объект selection
         }
     });
 
     /**
      * Fix
      */
-    function selecting() {
-        if (window.getSelection) {
-            if (window.getSelection().empty) {  // Chrome
-                window.getSelection().empty();
-            } else if (window.getSelection().removeAllRanges) {  // Firefox
-                window.getSelection().removeAllRanges();
+    function selection() {
+        if (g.getSelection) {
+            if (g.getSelection().empty) {  // Chrome
+                g.getSelection().empty();
+            } else if (g.getSelection().removeAllRanges) {  // Firefox
+                g.getSelection().removeAllRanges();
             }
-        } else if (document.selection) {  // IE?
-            document.selection.empty();
+        } else if (g.document.selection) {  // IE?
+            g.document.selection.empty();
         }
-    }; g.selecting = selecting;
+    }; g.selection = selection;
 
     g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
         // g.fadeRule.reverse();
@@ -1001,6 +1008,8 @@
             var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
             if ([13,27,82].indexOf(key) != -1) return true;
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : String.fromCharCode(key);
+            //TODO: fix for FF
+            var selected = this.value.substr(this.selectionStart,this.selectionEnd);
 
             switch (key) {
                 case 8:
@@ -1029,10 +1038,10 @@
                     return false;
                 case 37:
                     this.s1 = --this.selectionStart; this.e1 = --this.selectionEnd;
-                    break
+                    break;
                 case 39:
                     this.s1 = ++this.selectionStart;
-                    break
+                    break;
                 case 46:
                     var sl = this.value.slice(this.selectionStart),
                         tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
@@ -1045,7 +1054,7 @@
                     for (var i in tt) ts = ts.replace('_', tt[i]);
                     this.value = this.value.replace(sl, ts);
                     this.selectionStart = this.s1 ; this.selectionEnd = this.e1;
-                    break
+                    break;
                 default: this.insertDigit(dg, selected);
             }
             e.preventDefault(); e.stopPropagation();
@@ -1055,14 +1064,15 @@
             return false;
         }).ui.on('change', function (e) {
             this.init(false); input_validator(this);
+            e.preventDefault(); e.stopPropagation();
             return false;
-        }).ui.on('blur',function(e){
+        }).ui.on('blur',function(e) {
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             input_validator(this);
             e.preventDefault(); e.stopPropagation();
             return false;
-        }).ui.on('paste',function(e){
+        }).ui.on('paste',function(e) {
             var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : '';
             //TODO pate afte cursor position & past selected pice
             for (var i in dgs) this.insertDigit(dgs[i], selected);
