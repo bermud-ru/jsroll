@@ -429,7 +429,7 @@
                                     data[nn] = i.nodeValue;
                                 }
                         });
-                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data, g.arguments[1]);
+                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data, g.arguments[1]|| {});
                     }
 
                     if (opt && typeof opt.before == 'object') {

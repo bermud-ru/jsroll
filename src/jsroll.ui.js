@@ -27,7 +27,7 @@
      * @returns {css}
      */
     var css = function(instance){
-        this.instance = instance;
+        this.instance = this.el(instance).instance;
         return this;
     }; css.prototype = {
         /**
@@ -37,7 +37,8 @@
          * @returns {css}
          */
         el: function(i) {
-            this.instance = typeof i === 'string' ? document.querySelector(i) : i ; return this;
+            this.instance = typeof i === 'string' ? g.document.querySelector(i) : i ;
+            return this;
         },
         /**
          * css.style - setup value of Cascading Style Sheets properties of HTMLelement
@@ -94,7 +95,7 @@
     }; g.css = new css(g);
 
     /**
-     * class ui - Web object Extention
+     * class ui - HTML elements Extention
      *
      * @param instance
      * @returns {*}
@@ -195,14 +196,8 @@
         },
         on: function (event, fn, opt) {
             var self = this;
-            event.split(',').map( function(e) {self.instance.addEventListener(e, fn, !!opt)} );
+            event.split(',').map( function(e) { self.instance.addEventListener(e, fn, !!opt)} );
             return this.instance;
-        },
-        event: function (e) {
-            var event = g.document.createEvent('Event');
-            //event.initEvent(type, bubbles, cancelable);
-            event.initEvent(e, true, false);
-            return event;
         },
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
@@ -221,7 +216,7 @@
     }; g.ui = new ui(document);
 
     /**
-     * Fix not work in FF
+     * TODO: Fix not work in FF
      */
     Object.defineProperty(g, 'selected', {
         get: function selected() {
@@ -675,7 +670,7 @@
                             break;
                         case 'warning':
                             this._status = 'warning';
-                            if (this.chk) this.chk.css.add('glyphicon-warning-sign');
+                            if (this.chk) this.chk.css.add('glyphicon glyphicon-flash');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
@@ -742,6 +737,8 @@
      * @param opt
      * @returns {*}
      */
+
+    //TODO:.dispatchEvent(new Event('change')); fix for disabled element in FF
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
         var th = {
@@ -1005,11 +1002,12 @@
                 this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
             }
 
-            var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
+            //var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
+            var key =  e.charCode || e.keyCode || 0;
             if ([13,27,82].indexOf(key) != -1) return true;
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : String.fromCharCode(key);
             //TODO: fix for FF
-            var selected = this.value.substr(this.selectionStart,this.selectionEnd);
+            //var selected = this.value.substr(this.selectionStart,this.selectionEnd);
 
             switch (key) {
                 case 8:
