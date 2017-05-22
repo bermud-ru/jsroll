@@ -403,6 +403,7 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         g.arguments = arguments;
+        g.arguments[1] = (typeof g.arguments[1] !== 'undefined' ? g.arguments[1] : {});
         var compile = function( str ) {
             var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[\w\s\']*)|(\<![\-\-\s\w\>\/]*\>)/igm, '').replace(/\>\s+\</g,'><').trim();
             return source.length ? new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+
@@ -414,6 +415,7 @@
                 var isId = typeof id !== 'undefined', pattern = null;
                 var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
+                // var data = g.arguments[1];
                 var data = {};
                 var context;
 
@@ -426,10 +428,10 @@
                                 try {
                                     data[nn] = JSON.parse(i.value); //JSON.parse(i.nodeValue);
                                 } catch (e) {
-                                    data[nn] = i.nodeValue;
+                                    data[nn] = i.value;
                                 }
                         });
-                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data, g.arguments[1]|| {});
+                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data);
                     }
 
                     if (opt && typeof opt.before == 'object') {
@@ -438,7 +440,7 @@
                         opt.before.call(this, data);
                     }
 
-                    data = Object.assign(data, g.arguments[1] || {});
+                    data = Object.assign(data, g.arguments[1]);
 
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
