@@ -263,28 +263,31 @@
 
         x.fail = function(fn) {
             if (typeof fn === 'function') return fn.call(this, x);
-            if (typeof x.after == 'function') x.after.call(this);
+            if (typeof x.after == 'function') x.after.call(this, x);
             return this;
         };
 
         x.done = function(fn) {
-            if (typeof fn === 'function') return fn.call(this);
+            if (typeof fn === 'function') return fn.call(this, x);
             return this;
         };
 
         x.process = function(fn){
             x.onreadystatechange = function(e) {
-                if (typeof fn === 'function') return fn.call(this, e);
+                if (typeof fn === 'function') return fn.call(this, e, x);
             };
             return this;
         };
 
         x.onload = function(e) {
             x.done.call(this, e);
-            if (typeof x.after == 'function') x.after.call(this, e);
+            if (typeof x.after == 'function') x.after.call(this, e, x);
             return x;
         };
 
+        // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
+        // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
+        // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
         var opt = Object.assign({method:'GET'}, params);
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
         var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
@@ -296,14 +299,14 @@
                 opt.url = u  + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
                 opt.data = null;
             }
-            if (typeof x.before == 'function') x.before.call(x, opt);
+            if (typeof x.before == 'function') x.before.call(x, opt, x);
             x.method = opt.method;
             x.open(opt.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
             x.send(opt.data || null);
             x.id = id;
         } catch (e) {
-            x.abort(); x.fail.call(x, e);
+            x.abort(); x.fail.call(x, e, x);
         }
         return g.xhr.ref[id] = x;
     }; xhr.ref = {}; g.xhr = xhr;
