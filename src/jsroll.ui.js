@@ -436,6 +436,54 @@
                 }
             }
             return self;
+        },
+
+        download:function(url, opt){
+            return g.xhr(Object.assign({url: url, done: function(e, x) {
+                if ([200, 206].indexOf(this.status) < 0) {
+                    app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
+                } else {
+                    try {
+                        var filename = '';
+                        var disposition = x.getResponseHeader('Content-Disposition');
+                        if (disposition && disposition.indexOf('attachment') !== -1) {
+                            var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                            var matches = filenameRegex.exec(disposition);
+                            if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                        }
+                        var type = x.getResponseHeader('Content-Type');
+
+                        var blob = g.bb(this.response, {type: type});
+                        if (typeof g.navigator.msSaveBlob !== 'undefined') {
+                            // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
+                            g.navigator.msSaveBlob(blob, filename);
+                        } else {
+                            var downloadUrl = g.URL.createObjectURL(blob);
+
+                            if (filename) {
+                                // use HTML5 a[download] attribute to specify filename
+                                var a = document.createElement('a');
+                                // safari doesn't support this yet
+                                if (typeof a.download === 'undefined') {
+                                    g.location = downloadUrl; //  g.open(blobURL);
+                                } else {
+                                    a.href = downloadUrl;
+                                    a.download = filename;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    setTimeout(function () { document.body.removeChild(a); }, 100); // cleanup
+                                }
+                            } else {
+                                g.location = downloadUrl; // g.open(blobURL);
+                            }
+
+                            setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
+                        }
+                    } catch (e) {
+                        console.error('сервер вернул не коректные данные', e);
+                    }
+                }
+            }},opt));
         }
 
     }; g.app = new app(g.document);
