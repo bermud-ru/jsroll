@@ -14,6 +14,9 @@
     'use strict';
     var version = '1.0.1b';
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
+    
+    g.URL = g.URL || g.webkitURL;
+    g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
 
     /**
      * @function re
@@ -51,7 +54,33 @@
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
     }; g.uuid = uuid;
+    
+    /**
+     * @function bb
+     * Генерация Blob объекта
+     *
+     * @result Object
+     */
 
+    /**
+     * @function bb (BlobBuilder)
+     * Генерация Blob объекта
+     *
+     * @param data содержимое файла
+     * @param params параметры формирвания контейнера Blob mime-type etc
+     * @returns {*}
+     */
+    var bb = function(data, params) {
+    	var opt = Object.assign({type:'application/x-www-form-urlencoded'}, params);
+        var BlobBuilder = g.MozBlobBuilder || g.WebKitBlobBuilder || g.BlobBuilder;
+        if (BlobBuilder) {
+        	var bb = new BlobBuilder();
+			bb.append(data);
+		 	return bb.getBlob(opt.type);
+		}
+        return new Blob([data], opt);
+    }; g.bb = bb;
+    
     /**
      * @function func
      * Создание фкнкции из строки или выполнение кода из строки в контексте
