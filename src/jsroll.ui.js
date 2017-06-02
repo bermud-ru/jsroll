@@ -445,13 +445,14 @@
                 } else {
                     try {
                         var filename = '';
-                        var disposition = x.getResponseHeader('Content-Disposition');
+
+                        var disposition = this.getResponseHeader('Content-Disposition');
                         if (disposition && disposition.indexOf('attachment') !== -1) {
                             var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                             var matches = filenameRegex.exec(disposition);
                             if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
                         }
-                        var type = x.getResponseHeader('Content-Type');
+                        var type = this.getResponseHeader('Content-Type');
 
                         var blob = g.bb(this.response, {type: type});
                         if (typeof g.navigator.msSaveBlob !== 'undefined') {
@@ -465,7 +466,8 @@
                                 var a = document.createElement('a');
                                 // safari doesn't support this yet
                                 if (typeof a.download === 'undefined') {
-                                    g.location = downloadUrl; //  g.open(blobURL);
+                                    //g.location = downloadUrl;
+                                    g.open(downloadUrl);
                                 } else {
                                     a.href = downloadUrl;
                                     a.download = filename;
@@ -474,7 +476,8 @@
                                     setTimeout(function () { document.body.removeChild(a); }, 100); // cleanup
                                 }
                             } else {
-                                g.location = downloadUrl; // g.open(blobURL);
+                                //g.location = downloadUrl;
+                                g.open(downloadUrl);
                             }
 
                             setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
