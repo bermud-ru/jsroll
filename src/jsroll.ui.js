@@ -439,22 +439,25 @@
         },
 
         download:function(url, opt){
-            return g.xhr(Object.assign({url: url, done: function(e, x) {
+            return g.xhr(Object.assign({responseType: 'arraybuffer', url: url, done: function(e, x) {
                 if ([200, 206].indexOf(this.status) < 0) {
                     app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
                 } else {
                     try {
-                        var filename = '';
-
-                        var disposition = this.getResponseHeader('Content-Disposition');
-                        if (disposition && disposition.indexOf('attachment') !== -1) {
-                            var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                            var matches = filenameRegex.exec(disposition);
-                            if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                        var filename = g.uuid();
+                        if (opt && opt.hasOwnProperty('filename')) {
+                            filename = opt['filename'];
+                        } else {
+                            var disposition = this.getResponseHeader('Content-Disposition');
+                            if (disposition && disposition.indexOf('attachment') !== -1) {
+                                var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                                var matches = filenameRegex.exec(disposition);
+                                if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                            }
                         }
                         var type = this.getResponseHeader('Content-Type');
-
                         var blob = g.bb(this.response, {type: type});
+
                         if (typeof g.navigator.msSaveBlob !== 'undefined') {
                             // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
                             g.navigator.msSaveBlob(blob, filename);

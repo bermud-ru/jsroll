@@ -314,6 +314,7 @@
             return x;
         };
 
+        if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
