@@ -913,7 +913,7 @@
                             break;
                         case 13:
                             if (th.timer) clearTimeout(th.timer);
-                            if (this.pannel.style.display != 'none') fadeOut(this.pannel);
+                            if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
                             // input_validator(this);
                         default: return false;
                     }
@@ -956,7 +956,7 @@
             onBlur:function(e){
                 var th=this.typeahead;
                 if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                if (this.pannel.style.display != 'none') fadeOut(this.pannel);
+                if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
                 if (th.opt.key) {
                     var ch = th.cache[th.key];
                     if (ch && typeof ch === 'object') {
