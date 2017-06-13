@@ -814,7 +814,7 @@
             },
             activeItem:function () {
                 var owner = this.owner, cache = this.cache[this.key] || {};
-                if (owner.pannel) {
+                if ( owner.pannel && Object.keys(cache).length ) {
                     owner.pannel.ui.el('.active', function () {
                         this.css.del('active')
                     });
@@ -869,7 +869,6 @@
                                     } else {
                                         owner.typeahead.cache[index] = res.data;
                                         owner.typeahead.show(res.data);
-                                        // input_validator(owner);
                                         owner.typeahead.activeItem();
                                     }
                                 } catch (e) {
@@ -893,7 +892,7 @@
                         this.tmpl(data);
                         fadeIn(owner.pannel)
                     } else {
-                        if (owner.pannel) {
+                        if (owner.pannel && owner.pannel.style.display != 'none') {
                             //owner.pannel.innerHTML = null;
                             fadeOut(owner.pannel);
                         }
@@ -914,7 +913,7 @@
                             break;
                         case 13:
                             if (th.timer) clearTimeout(th.timer);
-                            fadeOut(this.pannel);
+                            if (this.pannel.style.display != 'none') fadeOut(this.pannel);
                             // input_validator(this);
                         default: return false;
                     }
@@ -957,7 +956,7 @@
             onBlur:function(e){
                 var th=this.typeahead;
                 if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                fadeOut(this.pannel);
+                if (this.pannel.style.display != 'none') fadeOut(this.pannel);
                 if (th.opt.key) {
                     var ch = th.cache[th.key];
                     if (ch && typeof ch === 'object') {
