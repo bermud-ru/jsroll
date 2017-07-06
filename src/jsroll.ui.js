@@ -315,7 +315,8 @@
         this.registry = {};
         this.dim = {};
         this.instance = instance || g;
-        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); if (chatbot) chatbot.fade(); });
+        //TODO ceteate poll
+        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
         return this;
     }; app.prototype = {
         bootstrap: function(rt) {
