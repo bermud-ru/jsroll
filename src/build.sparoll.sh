@@ -14,7 +14,7 @@ echo "
  * @author Андрей Новиков <andrey@novikov.be>
  * @status $status
  * @version $version
- * @revision $id 0004 $(date +"%d/%m/%Y %H:%M":%S)Z $
+ * @revision $id $version $(date +"%d/%m/%Y %H:%M":%S)Z $
  */
 " > ../build/jsroll.min.js
 cat ./jsroll.min.js >> ../build/jsroll.min.js

@@ -5,16 +5,17 @@
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
  * @status beta
- * @version 0.1.0
- * @revision $Id: jsroll.js 0004 2016-05-30 9:00:01Z $
+ * @version 1.1.4b
+ * @revision $Id: jsroll.js 1.1.4b 2017-09-04 1:40:01Z $
  */
 
 (function ( g, undefined ) {
     'suspected';
     'use strict';
-    var version = '1.0.1b';
+    var version = '1.1.4b';
     var xmlHttpRequest = ('onload' in new XMLHttpRequest()) ? XMLHttpRequest : XDomainRequest;
-    
+    var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
+
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
 
@@ -54,13 +55,6 @@
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
     }; g.uuid = uuid;
-    
-    /**
-     * @function bb
-     * Генерация Blob объекта
-     *
-     * @result Object
-     */
 
     /**
      * @function bb (BlobBuilder)
@@ -270,11 +264,38 @@
             fn.chain = c; return fn;
         });
         return c;
-    }
-    g.chain = chain;
+    }; g.chain = chain;
 
     /**
-     * @function xhr
+     * @function js
+     * Динамическая загрузка javascript
+     *
+     * @argument { text | url } src источник
+     * @argument { Object {container, async, type, onload, onreadystatechange} } opt параметры созадваемого скрипта
+     *
+     * 1. var head = g.document.getElementsByTagName("head");
+     *    head[0].appendChild(s); // записываем в <head></head>
+     * 2. g.document.body.appendChild(s); // записываем в <body></body>
+     */
+    function js (src, opt) {
+        if (!src) return null;
+
+        var opt = Object.assign({async:false, type:'text/javascript', container:g.document.body}, opt);
+        var s = g.document.createElement('script');
+        s.type = opt.type;
+        s.async = opt.async; // дождаться заргрузки или нет
+        if (opt.hasOwnProperty('id')) s.id = opt.id;
+        if (src.match(is_url)) { s.src = src; } else { s.text = src; }
+        if (typeof opt.onload === 'funciton') s.onload = onload;
+        if (typeof opt.onreadystatechange === 'funciton') s.onreadystatechange = onreadystatechange;
+
+        if (typeof opt.container.appendChild === 'function') opt.container.appendChild(s);
+        else console.error('Не существущий контенер', opt.container);
+        return s;
+    }; g.js = js;
+
+    /**
+     * @function xhr9
      * Хелпер запросов на основе xmlHttpRequest
      *
      * @argument { String } url (Uniform Resource Locator) путь до шаблона
@@ -362,7 +383,7 @@
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
                 for (var i=0; i < f.elements.length; i++)
-                    data.push((f.elements[i].name || i) + '=' + (f.model[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? 1 : 0))));
+                    data.push((f.elements[i].name || i) + '=' + (f.model[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : 0))));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
@@ -496,8 +517,10 @@
             };
 
         switch ( true ) {
-            case str.match(/^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)/i) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
+            case str.match(is_url) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                 if (g.tmpl.cache[id]) return build(null, id);
+                var opt = opt || {};
+                opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                 return g.xhr(Object.assign({url:str, async: (typeof cb == 'function'), done:function(e) {
                     if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
                     else build(this.responseText, id);

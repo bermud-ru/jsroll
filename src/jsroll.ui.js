@@ -5,8 +5,8 @@
  * Классы RIA / SPA application framework UI (User Interface)
  * @author Андрей Новиков <andrey@novikov.be>
  * @status beta
- * @version 0.1.0
- * @revision $Id: jsroll.ui.js 0004 2016-05-30 9:00:01Z $
+ * @version 1.1.3b
+ * @revision $Id: jsroll.ui.js 1.1.3b 2017-07-26 18:40:01Z $
  */
 
 (function ( g, undefined ) {
@@ -135,10 +135,10 @@
         },
         els: function (s, fn, v) {
             if (typeof s === 'string') {
-                var r = [];
+                var r = []; // ui.wrap([]);
                 s.split(',').map((function (x) {
                     r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x)||{}).map(function (e, i, a) {
-                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
+                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e); // e.ui = r.ui; e.ui.instance = e;
                         if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
                     }));
@@ -315,8 +315,8 @@
         this.registry = {};
         this.dim = {};
         this.instance = instance || g;
-        //TODO ceteate poll
-        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
+        //TODO ceteate poll events handlers
+        // ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
         return this;
     }; app.prototype = {
         bootstrap: function(rt) {
@@ -331,6 +331,7 @@
                     self.inject(cfg.root, root, cfg.code || opt && opt.code);
                 }
             }, opt);
+
             return this;
         },
         event: function (s, map) {
@@ -374,6 +375,7 @@
             if (typeof fn === 'function') {
                 fn.apply(this.variable(el, root), arguments);
             }
+            return false;
         },
         elem: ui.el(g.config.msg.container),
         msg: {
@@ -401,16 +403,18 @@
             g.app.spinner = false;
         },
         list: g,
-        popup: function (id, data, opt) {
-
+        popupEvent: function (e) { if (e.keyCode == 27 ) g.app.popup(); },
+        popup: function (id, data, opt) { //TODO: refactoring code for popup!
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (arguments.length && !this.wnd.visible) {
-                this.container = this.container || ui.el(g.config.popup.container);
+                this.container =  this.container || ui.el(g.config.popup.container);
+                g.addEventListener('keydown', g.app.popupEvent);
                 tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
                 this.container.css.del('has-error').del('has-info').del('has-warning').del('has-success');
                 fadeIn(this.wnd, 35);
                 this.wnd.visible = true;
             } else {
+                g.removeEventListener('keydown', g.app.popupEvent);
                 if (this.wnd.visible) fadeOut(this.wnd, 35);
                 this.wnd.visible = false;
                 if (this.list) this.list.ui.focus('[role="popup-box"]');
@@ -815,7 +819,7 @@
         var th = {
             index: 0,
             key: null,
-            cache: {},
+            cache: null,
             value: null,
             opt: {},
             delta: 330,
@@ -869,11 +873,11 @@
                 });
             },
             xhr:function(){
-                if (this.opt.skip > this.owner.value.length ) return this.owner.typeahead.show([]);;
+                if (this.opt.skip > this.owner.value.trim().length ) return this.owner.typeahead.show([]);;
                 var owner = this.owner, params = {};
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
-                if ((!this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
+                if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
                     owner.status = 'spinner';
                     xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: {'Hash': acl.user.hash},
@@ -890,6 +894,7 @@
                                         var ds = (res.data||[]).map(function(e,i,a) {
                                             try { return JSON.parse(e);} catch (er) { return e; }
                                         });
+                                        if (owner.typeahead.cache === null) owner.typeahead.cache = {};
                                         owner.typeahead.cache[index] = ds;
                                         owner.typeahead.show(ds);
                                         owner.typeahead.activeItem();
@@ -923,37 +928,46 @@
             },
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-                var th = this.typeahead, x, ch = th.cache[th.key], v = {};
-                if (ch && typeof ch === 'object') {
-                    switch (key) {
-                        case 38:
-                            if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
-                            break;
-                        case 40:
-                            if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
-                            break;
-                        case 13:
-                            if (th.timer) clearTimeout(th.timer);
-                            if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
-                        default: return false;
+                if (this.typeahead.cache !== null) {
+                    var th = this.typeahead, x, ch = th.cache[th.key], v = {};
+                    if (ch && typeof ch === 'object') {
+                        switch (key) {
+                            case 38:
+                                if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
+                                break;
+                            case 40:
+                                if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
+                                break;
+                            case 13:
+                                if (th.timer) clearTimeout(th.timer);
+                                if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
+                            default:
+                                return false;
+                        }
+                        v = ch[(x = Object.keys(ch)[th.index])];
+                        this.value = typeof v === 'object' ? v[this.name] : v;
+                        this.selectionStart = this.selectionEnd = this.value.length;
+                        if (this.pannel) {
+                            this.pannel.ui.el('.active', function () {
+                                this.css.del('active')
+                            });
+                            this.pannel.ui.el('[value="' + x + '"]', function () {
+                                this.css.add('active')
+                            });
+                        }
+                    } else {
+                        if (key != 9) {
+                            v = {}
+                        }
                     }
-                    v = ch[(x=Object.keys(ch)[th.index])];
-                    this.value = typeof v === 'object' ? v[this.name] : v;
-                    this.selectionStart = this.selectionEnd = this.value.length;
-                    if (this.pannel) {
-                        this.pannel.ui.el('.active', function(){this.css.del('active')});
-                        this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
-                    }
-                } else {
-                    if (key != 9) { v = {} }
+                    this.setValue(v);
                 }
-                this.setValue(v);
                 //e.stopPropagation();
                 return false;
             },
             onChange: function (e) {
                 var idx, th = this.typeahead, v = {};
-                if ((idx = this.value.toLowerCase()) && th.cache.hasOwnProperty(idx)) {
+                if ((idx = this.value.toLowerCase()) && (th.cache||{}).hasOwnProperty(idx)) {
                     for (var k in th.cache[idx]) if (th.cache[idx][k][this.name] === idx) v = th.cache[idx][k];
                 }
                 this.setValue(v);
@@ -971,11 +985,13 @@
                 return false;
             },
             onBlur:function(e){
-                var self = this, th = this.typeahead, ch = th.cache[th.key], v = {};
-                if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
                 if ( this.pannel && this.pannel.style.display != 'none' ) fadeOut(this.pannel);
-                if ( ch && typeof ch === 'object' ) Object.keys(ch).map(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
-                self.setValue(v);
+                if (this.typeahead.cache !== null) {
+                    var self = this, th = this.typeahead, ch = th.cache[th.key], v = {};
+                    if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
+                    if ( ch && typeof ch === 'object' ) Object.keys(ch).map(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
+                    self.setValue(v);
+                }
                 input_validator(this);
                 return false;
             }
@@ -986,7 +1002,7 @@
             element.typeahead.opt = Object.assign({skip: 0, tmpl: 'typeahead-tmpl'}, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
-                if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') element.typeahead.opt.fn.call(element, this.typeahead.value);
+                if (this.typeahead.cache !== null && element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') element.typeahead.opt.fn.call(element, this.typeahead.value);
             };
             element.typeahead.owner = inputer(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change', th.onChange);
@@ -1037,6 +1053,8 @@
                         this.selectionStart = this.e1 = this.selectionEnd = ++this.s1;
                     }
                 }
+
+                this.dispatchEvent(new Event('change'));
                 return this.selectionStart;
             };
             el.init = function (clear) {
@@ -1045,7 +1063,7 @@
                 if (text) {
                     this.value = this.ui.attr('placeholder');
                     pos = this.value.indexOf('_');
-                    for (var i in text) if (/\d/.test(text[i])) {
+                    for (var i in text) if (/[\d_]/.test(text[i])) {
                         this.value = this.value.replace('_', text[i]);
                         pos = this.value.indexOf('_');
                     }
@@ -1089,6 +1107,7 @@
                         else this.s1 = this.e1 + 1;
                         this.selectionStart = this.selectionEnd = this.s1;
                     }
+                    this.dispatchEvent(new Event('change'));
                     break;
                 case 9:
                     var el = null; var way = e.shiftKey ? -1 : 1;
@@ -1122,23 +1141,17 @@
             e.preventDefault(); e.stopPropagation();
             return /d/.test(dg);
         }).ui.on('focus', function (e) {
-            this.init(false); e.preventDefault(); e.stopPropagation();
-            return false;
-        }).ui.on('change', function (e) {
-            this.init(false); input_validator(this);
-            e.preventDefault(); e.stopPropagation();
+            this.init(false);
             return false;
         }).ui.on('blur',function(e) {
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             input_validator(this);
-            e.preventDefault(); e.stopPropagation();
             return false;
         }).ui.on('paste',function(e) {
             var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : '';
             //TODO pate afte cursor position & past selected pice
             for (var i in dgs) this.insertDigit(dgs[i], selected);
-            e.preventDefault(); e.stopPropagation();
             return false;
         });
     }
