@@ -315,12 +315,8 @@
         this.registry = {};
         this.dim = {};
         this.instance = instance || g;
-<<<<<<< HEAD
         //TODO ceteate poll events handlers
         // ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
-=======
-        ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); if (chatbot) chatbot.fade(); });
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
         return this;
     }; app.prototype = {
         bootstrap: function(rt) {
@@ -663,12 +659,30 @@
     });
 
     /**
+     * setValueFromObject
+     *
+     * @param owner
+     * @param v
+     */
+    var setValueFromObject = function(owner, v) {
+        if (owner && owner.tagName) {
+            if (typeof v === 'object' && v.hasOwnProperty(owner.name)) {
+                owner.value = v[owner.name];
+            } else {
+                owner.value = null;
+            }
+            return true;
+        }
+        return false;
+    }; g.setValueFromObject = setValueFromObject;
+
+    /**
      * input_validator
      *
      * @param element
      * @returns {boolean}
      */
-    var input_validator = function(element, tags){
+    var input_validator = function(element, tags) {
         if (element && (tags ? (tags.indexOf(element.tagName) >-1) : (element.tagName === 'INPUT'))) {
             var res = true, validator = null, pattern;
             if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
@@ -801,19 +815,14 @@
      * @param opt
      * @returns {*}
      */
-
-    //TODO:.dispatchEvent(new Event('change')); fix for disabled element in FF
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
         var th = {
-<<<<<<< HEAD
             index: 0,
             key: null,
             cache: null,
             value: null,
             opt: {},
-=======
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
             delta: 330,
             timer: null,
             request: null,
@@ -831,29 +840,26 @@
                 }
             },
             activeItem:function () {
-                var owner = this.owner, cache = this.cache[this.key] || {};
-                if ( owner.pannel && Object.keys(cache).length ) {
-                    owner.pannel.ui.el('.active', function () {
-                        this.css.del('active')
-                    });
-                    var values = Object.keys(cache).map(function(k){return cache[k]});
+                var owner = this.owner, ch = this.cache[this.key] || {}, v = {};
+                if ( owner.pannel && Object.keys(ch).length ) {
+                    owner.pannel.ui.el('.active', function () { this.css.del('active') });
+                    var values = Object.keys(ch).map(function(k){return ch[k]});
                     var idx = values.indexOf(owner.value);
                     if (idx != -1) {
-                        owner.pannel.ui.el('[value="' + (Object.keys(cache)[idx]) + '"]', function () {
-                            this.css.add('active');
-                        });
+                        owner.pannel.ui.el('[value="' + idx + '"]', function () { this.css.add('active') });
+                        v = Object.keys(ch)[idx];
                     }
-                    if (this.opt.key) { this.opt.key.value = Object.keys(cache)[idx]||''; this.opt.key.dispatchEvent(new Event('change')) }
                 }
+                owner.setValue(v);
             },
             tmpl:function(data){
                 var owner = this.owner;
-                this.index = 0; this.key = owner.value.toLowerCase() || 'null';
+                this.index = -1; this.key = owner.value.toLowerCase() || 'null';
                 if (owner.pannel) {
-                    var n = ui.dom(tmpl(this.opt.tmpl, {data:data}));
+                    var n = ui.dom(tmpl(this.opt.tmpl, {data:data, field: owner.name}));
                     if (n) owner.pannel.innerHTML = n.innerHTML;
                 } else {
-                    owner.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data}));
+                    owner.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data, field: owner.name}));
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
@@ -861,17 +867,14 @@
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
-                        if (typeof owner.typeahead.opt.key === 'object') { owner.typeahead.opt.key.value = this.ui.attr('value'); owner.typeahead.opt.key.dispatchEvent(new Event('change')) }
-                        // input_validator(owner);
+                        var ch = owner.typeahead.cache[owner.typeahead.key];
+                        owner.setValue(ch[parseInt(this.ui.attr('value'))]);
                         return false;
                     });
                 });
             },
             xhr:function(){
-<<<<<<< HEAD
                 if (this.opt.skip > this.owner.value.trim().length || !input_validator(this.owner)) return this.owner.typeahead.show([]);;
-=======
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
                 var owner = this.owner, params = {};
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
@@ -889,17 +892,12 @@
                                     if (res.result == 'error') {
                                         owner.status = 'error';
                                     } else {
-<<<<<<< HEAD
                                         var ds = (res.data||[]).map(function(e,i,a) {
                                             try { return JSON.parse(e);} catch (er) { return e; }
                                         });
                                         if (owner.typeahead.cache === null) owner.typeahead.cache = {};
                                         owner.typeahead.cache[index] = ds;
                                         owner.typeahead.show(ds);
-=======
-                                        owner.typeahead.cache[index] = res.data;
-                                        owner.typeahead.show(res.data);
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
                                         owner.typeahead.activeItem();
                                     }
                                 } catch (e) {
@@ -913,7 +911,6 @@
                     });
                 } else {
                     owner.typeahead.show(this.cache[index]);
-                    // input_validator(owner);
                 }
             },
             show:function(data){
@@ -924,7 +921,6 @@
                         fadeIn(owner.pannel)
                     } else {
                         if (owner.pannel && owner.pannel.style.display != 'none') {
-                            //owner.pannel.innerHTML = null;
                             fadeOut(owner.pannel);
                         }
                     }
@@ -933,7 +929,6 @@
             },
             onKeydown:function (e) {
                 var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-<<<<<<< HEAD
                 if (this.typeahead.cache !== null) {
                     var th = this.typeahead, x, ch = th.cache[th.key], v = {};
                     if (ch && typeof ch === 'object') {
@@ -968,52 +963,15 @@
                     }
                     this.setValue(v);
                 }
-=======
-                var th = this.typeahead, x = 0, ch = th.cache[th.key];
-                if (ch && typeof ch === 'object') {
-                    switch (key) {
-                        case 38:
-                            if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
-                            break;
-                        case 40:
-                            if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
-                            break;
-                        case 13:
-                            if (th.timer) clearTimeout(th.timer);
-                            if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
-                            // input_validator(this);
-                        default: return false;
-                    }
-                    this.value = ch[(x=Object.keys(ch)[th.index])];
-                    if (th.opt.key) { th.opt.key.value = x; th.opt.key.dispatchEvent(new Event('change')) }
-                    this.selectionStart = this.selectionEnd = this.value.length;
-                    if (this.pannel) {
-                        this.pannel.ui.el('.active', function(){this.css.del('active')});
-                        this.pannel.ui.el('[value="'+x+'"]', function(){this.css.add('active')});
-                    }
-                } else { if (th.opt.key && key != 9) { th.opt.key.value = ''; th.opt.key.dispatchEvent(new Event('change')) }}
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
                 //e.stopPropagation();
                 return false;
             },
             onChange: function (e) {
-<<<<<<< HEAD
                 var idx, th = this.typeahead, v = {};
                 if ((idx = this.value.toLowerCase()) && (th.cache||{}).hasOwnProperty(idx)) {
                     for (var k in th.cache[idx]) if (th.cache[idx][k][this.name] === idx) v = th.cache[idx][k];
-=======
-                var th = this.typeahead;
-                if (th.opt.key) {
-                    th.opt.key.value = '';
-                    var idx;
-                    if ((idx = this.value.toLowerCase()) && th.cache.hasOwnProperty(idx)) {
-                        var ds = th.cache[idx];
-                        for (var x in ds) if (ds[x] === idx) th.opt.key.value = x;
-                    }
-                    th.opt.key.dispatchEvent(new Event('change'));
-                    return th.opt.key.value;
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
                 }
+                this.setValue(v);
                 return false;
             },
             onFocus:function(e){
@@ -1028,7 +986,6 @@
                 return false;
             },
             onBlur:function(e){
-<<<<<<< HEAD
                 if ( this.pannel && this.pannel.style.display != 'none' ) fadeOut(this.pannel);
                 var v = {};
                 if (this.typeahead.cache !== null) {
@@ -1037,31 +994,13 @@
                     if ( ch && typeof ch === 'object' ) Object.keys(ch).map(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
                 }
                 this.setValue(v);
-=======
-                var th=this.typeahead;
-                if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
-                if (th.opt.key) {
-                    var ch = th.cache[th.key];
-                    if (ch && typeof ch === 'object') {
-                        var v = this.value; th.opt.key.value = '';
-                        Object.keys(ch).map(function(k){ if (ch[k] == v) th.opt.key.value = k; });
-                    }
-                    th.opt.key.dispatchEvent(new Event('change'));
-                }
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
                 input_validator(this);
                 return false;
             }
         };
 
         if (!element.typeahead) {
-            th.index = 0;
-            th.key = null;
-            th.cache = {};
-            th.opt = {tmpl: 'typeahead-tmpl'};
             element.typeahead = th;
-<<<<<<< HEAD
             element.typeahead.opt = Object.assign({skip: 0, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
@@ -1070,9 +1009,6 @@
                     else element.typeahead.opt.fn.call(element, undefined);
                 }
             };
-=======
-            th.opt = Object.assign(th.opt, opt);
->>>>>>> 1f8ac6aa9281d6c62568dbcad78bf06002fd15a3
             element.typeahead.owner = inputer(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change', th.onChange);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
