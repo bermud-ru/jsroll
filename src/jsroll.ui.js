@@ -709,15 +709,16 @@
                 res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
-            if (element.type != 'hidden') {
-                inputer(ui.wrap(element));
+            el = element.type != 'hidden' ? element : (typeof element.statusInstance === 'object' ? element.statusInstance : false);
+            if (el) {
+                inputer(ui.wrap(el));
                 if (!res) {
-                    element.status = 'error'
+                    el.status = 'error'
                 } else {
-                    if (!element.disabled) {
-                        if (element.value.length) { element.status = 'success' } else { element.status = 'none' }
+                    if (!el.disabled) {
+                        if (el.value.length) { el.status = 'success' } else { el.status = 'none' }
                     } else {
-                        element.status = 'none'
+                        el.status = 'none'
                     }
                 }
             }
@@ -873,14 +874,14 @@
                 });
             },
             xhr:function(){
-                if (this.opt.skip > this.owner.value.trim().length ) return this.owner.typeahead.show([]);;
+                if (this.opt.skip > this.owner.value.trim().length || !input_validator(this.owner)) return this.owner.typeahead.show([]);;
                 var owner = this.owner, params = {};
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
                 if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
                     owner.status = 'spinner';
                     xhr({url: location.update(owner.ui.attr('url'), params),
-                        rs: {'Hash': acl.user.hash},
+                        rs: this.opt.rs,
                         before: null,after: null,
                         done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
@@ -986,12 +987,13 @@
             },
             onBlur:function(e){
                 if ( this.pannel && this.pannel.style.display != 'none' ) fadeOut(this.pannel);
+                var v = {};
                 if (this.typeahead.cache !== null) {
-                    var self = this, th = this.typeahead, ch = th.cache[th.key], v = {};
+                    var self = this, th = this.typeahead, ch = th.cache[th.key];
                     if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
                     if ( ch && typeof ch === 'object' ) Object.keys(ch).map(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
-                    self.setValue(v);
                 }
+                this.setValue(v);
                 input_validator(this);
                 return false;
             }
@@ -999,10 +1001,13 @@
 
         if (!element.typeahead) {
             element.typeahead = th;
-            element.typeahead.opt = Object.assign({skip: 0, tmpl: 'typeahead-tmpl'}, opt);
+            element.typeahead.opt = Object.assign({skip: 0, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
-                if (this.typeahead.cache !== null && element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') element.typeahead.opt.fn.call(element, this.typeahead.value);
+                if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
+                    if (this.typeahead.cache !== null) element.typeahead.opt.fn.call(element, this.typeahead.value);
+                    else element.typeahead.opt.fn.call(element, undefined);
+                }
             };
             element.typeahead.owner = inputer(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change', th.onChange);

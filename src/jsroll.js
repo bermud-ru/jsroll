@@ -277,7 +277,7 @@
      *    head[0].appendChild(s); // записываем в <head></head>
      * 2. g.document.body.appendChild(s); // записываем в <body></body>
      */
-    function js (src, opt) {
+    function js(src, opt) {
         if (!src) return null;
 
         var opt = Object.assign({async:false, type:'text/javascript', container:g.document.body}, opt);
@@ -290,7 +290,7 @@
         if (typeof opt.onreadystatechange === 'funciton') s.onreadystatechange = onreadystatechange;
 
         if (typeof opt.container.appendChild === 'function') opt.container.appendChild(s);
-        else console.error('Не существущий контенер', opt.container);
+        else console.error('Не существущий контейнер', opt.container);
         return s;
     }; g.js = js;
 
