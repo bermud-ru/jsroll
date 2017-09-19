@@ -563,16 +563,18 @@
                     p['page'] = this.index;
                     return location.encoder(p);
                 },
-                callback:function (res) {
-                    if (typeof res === 'undefined') return true;
-                    if (res.error) {
-                        var er = Object.keys(res.error), res = true;
-                        for (var i in this.el) if (this.el[i].name.indexOf(er) >-1) { this.el[i].status='error'; res &= false }
-                        else res &= input_validator(this.el[i]);
-                        return res;
-                    } else if(res.filter) {
-                        //TODO: release
+                callback: function (res) {
+                   var result = true, er = Object.keys(res.error||{}), wr = Object.keys(res.warning||{}), fl = Object.keys(res.filter||{});
+                    if (typeof res === 'undefined') return res;
+
+                    if (er.length || wr.length || fl.length) {
+                        for (var i in this.el) {
+                            if (er.length && this.el[i].name.indexOf(er) >-1) { this.el[i].status='error'; result &= false }
+                            else if (wr.length && this.el[i].name.indexOf(wr) >-1) { this.el[i].status='warning'; result &= false }
+                            else if (fl.length && this.el[i].name.indexOf(fl) >-1) { result &= input_validator(this.el[i]) }
+                        }
                     }
+                    return result;
                 }
             };
         }
@@ -709,7 +711,7 @@
                 res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
-            el = element.type != 'hidden' ? element : (typeof element.statusInstance === 'object' ? element.statusInstance : false);
+            var el = element.type != 'hidden' ? element : (typeof element.statusInstance === 'object' ? element.statusInstance : false);
             if (el) {
                 inputer(ui.wrap(el));
                 if (!res) {
