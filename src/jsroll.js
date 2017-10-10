@@ -34,6 +34,15 @@
     var re = function (s, f) { return new RegExp(s, f || 'g') }; g.re = re;
 
     /**
+     * str2json
+     * Создание JSON объекта из стоки
+     *
+     * @argument { String } s - строка JSON
+     * @returns {*}
+     */
+    var str2json= function (s) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s); } catch (e) { o = {} }; return o; }; g.str2json = str2json;
+
+    /**
      * @function coalesce
      * Return first not null or undefined in the function arguments
      *
