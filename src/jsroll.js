@@ -43,12 +43,12 @@
     var str2json= function (s) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s); } catch (e) { o = {} }; return o; }; g.str2json = str2json;
 
     /**
-     * agrs
-     * Обёртка для магическго объекта arguments
+     * obj2array
+     * 
      * @param a
      * @returns {Array}
      */
-    var args = function (a) { return Array.prototype.slice.call(a); }; g.args = args;
+    var obj2array = function (a) { return Array.prototype.slice.call(a); }; g.obj2array = obj2array;
 
     /**
      * @function coalesce
