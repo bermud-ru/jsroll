@@ -383,7 +383,7 @@
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
                 for (var i=0; i < f.elements.length; i++)
-                    data.push((f.elements[i].name || i) + '=' + (f.model[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : 0))));
+                    data.push((f.elements[i].name || i) + '=' + (f.model[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? null : 0)))));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
