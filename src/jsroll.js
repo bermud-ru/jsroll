@@ -48,7 +48,7 @@
      * @param a
      * @returns {Array}
      */
-    var args = function (a) { var b = []; for (var i = a.length; i--;) b.unshift(a[i]); return b }; g.args = args;
+    var args = function (a) { var b = new Array(); for (var i = a.length; i--;) b.unshift(a[i]); return b }; g.args = args;
 
     /**
      * @function coalesce
