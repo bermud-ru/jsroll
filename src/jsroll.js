@@ -43,6 +43,14 @@
     var str2json= function (s) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s); } catch (e) { o = {} }; return o; }; g.str2json = str2json;
 
     /**
+     * agrs
+     * Обёртка для магическго объекта arguments
+     * @param a
+     * @returns {Array}
+     */
+    var args = function (a) { var b = []; for (var i = a.length; i--;) b.unshift(a[i]); return b }; g.args = args;
+
+    /**
      * @function coalesce
      * Return first not null or undefined in the function arguments
      *
