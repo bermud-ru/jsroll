@@ -476,10 +476,10 @@
         g.arguments = arguments;
         g.arguments[1] = (typeof g.arguments[1] !== 'undefined' ? g.arguments[1] : {});
         var compile = function( str ) {
-        var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[\w\s\']*)|(\<![\-\-\s\w\>\/]*\>)/igm, '').replace(/\>\s+\</g,'><').trim(); //.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
-            return source.length ? new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+source.replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r").replace(/\t=(.*?)%}/g,"',$1,'")
-                    .split("\t").join("');").split("%}").join("p.push('").split("\r").join("\\'")+
-                "');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');") : undefined;
+        var source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\n]*)|(\<![\-\-\s\w\>\/]*\>)/igm,'').replace(/\>\s+\</g,'><').trim(); //.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
+            return source.length ? new Function('_e',"var p=[], print=function(){ p.push.apply(p,arguments); };with(_e){p.push('"+
+                   source.replace(/[\r\t\n]/g," ").split("{%").join("\t").replace(/((^|%})[^\t]*)'/g,"$1\r").replace(/\t=(.*?)%}/g,"',$1,'")
+                   .split("\t").join("');").split("%}").join("p.push('").split("\r").join("\\'")+"');} return p.join('').replace(/<%/g,'{%').replace(/%>/g,'%}');") : undefined;
             //.replace(/&quot;(?=[^{%]*%})/g,'\"').replace(/&#39;(?=[^{%]*%})/g,"\'")
             },
             build = function( str, id ) {
