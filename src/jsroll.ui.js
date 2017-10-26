@@ -182,10 +182,12 @@
         merge: function () {
             var i = 1, t = arguments[0] || {};
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
-            var keys = Object.keys(t);
             Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
                 Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
-                    if (keys.indexOf(key) == -1 && keys.indexOf('__'+key) > -1) t['__'+key] = v[key];
+                    if ((!!Object.getOwnPropertyDescriptor(t, key)['get'] || !!Object.getOwnPropertyDescriptor(t, key)['set']) &&
+                        (!Object.getOwnPropertyDescriptor(v, key)['get'] && !Object.getOwnPropertyDescriptor(v, key)['set'])
+                        && t.hasOwnProperty('__'+key))
+                        t['__'+key] = v[key];
                     else d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));
