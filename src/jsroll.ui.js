@@ -185,7 +185,7 @@
             var key_t = Object.keys(t);
             Array.prototype.slice.call(arguments, i).forEach( function(v, k, a) {
                 Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
-                    if (key_t.indexOf(key) == -1 && key_t.indexOf('__'+key) > -1) d['__'+key] = v[key];
+                    if (key_t.indexOf(key) == -1 && key_t.indexOf('__'+key) > -1) t['__'+key] = v[key];
                     else d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));
