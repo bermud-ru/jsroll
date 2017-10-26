@@ -104,7 +104,7 @@
         if (typeof str !== 'string') return console.error('func: Source of context not defined!');
         switch ( true ) {
             case /^\s*function.*[}|;]\s*$/i.test(str) : return new Function('return ' + str + '.apply(this, arguments)');
-            default: return (function () { return eval(str) }).apply(self||this, args||self);
+            default: return (function () { return eval(str) }).apply(self||this, args||[self]);
         }
     }; g.func = func;
 
@@ -487,7 +487,7 @@
                 var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
                 // var data = g.arguments[1];
-                var data = {};
+                //var data = {};
                 var context;
 
                 try {
