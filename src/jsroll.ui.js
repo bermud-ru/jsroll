@@ -182,9 +182,11 @@
         merge: function () {
             var i = 1, t = arguments[0] || {};
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
+            var key_t = Object.keys(t);
             Array.prototype.slice.call(arguments, i).forEach( function(v, k, a) {
                 Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
-                    d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    if (key_t.indexOf(key) == -1 && key_t.indexOf('__'+key) > -1) d['__'+key] = Object.getOwnPropertyDescriptor(v, key);
+                    else d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));
             });
