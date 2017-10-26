@@ -184,8 +184,11 @@
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
             var keys = Object.keys(t);
             Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
-                for (var f in v) if (keys.indexOf(f) == -1 && keys.indexOf('__'+f) > -1) t['__'+f] = v[f]; else
-                    Object.defineProperty(t,f,Object.getOwnPropertyDescriptor(v, f));
+                Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
+                    if (keys.indexOf(key) == -1 && keys.indexOf('__'+key) > -1) t['__'+key] = v[key];
+                    else d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    return d;
+                }, {}));
             });
             return t;
         },
