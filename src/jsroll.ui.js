@@ -154,7 +154,7 @@
                     attrs[(n = this.instance.attributes[i].nodeName)] = this.instance.getAttribute(n);
                 return attrs;
             } else if (typeof a === 'object' && typeof v === 'undefined') {
-                for (var i in a) this.instance.setAttribute(i,a[i]);
+                for (var i in a) if (! /\d+/.test(i)) this.instance.setAttribute(i,a[i]);
                 return this;
             } else if (typeof a === 'string' && typeof v === 'undefined') {
                 var mask = a.indexOf('*') != -1 ? re(a.split('*')[0], 'i') : null;
@@ -174,8 +174,10 @@
                     }
                 }
             } else if (typeof a === 'string' && v) {
-                if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
-                else this.instance.setAttribute(a, v);
+                if (! /\d+/.test(a)) {
+                    if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
+                    else this.instance.setAttribute(a, v);
+                }
             }
             return this;
         },
@@ -1149,7 +1151,7 @@
                 default: this.insertDigit(dg, selected);
             }
             e.preventDefault(); e.stopPropagation();
-            return /d/.test(dg);
+            return /\d/.test(dg);
         }).ui.on('focus', function (e) {
             this.init(false);
             return false;

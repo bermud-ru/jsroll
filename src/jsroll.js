@@ -102,9 +102,14 @@
      */
     var func = function (str, self, args) {
         if (typeof str !== 'string') return console.error('func: Source of context not defined!');
-        switch ( true ) {
-            case /^\s*function.*[}|;]\s*$/i.test(str) : return new Function('return ' + str + '.apply(this, arguments)');
-            default: return (function () { return eval(str) }).apply(self||this, args||[self]);
+        try {
+            switch ( true ) {
+                case /^\s*function.*[}|;]\s*$/i.test(str) : return new Function('return ' + str + '.apply(this, arguments)');
+                default: return (function () { return eval(str) }).apply(self||this, args||[self]);
+            }
+        } catch( e ) {
+            console.error('Error jsroll::func('+Array.prototype.slice.call(arguments).join(',')+') ', e );
+            return
         }
     }; g.func = func;
 
@@ -487,7 +492,7 @@
                 var result = null, after = undefined, before = undefined, args = undefined;
                 var pig = g.document.getElementById(id);
                 // var data = g.arguments[1];
-                //var data = {};
+                var data = data||g.arguments[1]||{};
                 var context;
 
                 try {
@@ -511,7 +516,7 @@
                         opt.before.call(this, data);
                     }
 
-                    data = Object.assign(data, g.arguments[1]);
+                    data = Object.assign(data, g.arguments);
 
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
@@ -519,6 +524,8 @@
                         pattern = compile(str);
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
+
+                    if (!pattern) { console.error('Error: прустой шаблон: ', id || str || null); return }
                     result = pattern.call(g.tmpl, data);
 
                     if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
@@ -527,8 +534,9 @@
                     if (context && pig && (after = pig.getAttribute('after'))) func(after, context, g.arguments);
                     if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
-                    console.error('#', id || str, Array.prototype.slice.call(g.arguments).join(','),'Error:', e );
-                    return undefined;
+                    console.error('# '+(id||str), Array.prototype.slice.call(g.arguments).join(','));
+                    console.error('Error: ', e );
+                    return
                 }
                 return result;
             };
