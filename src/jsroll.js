@@ -534,8 +534,7 @@
                     if (context && pig && (after = pig.getAttribute('after'))) func(after, context, g.arguments);
                     if (opt && typeof opt.after == 'function') opt.after.apply(context, g.arguments);
                 } catch( e ) {
-                    console.error('# '+(id||str), Array.prototype.slice.call(g.arguments).join(','));
-                    console.error('Error: ', e );
+                    console.error('# '+(id||str), data||g.arguments, 'ERROR: ', e);
                     return
                 }
                 return result;
