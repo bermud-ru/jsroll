@@ -361,7 +361,7 @@
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
         var opt = Object.assign({method:'GET'}, params);
-        var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, params.rs);
+        var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
 
         try {
