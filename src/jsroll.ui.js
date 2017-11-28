@@ -755,7 +755,7 @@
                             break;
                         case 'warning':
                             this._status = 'warning';
-                            if (this.chk) this.chk.css.add('glyphicon glyphicon-flash');
+                            if (this.chk) this.chk.css.add('glyphicon glyphicon-arrow-left');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
@@ -881,7 +881,7 @@
                 });
             },
             xhr:function(){
-                if (this.opt.skip > this.owner.value.trim().length || !input_validator(this.owner)) return this.owner.typeahead.show([]);;
+                if (this.opt.skip > this.owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))) return this.owner.typeahead.show([]);;
                 var owner = this.owner, params = {};
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
@@ -889,7 +889,8 @@
                     owner.status = 'spinner';
                     xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: this.opt.rs,
-                        before: null,after: null,
+                        before: function () { owner.status = 'spinner'; },
+                        after: function () { if (owner.status = 'spinner') owner.status = ''; },
                         done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
                                 msg.show({message: this.status + ': ' + this.statusText});
@@ -1008,7 +1009,7 @@
 
         if (!element.typeahead) {
             element.typeahead = th;
-            element.typeahead.opt = Object.assign({skip: 0, tmpl: 'typeahead-tmpl', rs:{}}, opt);
+            element.typeahead.opt = Object.assign({skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {

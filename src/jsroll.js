@@ -506,7 +506,7 @@
                                     data[nn] = i.value;
                                 }
                         });
-                        if (args = pig.getAttribute('arguments')) data = Object.assign(JSON.parse(args) || {}, data);
+                        if (args = pig.getAttribute('arguments')) data = Object.assign( data, JSON.parse(args) || {});
                     }
 
                     if (opt && typeof opt.before == 'object') {
@@ -515,7 +515,7 @@
                         opt.before.call(this, data);
                     }
 
-                    data = Object.assign(data, g.arguments);
+                    // data = Object.assign(data, g.arguments);
 
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
