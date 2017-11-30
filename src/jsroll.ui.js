@@ -745,8 +745,8 @@
             el.chk = el.parentElement.ui.el('span.form-control-feedback');
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    this.parentElement.css.add('has-feedback').del('has-error').del('has-warning').del('has-success');
-                    if (this.chk) this.chk.css.del('glyphicon-ok').del('glyphicon-warning-sign').del('glyphicon-remove').del('spinner');
+                    this.parentElement.css.add('has-feedback').del('has-error').del('has-warning').del('has-success').del('has-spinner');
+                    if (this.chk) this.chk.css.del('glyphicon-ok').del('glyphicon-exclamation-sign').del('glyphicon-remove').del('spinner');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
@@ -755,7 +755,7 @@
                             break;
                         case 'warning':
                             this._status = 'warning';
-                            if (this.chk) this.chk.css.add('glyphicon glyphicon-arrow-left');
+                            if (this.chk) this.chk.css.add('glyphicon-exclamation-sign');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
@@ -766,6 +766,7 @@
                         case 'spinner':
                             this._status = 'spinner';
                             if (this.chk) this.chk.css.add('spinner');
+                            this.parentElement.css.add('has-spinner');
                             break;
                         case 'none':
                         default:
@@ -954,7 +955,7 @@
                                 return false;
                         }
                         v = ch[(x = Object.keys(ch)[th.index])];
-                        this.value = typeof v === 'object' ? v[this.name] : v;
+                        this.value = (typeof v === 'object' ? v[this.name] : v)||'';
                         this.selectionStart = this.selectionEnd = this.value.length;
                         if (this.pannel) {
                             this.pannel.ui.el('.active', function () {
