@@ -394,7 +394,8 @@
 
     function form(f) {
         f.setAttribute('valid', 1);
-        f.response = null; f.model={};
+        f.response = null;
+        f.MODEL=f.MODEL||{};
         f.rest = f.getAttribute('rest') || f.method;
         f.validator = f.validator || null;
         f.opt = f.opt || {};
@@ -404,7 +405,7 @@
             var data = [];
             if (!validator || (typeof validator === 'function' && validator.call(f, data)))
                 for (var i=0; i < f.elements.length; i++)
-                    data.push((f.elements[i].name || i) + '=' + (f.model[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0)))));
+                    data.push((f.elements[i].name || i) + '=' + (f.MODEL[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0)))));
             else f.setAttribute('valid', 0);
             return data.join('&');
         };
