@@ -4,15 +4,16 @@
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
+ * @data 19/12/2017
  * @status beta
- * @version 1.1.4b
- * @revision $Id: jsroll.js 1.1.4b 2017-09-04 1:40:01Z $
+ * @version 2.0.9b
+ * @revision $Id: jsroll.js 2.0.9b 2017-12-19 2:22:01Z $
  */
 
 (function ( g, undefined ) {
     'suspected';
     'use strict';
-    var version = '1.1.5b';
+    var version = '2.0.9b';
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
     var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
 
