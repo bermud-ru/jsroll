@@ -182,7 +182,7 @@
             return this;
         },
         merge: function () {
-            var i = 1, t = arguments[0] || {};
+            var i = 1, t = ((arguments[0]||{}).__proto__ === Object.prototype ? arguments[0]||{} : arguments[0].__proto__);
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
             Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
                 Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
