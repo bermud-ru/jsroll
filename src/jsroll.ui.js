@@ -4,9 +4,10 @@
  *
  * Классы RIA / SPA application framework UI (User Interface)
  * @author Андрей Новиков <andrey@novikov.be>
+ * @data 21/12/2017
  * @status beta
- * @version 1.1.3b
- * @revision $Id: jsroll.ui.js 1.1.3b 2017-07-26 18:40:01Z $
+ * @version 2.0.9b
+ * @revision $Id: jsroll.js 2.0.9b 2017-12-21 12:22:01Z $
  */
 
 (function ( g, undefined ) {
@@ -182,13 +183,12 @@
             return this;
         },
         merge: function () {
-            var i = 1, t = ((arguments[0]||{}).__proto__ === Object.prototype ? arguments[0]||{} : arguments[0].__proto__);
+            var i = 1, t = arguments[0]||{};
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
             Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
-                Object.defineProperties(t, Object.keys(v).reduce( function (d, key) {
-                    if ( t.hasOwnProperty(key) && !!Object.getOwnPropertyDescriptor(t, key)['set'] &&
-                        (!Object.getOwnPropertyDescriptor(v, key)['get'] && !Object.getOwnPropertyDescriptor(v, key)['set']) )
-                        t[key] = v[key];
+                Object.defineProperties(t, Object.keys(typeof v === 'object' ? v:{}).reduce( function (d, key) {
+                    if ( t.hasOwnProperty(key) ) t[key] = v[key];
+                    else if ( t.__proto__ !== Object.prototype && t.__proto__.hasOwnProperty(key) ) t[key] = v[key];
                     else d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));

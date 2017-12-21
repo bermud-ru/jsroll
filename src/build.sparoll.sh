@@ -3,7 +3,7 @@
 java -jar ./yuicompressor-2.4.8.jar ./jsroll.js -o ./jsroll.min.js
 java -jar ./yuicompressor-2.4.8.jar ./jsroll.ui.js -o ./jsroll.ui.min.js
 id="\$Id: jsroll.min.js"
-version="0.1.0"
+version="2.0.9b"
 status="beta"
 echo "
  /**
@@ -12,9 +12,10 @@ echo "
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
+ * @data $(date +"%d/%m/%Y")
  * @status $status
  * @version $version
- * @revision $id $version $(date +"%d/%m/%Y %H:%M":%S)Z $
+ * @revision $id $version $(date +"%Y-%m-%d %H:%M":%S)Z $
  */
 " > ../build/jsroll.min.js
 cat ./jsroll.min.js >> ../build/jsroll.min.js
