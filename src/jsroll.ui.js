@@ -186,9 +186,8 @@
             var i = 1, t = arguments[0]||{};
             if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
             Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
-                Object.defineProperties(t, Object.keys(typeof v === 'object' ? v:{}).reduce( function (d, key) {
-                    if ( t.hasOwnProperty(key) ) t[key] = v[key];
-                    else if ( t.__proto__ !== Object.prototype && t.__proto__.hasOwnProperty(key) ) t[key] = v[key];
+                Object.defineProperties(t, Object.keys(v||{}).reduce( function (d, key) {
+                    if ( t.hasOwnProperty(key) || (t.__proto__ !== Object.prototype && t.__proto__.hasOwnProperty(key)) ) t[key] = v[key];
                     else d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));
