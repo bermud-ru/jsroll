@@ -53,13 +53,19 @@
             return this;
         },
         /**
-         * css.has return TRUE | FALSE is exist Cascading Style Sheets class in HTMLelement
+         * css.has return [" <clssname>", ...] | null is exist Cascading Style Sheets class in HTMLelement
          *
          * @param c
          * @returns {Array|{index: number, input: string}}
          */
         has: function(c){
-            return this.instance.className.match(re('(?:^|\\s)' + c + '(?!\\S)'));
+            var cls = this.instance.className;
+            if (typeof c !== 'string' && cls) return null;
+
+            var result = []; c.split(' ').map(function (e, i, a) {
+                if (cls.match(re('(?:^|\\s)' + e + '(?!\\S)'))) result.push(e);
+            });
+            return result.length ? result : null;
         },
         /**
          * css.add - Add Cascading Style Sheets class to HTMLelement
@@ -77,7 +83,7 @@
          * @returns {css}
          */
         del: function (c) {
-            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
+            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '').trim();
             return this;
         },
         /**
@@ -89,7 +95,7 @@
         tgl: function (c) {
             if (this.instance) {
                 if (!this.has(c)) this.instance.className += ' ' + c;
-                else  this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '');
+                else this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '').trim();
             }
             return this;
         }

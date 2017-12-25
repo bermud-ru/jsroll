@@ -484,7 +484,8 @@
         var compile = function( str ) {
             var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\n]*)|(\<![\-\-\s\w\>\/]*\>)/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
             if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
-            return source.length ? new Function(_e,"var p=[], print=function(){ p.push.apply(p,arguments); };with("+_e+"){p.push('"+
+            // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
+            return source.length ? new Function(_e,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+_e+"){p.push('"+
                    source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("((^|"+tag[1]+")[^\t]*)'","g"),"$1\r").replace(re("\t=(.*?)"+tag[1],"g"),"',$1,'")
                    .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
