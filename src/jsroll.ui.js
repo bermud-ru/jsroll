@@ -83,7 +83,10 @@
          * @returns {css}
          */
         del: function (c) {
-            if (this.instance) this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '').trim();
+            var h = this.instance;
+            if (c && h) c.split(' ').map(function (e, i, a) {
+                h.className = h.className.replace(re('(?:^|\\s)' + e + '(?!\\S)'), '').trim();
+            });
             return this;
         },
         /**
@@ -747,30 +750,29 @@
      */
     var inputer = function(el) {
         if (el && !el.hasOwnProperty('status')) {
-            el.chk = el.parentElement.ui.el('span.form-control-feedback');
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    this.parentElement.css.add('has-feedback').del('has-error').del('has-warning').del('has-success').del('has-spinner');
-                    if (this.chk) this.chk.css.del('glyphicon-ok').del('glyphicon-exclamation-sign').del('glyphicon-remove').del('spinner');
+                    this.parentElement.css.del('has-(danger|warning|success|spinner)');
+                    this.css.del('form-control-(danger|warning|success|spinner)');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
-                            if (this.chk) this.chk.css.add('glyphicon-remove');
-                            this.parentElement.css.add('has-error');
+                            this.css.add('form-control-danger');
+                            this.parentElement.css.add('has-danger');
                             break;
                         case 'warning':
                             this._status = 'warning';
-                            if (this.chk) this.chk.css.add('glyphicon-exclamation-sign');
+                            this.css.add('form-control-warning');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
                             this._status = 'success';
-                            if (this.chk) this.chk.css.add('glyphicon-ok');
+                            this.css.add('form-control-success');
                             this.parentElement.css.add('has-success');
                             break;
                         case 'spinner':
                             this._status = 'spinner';
-                            if (this.chk) this.chk.css.add('spinner');
+                            this.css.add('form-control-spinner');
                             this.parentElement.css.add('has-spinner');
                             break;
                         case 'none':
