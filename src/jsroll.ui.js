@@ -267,11 +267,11 @@
         var st = null, d = 8,
             fn = function fn (d, cb) {
                 this.style.opacity = g.fadeRule[d];
-                if (d-- <= 0){ this.style.display = 'none'; clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
+                if (d-- <= 0){  this.style.display = 'none'; clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
                 else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
             };
         if (el) {
-            el.style.display = 'inherit'; el.style.opacity = 1;
+            el.style.display = el.getAttribute('display') || 'inherit'; el.style.opacity = 1;
             st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
     }; g.fadeOut = fadeOut;
@@ -291,7 +291,7 @@
                 else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
             };
         if (el) {
-            el.style.display = 'inherit'; el.style.opacity = 0;
+            el.style.display = el.getAttribute('display') || 'inherit'; el.style.opacity = 0;
             return st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
         }
     }; g.fadeIn = fadeIn;
@@ -885,6 +885,7 @@
             tmpl:function(data){
                 var owner = this.owner;
                 this.index = -1; this.key = owner.value.toLowerCase() || 'null';
+
                 if (owner.pannel) {
                     var n = ui.dom(tmpl(this.opt.tmpl, {data:data, field: owner.name}));
                     if (n) owner.pannel.innerHTML = n.innerHTML;
@@ -893,6 +894,7 @@
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
+                owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                 this.activeItem(this.key);
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
