@@ -841,10 +841,18 @@
             delta: 330,
             timer: null,
             request: null,
+            __xhr:null,
+            stoped: function () {
+               // if (!this.timer) clearTimeout(this.timer); this.timer = null;
+                if (this.owner.status = 'spinner') {
+                    this.owner.status = '';
+                    if (this.__xhr) this.__xhr.abort();
+                }
+            },
             delayed: function () {
                 if (!this.timer) {
                     var fn = function fn () {
-                            this.xhr();
+                            if (this.request == this.owner.value) {  if (this.owner.pannel && this.owner.pannel.style.display != 'none') fadeOut(this.owner.pannel); this.xhr(); }
                             clearTimeout(this.timer); this.timer = null;
                             if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
@@ -852,9 +860,16 @@
                             }
                         };
                     this.timer = g.setTimeout(fn.bind(this), this.delta);
+                    this.request = this.owner.value;
+                } else {
+                    this.stoped();
                 }
+
+                return this.timer;
             },
-            activeItem:function () {
+            activeItem:function (idx) {
+                if (idx && this.cache.hasOwnProperty(idx)) this.key = idx;
+                else return this.owner.setValue({});
                 var owner = this.owner, ch = this.cache[this.key] || {}, v = {};
                 if ( owner.pannel && Object.keys(ch).length ) {
                     owner.pannel.ui.el('.active', function () { this.css.del('active') });
@@ -865,7 +880,7 @@
                         v = Object.keys(ch)[idx];
                     }
                 }
-                owner.setValue(v);
+                return owner.setValue(v);
             },
             tmpl:function(data){
                 var owner = this.owner;
@@ -878,7 +893,7 @@
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
-                this.activeItem();
+                this.activeItem(this.key);
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
@@ -895,9 +910,9 @@
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
                 if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
                     owner.status = 'spinner';
-                    xhr({url: location.update(owner.ui.attr('url'), params),
+                    this.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: this.opt.rs,
-                        before: function () { owner.status = 'spinner'; },
+                        before: function () { owner.status = 'spinner'; if (owner.pannel && owner.pannel.style.display != 'none') fadeOut(owner.pannel); },
                         after: function () { if (owner.status = 'spinner') owner.status = ''; },
                         done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
@@ -913,32 +928,31 @@
                                         });
                                         if (owner.typeahead.cache === null) owner.typeahead.cache = {};
                                         owner.typeahead.cache[index] = ds;
+                                        owner.typeahead.activeItem(index);
                                         owner.typeahead.show(ds);
-                                        owner.typeahead.activeItem();
                                     }
                                 } catch (e) {
                                     console.error(e,'сервер вернул не коректные данные');
+                                    owner.status = 'error';
                                 }
                             }
-                            if (!owner.value) owner.status = 'none';
+                            // if (!owner.value) owner.status = 'none';
                             return this;
                         },
                         fail: function (e) { console.error('typeahead',e); }
                     });
                 } else {
-                    owner.typeahead.show(this.cache[index]);
+                    if (this.cache.hasOwnProperty(index)) owner.typeahead.show(this.cache[index]);
                 }
+                return this;
             },
             show:function(data){
                 var owner = this.owner;
                 if (owner.ui.active) {
-                    if (Object.keys(data||{}).length) {
-                        this.tmpl(data);
-                        fadeIn(owner.pannel)
-                    } else {
-                        if (owner.pannel && owner.pannel.style.display != 'none') {
+                    if (data && Object.keys(data).length) {
+                        this.tmpl(data); fadeIn(owner.pannel);
+                    } else if (owner.pannel && owner.pannel.style.display != 'none') {
                             fadeOut(owner.pannel);
-                        }
                     }
                 }
                 return false;
@@ -956,8 +970,7 @@
                                 if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
                                 break;
                             case 13:
-                                if (th.timer) clearTimeout(th.timer);
-                                if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
+                                th.stoped(); if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
                             default:
                                 return false;
                         }
@@ -988,15 +1001,17 @@
                     for (var k in th.cache[idx]) if (th.cache[idx][k][this.name] === idx) v = th.cache[idx][k];
                 }
                 this.setValue(v);
+                input_validator(this);
                 return false;
             },
             onFocus:function(e){
                 if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
-                if ( typeof this.status === 'undefined' ) input_validator(this);
+                // if ( typeof this.status === 'undefined' ) input_validator(this);
                 if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) this.typeahead.delayed();
                 return false;
             },
             onInput:function(e){
+                if ( this.pannel && this.pannel.style.display != 'none'  ) fadeOut(this.pannel);
                 this.typeahead.delayed();
                 input_validator(this);
                 return false;
@@ -1023,6 +1038,7 @@
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
                     if (this.typeahead.cache !== null) element.typeahead.opt.fn.call(element, this.typeahead.value);
                     else element.typeahead.opt.fn.call(element, undefined);
+                    input_validator(element);
                 }
             };
             element.typeahead.owner = inputer(element);
