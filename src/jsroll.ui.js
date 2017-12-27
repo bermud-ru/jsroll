@@ -894,7 +894,7 @@
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
-                owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
+                if (!this.opt.wrapper) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                 this.activeItem(this.key);
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
@@ -1034,7 +1034,7 @@
 
         if (!element.typeahead) {
             element.typeahead = th;
-            element.typeahead.opt = Object.assign({skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
+            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
