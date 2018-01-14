@@ -6,7 +6,7 @@
  * @author Андрей Новиков <andrey@novikov.be>
  * @data 21/12/2017
  * @status beta
- * @version 2.0.9b
+ * @version 2.0.10b
  * @revision $Id: jsroll.js 2.0.9b 2017-12-21 12:22:01Z $
  */
 
@@ -62,7 +62,7 @@
             var cls = this.instance.className;
             if (typeof c !== 'string' && cls) return null;
 
-            var result = []; c.split(' ').map(function (e, i, a) {
+            var result = []; c .split(' +').forEach(function (e, i, a) {
                 if (cls.match(re('(?:^|\\s)' + e + '(?!\\S)'))) result.push(e);
             });
             return result.length ? result : null;
@@ -84,7 +84,7 @@
          */
         del: function (c) {
             var h = this.instance;
-            if (c && h) c.split(' ').map(function (e, i, a) {
+            if (c && h) c .split(' +').forEach(function (e, i, a) {
                 h.className = h.className.replace(re('(?:^|\\s)' + e + '(?!\\S)'), '').trim();
             });
             return this;
@@ -146,8 +146,8 @@
         els: function (s, fn, v) {
             if (typeof s === 'string') {
                 var r = []; // ui.wrap([]);
-                s.split(',').map((function (x) {
-                    r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x)||{}).map(function (e, i, a) {
+                s.split(',').forEach((function (x) {
+                    r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e); // e.ui = r.ui; e.ui.instance = e;
                         if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
@@ -170,7 +170,7 @@
                 var mask = a.indexOf('*') != -1 ? re(a.split('*')[0], 'i') : null;
                 if (mask) {
                     var data = {}
-                    Array.prototype.slice.call(this.instance.attributes).map(function (e, i, a) {
+                    Array.prototype.slice.call(this.instance.attributes).forEach(function (e, i, a) {
                         var name = e.nodeName.toString();
                         if (mask.test(name) && (name = name.replace(mask, '')))
                             data[name] = e.value; //.e.nodeValue
@@ -192,16 +192,8 @@
             return this;
         },
         merge: function () {
-            var i = 1, t = arguments[0]||{};
-            if (this.instance.hasOwnProperty('ui')) { t = this.instance; i = 0; }
-            Array.prototype.slice.call(arguments, i).map( function(v, k, a) {
-                Object.defineProperties(t, Object.keys(v||{}).reduce( function (d, key) {
-                    if ( t.hasOwnProperty(key) || (t.__proto__ !== Object.prototype && t.__proto__.hasOwnProperty(key)) ) t[key] = v[key];
-                    else d[key] = Object.getOwnPropertyDescriptor(v, key);
-                    return d;
-                }, {}));
-            });
-            return t;
+            merge.apply(this.instance, arguments);
+            return this.instance;
         },
         src: function (e) {
             var el = e ? e : this.instance;
@@ -209,7 +201,7 @@
         },
         on: function (event, fn, opt) {
             var self = this;
-            event.split(',').map( function(e) { self.instance.addEventListener(e, fn, !!opt)} );
+            event.split(',').forEach( function(e) { self.instance.addEventListener(e.trim(), fn, !!opt)} );
             return this.instance;
         },
         dom: function(d, mime) {
@@ -307,10 +299,10 @@
         if (master && typeof master === 'object' && typeof (opt||{}).slave === 'object') {
             var opt = Object.assign({slave:[], event:null, eh:null}, opt);
             g.ui.wrap(master).slave = opt.slave;
-            if (opt.eh) master.slave.map(function (e, i, a) { e.ui.on(opt.event, opt.eh) });
+            if (opt.eh) master.slave.forEach(function (e, i, a) { e.ui.on(opt.event, opt.eh) });
             master.ui.on(opt.event, function (event) {
                 var type = event.type;
-                this.slave.map(function (e, i, a) { e.dispatchEvent(new Event(type)) });
+                this.slave.forEach(function (e, i, a) { e.dispatchEvent(new Event(type)) });
             });
             return master;
         }
@@ -353,7 +345,7 @@
         },
         implement: function (p, s){
             var self = this;
-            (s || []).map(function (a, i) {
+            (s || []).forEach(function (a, i) {
                 for (var b in self.registry[a]) {
                     switch  (typeof self.registry[a][b]) {
                         case 'object': p.ui.els(a, function(){ this.ui.on(self.registry[a][b][0], self.registry[a][b][1]);}); break;
@@ -377,7 +369,7 @@
                 g.app.dim[id] = {}; g.app.dim[id].self = el;
                 el.store = function (fields) {
                     var s = {};
-                    Object.keys(g.app.dim[id]).map(function(k){if(fields.indexOf(k) != -1) s[k] = g.app.dim[id][k];});
+                    Object.keys(g.app.dim[id]).forEach(function(k){if(fields.indexOf(k) != -1) s[k] = g.app.dim[id][k];});
                     storage.setItem(id, JSON.stringify(s));
                     return this;
                 };
@@ -514,6 +506,19 @@
 
     /**
      *
+     * @param args
+     * @param model
+     */
+    g.paginator = function(args, model) {
+        var self=this, pg = args.paginator;
+        if (pg) this.ui.el('.paginator', function (e) {
+            tmpl('paginator-box', {pages: Math.ceil(pg.count / 10), page: pg.page, model: model }, this);
+        });
+
+    };
+
+    /**
+     *
      * @param els
      * @param v
      * @returns {*}
@@ -522,7 +527,7 @@
         var elements = [], index = 0;
         if (els) {
             if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
-            els.map(function (e, i, a) {
+            els.forEach(function (e, i, a) {
                 e.ui.el('input', function (e) {
                     elements.push(this);
                     if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
@@ -539,14 +544,14 @@
                 __valid: true,
                 get valid(){
                     var self = this; self.__valid = true;
-                    this.el.map(function (e,i,a) { self.__valid &= input_validator(e) });
+                    this.el.forEach(function (e,i,a) { self.__valid &= input_validator(e) });
                     return this.__valid ;
                 },
                 set params(v) {
                     var params = {}, self = this; self.__valid = true;
                     if (typeof v === 'object') params = v; else if (typeof v === 'string') params = location.decoder(v);
                     if (params.hasOwnProperty('page')) this.index = params['page'];
-                    this.el.map(function (e,i,a) {
+                    this.el.forEach(function (e,i,a) {
                         if (params.hasOwnProperty(e.name)) e.value = params[e.name];
                         else e.value = '';
                         self.__valid &= input_validator(e);
@@ -554,7 +559,7 @@
                 },
                 get params() {
                     var params = {}, self = this;
-                    this.el.map(function (e,i,a) {
+                    this.el.forEach(function (e,i,a) {
                         if (e.value) switch (e.tagName) {
                             case 'INPUT': params[e.name] = e.value; input_validator(e);
                                 break;
@@ -1024,7 +1029,7 @@
                 if (this.typeahead.cache !== null) {
                     var self = this, th = this.typeahead, ch = th.cache[th.key];
                     if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                    if ( ch && typeof ch === 'object' ) Object.keys(ch).map(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
+                    if ( ch && typeof ch === 'object' ) Object.keys(ch).forEach(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
                 }
                 this.setValue(v);
                 input_validator(this);
