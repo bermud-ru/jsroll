@@ -377,14 +377,11 @@
                 g.addEventListener('keydown', g.app.popupEvent);
                 tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
                 this.container.css.del('is-(valid|invalid|warning|spinner)');
-                // this.container.css.del('has-(error|info|warning|success|spinner)');
-                //  this.container.css.del('has-error').del('has-info').del('has-warning').del('has-success').del('has-spinner');
-                // fadeIn(this.wnd, 35);
                 this.wnd.css.del('fade');
                 this.wnd.visible = true;
             } else {
                 g.removeEventListener('keydown', g.app.popupEvent);
-                if (this.wnd.visible) this.wnd.css.add('fade'); //fadeOut(this.wnd, 35);
+                if (this.wnd.visible) this.wnd.css.add('fade'); 
                 this.container.innerHTML = null; this.wnd.visible = false;
                 if (this.list) this.list.ui.focus('[role="popup-box"]');
             }
@@ -394,17 +391,14 @@
         fader: function (el, v, context) {
             var app = this, self = v ? ui.el(el, v) : ui.el(el);
             if (self && !self.hasOwnProperty('fade')) {
-                // self.sleep = 35;
                 self.faded = false;
                 self.fade_context = context ? self.ui.el(context) : self;
                 self.fade = function (id, data, opt) {
                     if (arguments.length && !self.faded) {
                         tmpl(id, data, app.variable(self.fade_context, id), opt);
-                        // fadeIn(self, this.sleep);
                         self.css.del('fade');
                         return self.faded = true;
                     } else if (!arguments.length && self.faded) {
-                        fadeOut(self, this.sleep);
                         self.css.add('fade');
                         return self.faded = false;
                     }
