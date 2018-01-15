@@ -14,13 +14,6 @@
     'suspected';
     'use strict';
 
-    g.config = {
-        app: {container:'[role="workspace"]'},
-        msg: {container:'.alert.alert-danger', tmpl:'alert-box'},
-        spinner: '.locker.spinner',
-        popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
-    };
-
     /**
      *  class css - Helper for Cascading Style Sheets properties of HTMLelements
      *
@@ -145,10 +138,10 @@
         },
         els: function (s, fn, v) {
             if (typeof s === 'string') {
-                var r = []; // ui.wrap([]);
+                var r = [];
                 s.split(',').forEach((function (x) {
                     r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
-                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e); // e.ui = r.ui; e.ui.instance = e;
+                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                         if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
                     }));
@@ -246,47 +239,6 @@
         }
     }; g.selection = selection;
 
-    g.fadeRule = [0.0,  0.301, 0.477, 0.602, 0.699, 0.778, 0.845, 0.903, 0.954, 1.0]; // Math.log([1..10])/ Math.log(10);
-        // g.fadeRule.reverse();
-    /**
-     * @function fadeOut
-     * Функция плавного скрытия элемента - свойство opacity = 0
-     *
-     * @param el элемент DOM
-     * @param cb callback функция
-     */
-    function fadeOut(el, cb){
-        var st = null, d = 8,
-            fn = function fn (d, cb) {
-                this.style.opacity = g.fadeRule[d];
-                if (d-- <= 0){  this.style.display = 'none'; clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
-                else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-            };
-        if (el) {
-            el.style.display = el.getAttribute('display') || 'inherit'; el.style.opacity = 1;
-            st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
-        }
-    }; g.fadeOut = fadeOut;
-
-    /**
-     * @function fadeIn
-     * Функция плавного отображения элемента - свойство opacity = 1
-     *
-     * @param el элемент DOM
-     * @param cb callback функция
-     */
-    function fadeIn(el, cb) {
-        var st = null, d = 1,
-            fn = function fn (d, cb) {
-                this.style.opacity = g.fadeRule[d];
-                if (d++ >= 9){ clearTimeout(st); if (typeof cb === 'function') return cb.call(this); }
-                else return st = setTimeout(fn.bind(this, d, cb),typeof cb === 'number' ? cb : 25);
-            };
-        if (el) {
-            el.style.display = el.getAttribute('display') || 'inherit'; el.style.opacity = 0;
-            return st = setTimeout(fn.bind(el, d, cb), typeof cb === 'number' ? cb : 25);
-        }
-    }; g.fadeIn = fadeIn;
 }( window ));
 
 (function ( g, ui, undefined ) {
@@ -295,6 +247,7 @@
 
     if ( typeof ui === 'undefined' ) return false;
 
+    //TODO: create linked object
     var group = function (master, opt) {
         if (master && typeof master === 'object' && typeof (opt||{}).slave === 'object') {
             var opt = Object.assign({slave:[], event:null, eh:null}, opt);
@@ -308,6 +261,13 @@
         }
         return undefined;
     }; g.group = group;
+
+    g.config = {
+        app: {container:'[role="workspace"]'},
+        msg: {container:'.alert.alert-danger', tmpl:'alert-box'},
+        spinner: '.locker.spinner',
+        popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
+    };
 
     /**
      * Application
@@ -348,8 +308,8 @@
             (s || []).forEach(function (a, i) {
                 for (var b in self.registry[a]) {
                     switch  (typeof self.registry[a][b]) {
-                        case 'object': p.ui.els(a, function(){ this.ui.on(self.registry[a][b][0], self.registry[a][b][1]);}); break;
-                        case 'string': p.ui.els(a, function(){ this.ui.on(self.registry[a][0], self.registry[a][1]);}); return;
+                        case 'object': p.ui.els(a, function(){ this.ui.on(self.registry[a][b][0], self.registry[a][b][1]); return this }); break;
+                        case 'string': p.ui.els(a, function(){ this.ui.on(self.registry[a][0], self.registry[a][1]); return this }); return;
                         case 'function': self.registry[a][b].call(p.ui.els(a), self.dim[a] || {});
                     }
                 };
@@ -362,7 +322,7 @@
                 Object.defineProperty(el, 'dim', {
                     get: function () {
                         try {
-                            return g.app.dim[id] || (g.app.dim[id] = Object.assign(JSON.parse(storage.getItem(id)||''),{self:el}));
+                            return g.app.dim[id] || (g.app.dim[id] = Object.assign(JSON.parse(storage.getItem(id)||''), {self:el}));
                         } catch (e) { g.app.dim[id] = {}; g.app.dim[id].self = el; return g.app.dim[id]; }
                     }
                 });
@@ -386,8 +346,8 @@
         msg: {
             show: function (params, close) {
                 tmpl(g.config.msg.tmpl, params, g.app.elem);
-                fadeIn(g.app.elem, 0);
-                if (typeof close == 'undefined' || !close) fadeOut(g.app.elem, 90);
+                g.app.elem.css.del('fade');
+                if (typeof close == 'undefined' || !close) g.app.elem.css.add('fade');
                 return g.app.elem;
             }
         },
@@ -409,19 +369,23 @@
         },
         list: g,
         popupEvent: function (e) { if (e.keyCode == 27 ) g.app.popup(); },
-        popup: function (id, data, opt) { //TODO: refactoring code for popup!
+        popup: function (id, data, opt) {
+            //TODO: refactoring code for popup!
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (arguments.length && !this.wnd.visible) {
                 this.container =  this.container || ui.el(g.config.popup.container);
                 g.addEventListener('keydown', g.app.popupEvent);
                 tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
-                this.container.css.del('has-error').del('has-info').del('has-warning').del('has-success');
-                fadeIn(this.wnd, 35);
+                this.container.css.del('is-(valid|invalid|warning|spinner)');
+                // this.container.css.del('has-(error|info|warning|success|spinner)');
+                //  this.container.css.del('has-error').del('has-info').del('has-warning').del('has-success').del('has-spinner');
+                // fadeIn(this.wnd, 35);
+                this.wnd.css.del('fade');
                 this.wnd.visible = true;
             } else {
                 g.removeEventListener('keydown', g.app.popupEvent);
-                if (this.wnd.visible) fadeOut(this.wnd, 35);
-                this.wnd.visible = false;
+                if (this.wnd.visible) this.wnd.css.add('fade'); //fadeOut(this.wnd, 35);
+                this.container.innerHTML = null; this.wnd.visible = false;
                 if (this.list) this.list.ui.focus('[role="popup-box"]');
             }
             return this;
@@ -430,16 +394,18 @@
         fader: function (el, v, context) {
             var app = this, self = v ? ui.el(el, v) : ui.el(el);
             if (self && !self.hasOwnProperty('fade')) {
-                self.sleep = 35;
+                // self.sleep = 35;
                 self.faded = false;
                 self.fade_context = context ? self.ui.el(context) : self;
                 self.fade = function (id, data, opt) {
                     if (arguments.length && !self.faded) {
                         tmpl(id, data, app.variable(self.fade_context, id), opt);
-                        fadeIn(self, this.sleep);
+                        // fadeIn(self, this.sleep);
+                        self.css.del('fade');
                         return self.faded = true;
                     } else if (!arguments.length && self.faded) {
                         fadeOut(self, this.sleep);
+                        self.css.add('fade');
                         return self.faded = false;
                     }
                     return self;
@@ -505,6 +471,7 @@
     }; g.app = new app(g.document);
 
     /**
+     * Paginator List Items View
      *
      * @param args
      * @param model
@@ -514,7 +481,6 @@
         if (pg) this.ui.el('.paginator', function (e) {
             tmpl('paginator-box', {pages: Math.ceil(pg.count / 10), page: pg.page, model: model }, this);
         });
-
     };
 
     /**
@@ -633,15 +599,17 @@
             fail:function (data,  method) {
                 return this.error = data;
             }
-        }; for (var n in methods) {
+        };
+
+        for (var n in methods) {
             var l = methods[n].toLowerCase(), u = l.toUpperCase();
             p.rs[u] = null;
             p[l] = (function(u){ return function(data) { this.rs[u] = null; return this.proc = rest(this,u,data); }}).apply(p,[u]);
             Object.defineProperty(p, u, { get: function() { return this.rs[u]; }});
         }
 
-        if (rt) return p;
-        else console.warn('Can\'t resolve route:' ,route);
+        if (rt) return p; else console.warn('Can\'t resolve route:' ,route);
+
         return {};
     }; g.crud = crud;
 
@@ -655,9 +623,9 @@
         elem: ui.el(g.config.msg.container),
         show: function (params, close) {
             tmpl(g.config.msg.tmpl, params, this.elem);
-            fadeIn(this.elem, 0);
+            this.elem.css.del('fade');
             var el = this.elem;
-            if (typeof close == 'undefined' || !close) el.timer = setTimeout(function(){fadeOut(el, 125)}, 3000);
+            if (typeof close == 'undefined' || !close) el.timer = setTimeout(function(){el.css.add('fade')}, 3000);
             return this.elem;
         }
     }; g.msg = msg;
@@ -711,13 +679,7 @@
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
             else if ((pattern = element.getAttribute('pattern')) === null) res = true;
-            else {
-                // try {
-                //     var pattern = /[?\/](.+)(\/([igum]*$))/.exec(element.getAttribute('pattern')) || [];
-                //     var re = new RegExp(pattern[1],pattern[3]||'g');
-                //     res = re.test(element.value.trim());
-                // } catch(e) { res = false }
-                if (!element.hasOwnProperty('testPattern')) {
+            else { if (!element.hasOwnProperty('testPattern')) {
                     try {
                         var p = /[?\/](.+)(\/([igum]*$))/.exec(pattern) || [];
                         element.regex = new RegExp(p[1]||pattern,p[3]||'');
@@ -749,6 +711,7 @@
 
     /**
      * inputer
+     * //maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css
      *
      * @param el
      * @returns {*}
@@ -758,26 +721,31 @@
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
-                    this.css.del('form-control-(danger|warning|success|spinner)');
+                    // this.css.del('form-control-(danger|warning|success|spinner)');
+                    this.css.del('is-(valid|invalid|warinig|spinner)');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
-                            this.css.add('form-control-danger');
+                            this.css.add('is-invalid');
+                            // this.css.add('form-control-danger');
                             this.parentElement.css.add('has-danger');
                             break;
                         case 'warning':
                             this._status = 'warning';
-                            this.css.add('form-control-warning');
+                            this.css.add('is-warning');
+                            // this.css.add('form-control-warning');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
                             this._status = 'success';
-                            this.css.add('form-control-success');
+                            this.css.add('is-valid');
+                            // this.css.add('form-control-success');
                             this.parentElement.css.add('has-success');
                             break;
                         case 'spinner':
                             this._status = 'spinner';
-                            this.css.add('form-control-spinner');
+                            this.css.add('is-spinner');
+                            // this.css.add('form-control-spinner');
                             this.parentElement.css.add('has-spinner');
                             break;
                         case 'none':
@@ -857,7 +825,7 @@
             delayed: function () {
                 if (!this.timer) {
                     var fn = function fn () {
-                            if (this.request == this.owner.value) {  if (this.owner.pannel && this.owner.pannel.style.display != 'none') fadeOut(this.owner.pannel); this.xhr(); }
+                            if (this.request == this.owner.value) {  if (this.owner.pannel) this.owner.pannel.css.add('fade'); this.xhr(); }
                             clearTimeout(this.timer); this.timer = null;
                             if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
@@ -899,6 +867,7 @@
                     owner.parentElement.css.add('dropdown');
                     owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                 }
+
                 if (!this.opt.wrapper) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                 this.activeItem(this.key);
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
@@ -919,7 +888,7 @@
                     owner.status = 'spinner';
                     this.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: this.opt.rs,
-                        before: function () { owner.status = 'spinner'; if (owner.pannel && owner.pannel.style.display != 'none') fadeOut(owner.pannel); },
+                        before: function () { owner.status = 'spinner'; if (owner.pannel) owner.pannel.css.add('fade'); },
                         after: function () { if (owner.status = 'spinner') owner.status = ''; },
                         done: function (e) {
                             if ([200, 206].indexOf(this.status) < 0) {
@@ -943,7 +912,6 @@
                                     owner.status = 'error';
                                 }
                             }
-                            // if (!owner.value) owner.status = 'none';
                             return this;
                         },
                         fail: function (e) { console.error('typeahead',e); }
@@ -957,9 +925,9 @@
                 var owner = this.owner;
                 if (owner.ui.active) {
                     if (data && Object.keys(data).length) {
-                        this.tmpl(data); fadeIn(owner.pannel);
-                    } else if (owner.pannel && owner.pannel.style.display != 'none') {
-                            fadeOut(owner.pannel);
+                        this.tmpl(data); owner.pannel.css.del('fade');
+                    } else if (owner.pannel) {
+                        owner.pannel.css.add('fade');
                     }
                 }
                 return false;
@@ -977,7 +945,7 @@
                                 if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
                                 break;
                             case 13:
-                                th.stoped(); if (this.pannel && this.pannel.style.display != 'none') fadeOut(this.pannel);
+                                th.stoped(); if (this.pannel) this.pannel.css.add('fade');
                             default:
                                 return false;
                         }
@@ -1018,13 +986,13 @@
                 return false;
             },
             onInput:function(e){
-                if ( this.pannel && this.pannel.style.display != 'none'  ) fadeOut(this.pannel);
+                if ( this.pannel ) this.pannel.css.add('fade');
                 this.typeahead.delayed();
                 input_validator(this);
                 return false;
             },
             onBlur:function(e){
-                if ( this.pannel && this.pannel.style.display != 'none' ) fadeOut(this.pannel);
+                if ( this.pannel) this.pannel.css.add('fade');
                 var v = {};
                 if (this.typeahead.cache !== null) {
                     var self = this, th = this.typeahead, ch = th.cache[th.key];
