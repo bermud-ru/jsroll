@@ -239,6 +239,47 @@
         }
     }; g.selection = selection;
 
+    /**
+     * Fader Helper
+     *
+     * @param s
+     * @param opt
+     * @returns {boolean}
+     */
+    function fader(s, opt) {
+        if (!s) return false;
+
+        var opt = Object.assign({display:false,timeout:500,context:null},opt),
+            init = function (v) {
+                if (!v.hasOwnProperty('fade')) {
+                    v.faded = v.style.opacity == 0;
+                    v.opt = opt;
+                    v.opt.context = typeof opt.context === 'string' ? v.el(opt.context) : v;
+                    Object.defineProperty(v, 'fade', {
+                        get: function() { return v.faded; },
+                        set: function(is) {
+                            if (is) {
+                                v.css.add('fade');
+                                if (v.opt.display) setTimeout(function(){ v.style.display = 'none' }, v.opt.timeout);
+                                return v.faded = true;
+                            } else {
+                                if (v.opt.display) v.style.display = v.getAttribute('display') ? v.getAttribute('display') : 'inherit';
+                                v.css.del('fade');
+                                return v.faded = false;
+                            }
+                        },
+                        enumerable: true,
+                        configurable: true
+                    });
+                }
+            }
+
+        if (typeof s === 'string') g.ui.els(s).forEach(function (v,i,a) { init(v) });
+        else if (s instanceof HTMLElement) init(s);
+        else if (typeof s === 'object') s.forEach(function (v,i,a) { init(v) });
+        else return false;
+    }; g.fader = fader;
+
 }( window ));
 
 (function ( g, ui, undefined ) {
@@ -346,8 +387,9 @@
         msg: {
             show: function (params, close) {
                 tmpl(g.config.msg.tmpl, params, g.app.elem);
-                g.app.elem.css.del('fade');
-                if (typeof close == 'undefined' || !close) g.app.elem.css.add('fade');
+                // g.app.elem.css.del('fade');
+                g.app.elem.fade = false;
+                if (typeof close == 'undefined' || !close) g.app.elem.fade = true; //g.app.elem.css.add('fade');
                 return g.app.elem;
             }
         },
@@ -368,7 +410,7 @@
             g.app.spinner = false;
         },
         list: g,
-        popupEvent: function (e) { if (e.keyCode == 27 ) g.app.popup(); },
+        popupEvent: function (e) { if (e.keyCode == 27 ) { if (!g.app.elem.css.has('fade')) { clearTimeout(g.app.elem.timer); g.app.elem.fade = true; } else {g.app.popup(); }} },
         popup: function (id, data, opt) {
             //TODO: refactoring code for popup!
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
@@ -377,37 +419,16 @@
                 g.addEventListener('keydown', g.app.popupEvent);
                 tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
                 this.container.css.del('is-(valid|invalid|warning|spinner)');
-                this.wnd.css.del('fade');
-                this.wnd.visible = true;
+                this.wnd.fade = false;
             } else {
                 g.removeEventListener('keydown', g.app.popupEvent);
-                if (this.wnd.visible) this.wnd.css.add('fade'); 
-                this.container.innerHTML = null; this.wnd.visible = false;
+                this.container.innerHTML = null;
+                this.wnd.fade = true;
                 if (this.list) this.list.ui.focus('[role="popup-box"]');
             }
             return this;
         },
-
-        fader: function (el, v, context) {
-            var app = this, self = v ? ui.el(el, v) : ui.el(el);
-            if (self && !self.hasOwnProperty('fade')) {
-                self.faded = false;
-                self.fade_context = context ? self.ui.el(context) : self;
-                self.fade = function (id, data, opt) {
-                    if (arguments.length && !self.faded) {
-                        tmpl(id, data, app.variable(self.fade_context, id), opt);
-                        self.css.del('fade');
-                        return self.faded = true;
-                    } else if (!arguments.length && self.faded) {
-                        self.css.add('fade');
-                        return self.faded = false;
-                    }
-                    return self;
-                }
-            }
-            return self;
-        },
-
+        fader: function (s, opt) { g.fader(s, opt); return this },
         download:function(url, opt){
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url, done: function(e, x) {
                 if ([200, 206].indexOf(this.status) < 0) {
