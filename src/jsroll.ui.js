@@ -605,15 +605,9 @@
             proc: null,
             before: null,
             after: null,
-            abort:function () {
-                if (this.proc) this.proc.abort(); this.proc = null;
-            },
-            done:function (data,  method) {
-                return this.rs[method] = data;
-            },
-            fail:function (data,  method) {
-                return this.error = data;
-            }
+            abort:function () { if (this.proc) this.proc.abort(); this.proc = null },
+            done:function (data,  method) { return this.rs[method] = data },
+            fail:function (data,  method) { return this.error = data }
         };
 
         for (var n in methods) {
