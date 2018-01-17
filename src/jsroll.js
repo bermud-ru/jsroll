@@ -14,7 +14,19 @@
     'suspected';
     'use strict';
     var version = '2.0.10b';
+
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
+    var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
+        function CustomEvent ( event, params ) {
+            params = params || { bubbles: false, cancelable: false, detail: undefined };
+            var evt = g.document.createEvent( 'CustomEvent' );
+            evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
+            return evt;
+        }
+        CustomEvent.prototype = g.Event.prototype;
+        return CustomEvent;
+    })()); g.evt = CustomEvent;
+
     var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
 
     g.URL = g.URL || g.webkitURL;
