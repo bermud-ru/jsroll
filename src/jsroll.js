@@ -519,6 +519,12 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
+        var self = Object.merge({
+                tmplContext: undefined,
+                onTmplError: function (type, id, str, args, e ) {
+                    console.error('ERROR['+type+'] jsRoll.tmpl()', [id, str], args, e); return;
+                }
+            }, typeof this !== 'undefined' ? this : {});
         var args = arguments; args[1] = args[1] || {};
         var compile = function( str ) {
             var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)|(\<![\-\-\s\w\>\/]*\>)/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
@@ -529,7 +535,7 @@
                    .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
             build = function( str, id ) {
-                var isId = typeof id !== 'undefined', data = {}, pattern = null, context;
+                var isId = typeof id !== 'undefined', data = {}, pattern = null;
                 var result = null, after, before, a, pig = g.document.getElementById(id);
 
                 try {
@@ -546,7 +552,7 @@
                         if (a = pig.getAttribute('arguments')) try {
                             data = Object.merge(JSON.parse(a) || {}, data);
                         } catch (e) {
-                            console.error('jsRoll::tmpl()'+(id||str), args, 'ERROR JSON.parse:', a);
+                            return self.onTmplError('tmpl-arguments', id, str, args,a);
                         }
 
                         args[1] = Object.merge(args[1], data);
@@ -566,16 +572,16 @@
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
 
-                    if (!pattern) { console.error('jsRoll::tmpl() Error прустой шаблон:', id || str || null); return }
+                    if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон') }
                     result = pattern.call(g.tmpl, args[1]);
 
-                    if (typeof cb == 'function') context = cb.call(pattern || g.tmpl, result) || g.tmpl;
-                    else if (typeof cb == 'object' && (context = cb)) context.innerHTML = result;
+                    if (typeof cb == 'function') self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl;
+                    else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) self.tmplContext.innerHTML = result;
 
-                    if (context && pig && (after = pig.getAttribute('after'))) func(after, context, args);
-                    else if (opt && typeof opt.after == 'function') opt.after.apply(context, args);
+                    if (self.tmplContext && pig && (after = pig.getAttribute('after'))) func(after, self.tmplContext, args);
+                    else if (opt && typeof opt.after == 'function') opt.after.apply(self.tmplContext, args);
 
-                } catch( e ) { console.error('jsRoll::tmpl()', [id, str], args, 'ERROR: ', e); return }
+                } catch( e ) { return self.onTmplError('tmpl-build', id, str, args, e) }
                 return result;
             };
 
@@ -591,7 +597,7 @@
                 case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
                 default: return build( str );
             }
-        } catch( e ) { console.error('jsRoll::tmpl()', [id, str], args, 'ERROR: ', e); return }
+        } catch( e ) { return self.onTmplError('tmpl', id, str, args, e) }
     }; tmpl.cache = {}; g.tmpl = tmpl;
 
     /**

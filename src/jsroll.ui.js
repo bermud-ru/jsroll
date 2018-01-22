@@ -184,6 +184,9 @@
             }
             return this;
         },
+        tmpl: function (str, data, cb, opt) {
+            tmpl.apply( this.instance, [str, data, cb, opt] );
+        },
         merge: function () {
             merge.apply(this.instance, arguments);
             return this.instance;
@@ -413,18 +416,28 @@
         popupEvent: function (e) { if (e.keyCode == 27 ) { if (!g.app.elem.css.has('fade')) { clearTimeout(g.app.elem.timer); g.app.elem.fade = true; } else {g.app.popup(); }} },
         popup: function (id, data, opt) {
             //TODO: refactoring code for popup!
+            var self = this;
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (arguments.length && !this.wnd.visible) {
                 this.container =  this.container || ui.el(g.config.popup.container);
-                g.addEventListener('keydown', g.app.popupEvent);
-                tmpl(id, data, this.variable(this.container, 'popupBox'), opt);
-                this.container.css.del('is-(valid|invalid|warning|spinner)');
-                this.wnd.fade = false;
+                var  up = false, t = {
+                    onTmplError:function () {
+                        g.msg.show({message:'Ошибка выполнения приложения!'});
+                        up = true;
+                    }
+                };
+                tmpl.apply(t, [id, data, this.variable(this.container, 'popupBox'), opt]);
+                if (!up) {
+                    g.addEventListener('keydown', g.app.popupEvent);
+                    self.container.css.del('is-(valid|invalid|warning|spinner)');
+                    self.wnd.fade = up = false;
+                }
+
             } else {
-                g.removeEventListener('keydown', g.app.popupEvent);
-                this.container.innerHTML = null;
-                this.wnd.fade = true;
-                if (this.list) this.list.ui.focus('[role="popup-box"]');
+                g.removeEventListener('keydown', self.popupEvent);
+                self.container.innerHTML = null;
+                self.wnd.fade = true;
+                if (self.list) self.list.ui.focus('[role="popup-box"]');
             }
             return this;
         },
