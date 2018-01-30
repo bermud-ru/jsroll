@@ -423,6 +423,7 @@
                 var  up = false, t = {
                     onTmplError:function () {
                         g.msg.show({message:'Ошибка выполнения приложения!'});
+                        console.error(arguments);
                         up = true;
                     }
                 };
@@ -522,14 +523,12 @@
         if (els) {
             if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
             els.forEach(function (e, i, a) {
-                e.ui.el('input', function (e) {
-                    elements.push(this);
-                    if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
-                    input_validator(this);
-                }) || e.ui.el('select', function (e) {
-                    elements.push(this);
-                    if (typeof v === 'object' && v.hasOwnProperty(this.name)) this.value = v[this.name];
-                });
+                var fe =  ['INPUT','SELECT'].indexOf(e.tagName) > -1 ? e : e.ui.el('input,select');
+                if (fe) {
+                    elements.push(fe);
+                    if (typeof v === 'object' && v.hasOwnProperty(fe.name)) fe.value = v[fe.name];
+                    if (fe.tagName === 'INPUT') input_validator(fe);
+                }
             });
 
             return {
@@ -581,9 +580,9 @@
 
                     if (er.length || wr.length || fl.length) {
                         for (var i in this.el) {
-                            if (er.length && this.el[i].name.indexOf(er) >-1) { this.el[i].status='error'; result &= false }
-                            else if (wr.length && this.el[i].name.indexOf(wr) >-1) { this.el[i].status='warning'; result &= false }
-                            else if (fl.length && this.el[i].name.indexOf(fl) >-1) { result &= input_validator(this.el[i]) }
+                            if (er.length && er.indexOf(this.el[i].name) >-1) { this.el[i].status='error'; result &= false }
+                            else if (wr.length && wr.indexOf(this.el[i].name) >-1) { this.el[i].status='warning'; result &= false }
+                            else if (fl.length && fl.indexOf(this.el[i].name) >-1) { result &= input_validator(this.el[i]) }
                         }
                     }
                     return result;
@@ -713,7 +712,8 @@
                 res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
-            var el = element.type != 'hidden' ? element : (typeof element.statusInstance === 'object' ? element.statusInstance : false);
+
+            var el = element.type != 'hidden' ? element : (element.hasOwnProperty('statusInstance') ? element.statusInstance : false);
             if (el) {
                 inputer(ui.wrap(el));
                 if (!res) {
@@ -725,6 +725,8 @@
                         el.status = 'none'
                     }
                 }
+            } else if (element.type == 'hidden' && !res) {
+                console.warn('Error "'+element.name+'" not valid!');
             }
             return res;
         }

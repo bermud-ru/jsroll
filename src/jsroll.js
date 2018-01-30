@@ -101,10 +101,13 @@
     Object.defineProperty(Object.prototype, 'merge', {
         value: function() {
             if (!arguments.length) return null;
-            var o = typeof this !== 'function' ? this : {};
+            var o = (typeof this !== 'function' ? this : {});
             Array.prototype.slice.call(arguments).forEach( function(v, k, a) {
                 Object.defineProperties(o, Object.keys(v||{}).reduce( function (d, key) {
-                    d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
+                        o[key] = v[key]; d[key] = Object.getOwnPropertyDescriptor(o, key);
+                    } else d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    // d[key] = Object.getOwnPropertyDescriptor(v, key);
                     return d;
                 }, {}));
             });
