@@ -510,6 +510,7 @@
         if (pg) this.ui.el('.paginator', function (e) {
             tmpl('paginator-box', {pages: Math.ceil(pg.count / 10), page: pg.page, model: model }, this);
         });
+        return pg;
     };
 
     /**
