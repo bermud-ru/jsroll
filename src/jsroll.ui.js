@@ -933,8 +933,14 @@
                 });
             },
             xhr:function(){
-                if (this.opt.skip > this.owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))) return this.owner.typeahead.show([]);;
                 var owner = this.owner, params = {};
+
+                if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))){
+                    if (owner.typeahead.cache === null) owner.typeahead.cache = {};
+                    // owner.typeahead.cache[owner.value.trim()] = {};
+                    return owner.typeahead.show([]);
+                }
+
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
                 if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
