@@ -471,14 +471,15 @@
                 return false;
             };
 
-            f.send = function(callback) {
-                var data = f.prepare(f.validator), before = true;
+            f.send = function() {
+                var data = f.prepare(f.validator), before = true, args = arguments;
                 if (f.getAttribute('valid') != 0) {
                     if (typeof f.before == 'function') before = f.before.call(this);
-                    if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof callback == 'function' ?
+                    if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof args[0] == 'function' ?
                             function() {
-                                var result = callback.apply(this, arguments);
-                                if (typeof f.after == 'function') return f.after.call(this, result);
+                                var callback = args.shift();
+                                var result = callback.apply(this, args);
+                                if (typeof f.after == 'function') return f.after.call(this, result, args);
                                 return f;
                             } :
                             function() {
@@ -493,11 +494,14 @@
                                 }
 
                                 if (res.result == 'error' ) {
-                                    if (typeof f.fail == 'function') f.fail.call(f, res);
+                                    if (typeof f.fail == 'function') f.fail.call(f, res, args);
                                 } else if (res.result == 'ok') {
-                                    if (typeof f.done == 'function') f.done.call(f, res);
+                                    if (typeof f.done == 'function') f.done.call(f, res, args);
                                 }
-                                if (typeof f.after == 'function') f.after.call(f, res, res.result == 'ok');
+                                if (typeof f.after == 'function') {
+                                    res.result == 'ok';
+                                    f.after.call(f, res, args);
+                                }
                                 return f;
                             }
                     }, f.opt));

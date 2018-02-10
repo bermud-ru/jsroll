@@ -418,7 +418,7 @@
             //TODO: refactoring code for popup!
             var self = this;
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
-            if (arguments.length && !this.wnd.visible) {
+            if (self.wnd.fade) {
                 this.container =  this.container || ui.el(g.config.popup.container);
                 var  up = false, t = {
                     onTmplError:function () {
@@ -433,9 +433,9 @@
                     self.container.css.del('is-(valid|invalid|warning|spinner)');
                     self.wnd.fade = up = false;
                 }
-
             } else {
                 g.removeEventListener('keydown', self.popupEvent);
+                if (typeof arguments[0] == 'function') arguments[0].apply(self, obj2array(arguments).slice(1));
                 self.container.innerHTML = null;
                 self.wnd.fade = true;
                 if (self.list) self.list.ui.focus('[role="popup-box"]');
@@ -464,7 +464,9 @@
                         var blob = g.bb(this.response, {type: type});
 
                         if (typeof g.navigator.msSaveBlob !== 'undefined') {
-                            // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for which they were created. These URLs will no longer resolve as the data backing the URL has been freed."
+                            // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for
+                            // which they were created. These URLs will no longer resolve as the data backing the
+                            // URL has been freed."
                             g.navigator.msSaveBlob(blob, filename);
                         } else {
                             var downloadUrl = g.URL.createObjectURL(blob);
@@ -733,6 +735,32 @@
         }
         return true;
     };  g.input_validator = input_validator;
+
+    /**
+     * Set default value for FORM elements
+     *
+     * @param els
+     * @param attr
+     * @returns {*}
+     */
+    var set_default = function (els, attr) {
+        if (!els) return null;
+
+        return this.ui.els(els,function () {
+            if (['checkbox','radio'].indexOf((this.getAttribute('type') || 'text').toLowerCase()) >-1)
+                this.checked = this.ui.attr(attr||'default') || false;
+            else switch (this.tagName) {
+                case 'SELECT':
+                    this.value = this.ui.attr(attr||'default') || 0;
+                    break;
+                case 'INPUT':
+                case 'TEXTAREA':
+                default:
+                    this.value = this.ui.attr(attr||'default') || '';
+            }
+            this.status = 'none';
+        });
+    };  g.set_default = set_default;
 
     /**
      * inputer
