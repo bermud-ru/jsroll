@@ -4,10 +4,10 @@
  *
  * Классы RIA / SPA application framework UI (User Interface)
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 21/12/2017
+ * @data 13/02/2018
  * @status beta
- * @version 2.0.10b
- * @revision $Id: jsroll.js 2.0.9b 2017-12-21 12:22:01Z $
+ * @version 2.0.11b
+ * @revision $Id: jsroll.js 2.0.11b 2018-02-13 21:22:01Z $
  */
 
 (function ( g, undefined ) {
@@ -98,6 +98,27 @@
     }; g.css = new css(g);
 
     /**
+     *  polyfill
+     */
+    var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
+        function CustomEvent ( event, params ) {
+            params = params || { bubbles: false, cancelable: false, detail: undefined };
+            var evt = g.document.createEvent( 'CustomEvent' );
+            evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
+            return evt;
+        }
+        CustomEvent.prototype = g.Event.prototype;
+        return CustomEvent;
+    })()); g.ce = CustomEvent;
+
+    Element.matches = Element.matches || Element.matchesSelector || Element.webkitMatchesSelector || Element.msMatchesSelector ||
+        function(selector) {
+            var node = this, nodes = (node.parentNode || node.document).querySelectorAll(selector), i = -1;
+            while (nodes[++i] && nodes[i] != node);
+            return !!nodes[i];
+        }
+
+    /**
      * class ui - HTML elements Extention
      *
      * @param instance
@@ -106,19 +127,12 @@
     var ui = function(instance) {
         if (instance.hasOwnProperty('ui')) return instance;
         this._parent = null;
-        this.instance = instance || g;
+        this.instance = instance || g.document;
         if (instance) { this.instance.css = new css(this.instance); this.wrap(this.instance.parentElement); }
         return this;
     }; ui.prototype = {
-        /**
-         * ui.wrap
-         *
-         * @param el
-         * @param v
-         * @returns {*}
-         */
         wrap:function(el, v){
-            if (el && typeof el === 'object' && !el.hasOwnProperty('ui')) {
+            if (el instanceof Element && !el.hasOwnProperty('ui')) {
                 el.ui = new ui(el); if (typeof v == 'string') g[v]=el;
             }
             return el;
@@ -186,6 +200,7 @@
         },
         tmpl: function (str, data, cb, opt) {
             tmpl.apply( this.instance, [str, data, cb, opt] );
+            return this.instance;
         },
         merge: function () {
             merge.apply(this.instance, arguments);
@@ -198,6 +213,16 @@
         on: function (event, fn, opt) {
             var self = this;
             event.split(',').forEach( function(e) { self.instance.addEventListener(e.trim(), fn, !!opt)} );
+            return this.instance;
+        },
+        dg: function (s, event, fn, opt) {
+            var self = this;
+            self.instance.addEventListener(event, function(e) {
+                var found, el = (e.target || e.srcElement);
+                while (el && el.matches && el !== self && !(found = el.matches(s))) el = el.parentElement;
+                if (found) { fn.call(self.wrap(el), e); return el }
+                return !!found;
+            }, !!opt);
             return this.instance;
         },
         dom: function(d, mime) {
