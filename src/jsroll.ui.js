@@ -316,19 +316,18 @@
 
     if ( typeof ui === 'undefined' ) return false;
 
-    //TODO: create linked object
-    var group = function (master, opt) {
-        if (master && typeof master === 'object' && typeof (opt||{}).slave === 'object') {
-            var opt = Object.assign({slave:[], event:null, eh:null}, opt);
-            g.ui.wrap(master).slave = opt.slave;
-            if (opt.eh) master.slave.forEach(function (e, i, a) { e.ui.on(opt.event, opt.eh) });
-            master.ui.on(opt.event, function (event) {
-                var type = event.type;
-                this.slave.forEach(function (e, i, a) { e.dispatchEvent(new Event(type)) });
-            });
-            return master;
+    var group = function (els, opt) {
+        this.isValid = 1;
+        this.opt = opt||{};
+        this.elements = typeof els === 'string' ? ui.els(els) : els;
+    }; group.prototype = {
+        validate:function () {
+            return this;
+        },
+        send:function () {
+            g.xhr(this.opt);
+            return this;
         }
-        return undefined;
     }; g.group = group;
 
     g.config = {
@@ -741,7 +740,7 @@
             }
             if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
 
-            var el = element.type != 'hidden' ? element : (element.hasOwnProperty('statusInstance') ? element.statusInstance : false);
+            var el = element.type != 'hidden' ? element : false;
             if (el) {
                 inputer(ui.wrap(el));
                 if (!res) {
@@ -753,8 +752,6 @@
                         el.status = 'none'
                     }
                 }
-            } else if (element.type == 'hidden' && !res) {
-                console.warn('Error "'+element.name+'" not valid!');
             }
             return res;
         }
@@ -1001,7 +998,7 @@
                         fail: function (e) { console.error('typeahead',e); }
                     });
                 } else {
-                    if (this.cache.hasOwnProperty(index)) owner.typeahead.show(this.cache[index]);
+                    if (this.cache && this.cache.hasOwnProperty(index)) owner.typeahead.show(this.cache[index]);
                 }
                 return this;
             },

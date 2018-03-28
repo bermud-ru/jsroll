@@ -409,13 +409,27 @@
             x.method = opt.method;
             x.open(opt.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
-            x.send(opt.data || null);
+            x.send(opt.data);
             x.id = id;
         } catch (e) {
             x.abort(); x.fail.call(x, e, x);
         }
         return g.xhr.ref[id] = x;
     }; xhr.ref = {}; g.xhr = xhr;
+
+    /**
+     * @function InputHTMLElementSerialize
+     * Сериализация элемента
+     *
+     * @param el
+     * @param v
+     * @returns {*}
+     * @constructor
+     */
+    var InputHTMLElementSerialize = function (el) {
+        if (el instanceof HTMLElement) return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(el.value) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
+        return null;
+    }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
 
     /**
      * @function form
@@ -429,75 +443,103 @@
         value: function(f) {
             f.setAttribute('valid', 1);
             f.response = null;
-            f.MODEL=f.MODEL||{};
+            if (f && !f.hasOwnProperty('MODEL')) {
+                Object.defineProperty(f, 'MODEL', {
+                    set: function MODEL(d) {
+                        if (d && typeof d === 'object') {
+                            f.__MODEL__ = d;
+                            //TODO: for form elements name as array
+                            for (var i = 0; i < f.elements.length; i++) if (d.hasOwnProperty(f.elements[i].name)) {
+                                f.elements[i].value = d[f.elements[i].name];
+                                if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
+                                    f.elements[i].checked = parseInt(d[f.elements[i].name]) !== 0;
+                                }
+                            }
+                        } else {
+                            f.__MODEL__ = {};
+                            f.reset();
+                        }
+                    },
+                    get: function MODEL() {
+                        f.__MODEL__ = {};
+                        for (var i=0; i < f.elements.length; i++) {
+                            var n = new Number(f.elements[i].value);
+                            f.__MODEL__[f.elements[i].name || i] = ['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? f.elements[i].value : n) : (f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0));
+                        }
+                        return f.__MODEL__;
+                    }
+                });
+
+                f.prepare = function(validator) {
+                    var data = [];
+                    if (!validator || (typeof validator === 'function' && validator.call(f, data))) {
+                        for (var i = 0; i < f.elements.length; i++) { data.push(InputHTMLElementSerialize(f.elements[i])); }
+                    } else {
+                        f.setAttribute('valid', 0);
+                    }
+                    return data.join('&');
+                };
+
+                f.update = function(data) {
+                    for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
+                    else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
+                        if (field && data[field]) f.elements[i].value = data[field];
+                    }
+                    return f;
+                };
+
+                f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
+                    if (res.form) for (var i =0; i < this.elements.length; i++) {
+                        if (res.form.hasOwnProperty(this.elements[i].name)) g.css.el(this.elements[i].parentElement).add('has-error');
+                        else g.css.el(this.elements[i].parentElement).del('has-error');
+                        return true;
+                    }
+                    return false;
+                };
+
+                f.send = function() {
+                    var data = f.prepare(f.validator), before = true, args = arguments;
+                    if (f.getAttribute('valid') != 0) {
+                        if (typeof f.before == 'function') before = f.before.call(this);
+                        if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof args[0] == 'function' ?
+                                function() {
+                                    var callback = args.shift();
+                                    var result = callback.apply(this, args);
+                                    if (typeof f.after == 'function') return f.after.call(this, result, args);
+                                    return f;
+                                } :
+                                function() {
+                                    var res = {result:'error'};
+                                    f.response = this.responseText;
+                                    if ([200, 206].indexOf(this.status) < 0)
+                                        res.message = this.status + ': ' + this.statusText;
+                                    else try {
+                                        res = JSON.parse(this.responseText);
+                                    } catch (e) {
+                                        res.message = 'Cервер вернул не коректные данные';
+                                    }
+
+                                    if (res.result == 'error' ) {
+                                        if (typeof f.fail == 'function') f.fail.call(f, res, args);
+                                    } else if (res.result == 'ok') {
+                                        if (typeof f.done == 'function') f.done.call(f, res, args);
+                                    }
+                                    if (typeof f.after == 'function') {
+                                        res.result == 'ok';
+                                        f.after.call(f, res, args);
+                                    }
+                                    return f;
+                                }
+                        }, f.opt));
+                    } else f.setAttribute('valid',1);
+                    return f;
+                };
+            }
+
             f.rest = f.getAttribute('rest') || f.method;
             f.validator = f.validator || null;
             f.opt = f.opt || {};
             f.done = f.done || null;
-
-            f.prepare = function(validator) {
-                var data = [];
-                if (!validator || (typeof validator === 'function' && validator.call(f, data)))
-                    for (var i=0; i < f.elements.length; i++)
-                        data.push((f.elements[i].name || i) + '=' + (f.MODEL[f.elements[i].name || i] = (['checkbox','radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(f.elements[i].value):(f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0)))));
-                else f.setAttribute('valid', 0);
-                return data.join('&');
-            };
-
-            f.update = function(data) {
-                for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
-                else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
-                    if (field && data[field]) f.elements[i].value = data[field];
-                }
-                return f;
-            };
-
-            f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
-                if (res.form) for (var i =0; i < this.elements.length; i++) {
-                    if (res.form.hasOwnProperty(this.elements[i].name)) g.css.el(this.elements[i].parentElement).add('has-error');
-                    else g.css.el(this.elements[i].parentElement).del('has-error');
-                    return true;
-                }
-                return false;
-            };
-
-            f.send = function() {
-                var data = f.prepare(f.validator), before = true, args = arguments;
-                if (f.getAttribute('valid') != 0) {
-                    if (typeof f.before == 'function') before = f.before.call(this);
-                    if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof args[0] == 'function' ?
-                            function() {
-                                var callback = args.shift();
-                                var result = callback.apply(this, args);
-                                if (typeof f.after == 'function') return f.after.call(this, result, args);
-                                return f;
-                            } :
-                            function() {
-                                var res = {result:'error'};
-                                f.response = this.responseText;
-                                if ([200, 206].indexOf(this.status) < 0)
-                                    res.message = this.status + ': ' + this.statusText;
-                                else try {
-                                    res = JSON.parse(this.responseText);
-                                } catch (e) {
-                                    res.message = 'Cервер вернул не коректные данные';
-                                }
-
-                                if (res.result == 'error' ) {
-                                    if (typeof f.fail == 'function') f.fail.call(f, res, args);
-                                } else if (res.result == 'ok') {
-                                    if (typeof f.done == 'function') f.done.call(f, res, args);
-                                }
-                                if (typeof f.after == 'function') {
-                                    res.result == 'ok';
-                                    f.after.call(f, res, args);
-                                }
-                                return f;
-                            }
-                    }, f.opt));
-                } else f.setAttribute('valid',1);
-                return f;
-            };
 
             return f;
         },
