@@ -317,15 +317,87 @@
     if ( typeof ui === 'undefined' ) return false;
 
     var group = function (els, opt) {
-        this.isValid = 1;
-        this.opt = opt||{};
+        this.__isValid = true;
+        this.opt = Object.merge({
+            method: 'get',
+            url: g.location.href,
+            before: function (e) { g.spinner = true; },
+            after: function (e) { g.spinner = false; }
+            }, opt);
         this.elements = typeof els === 'string' ? ui.els(els) : els;
     }; group.prototype = {
-        validate:function () {
-            return this;
+        get isValid () {
+            this.__isValid = true;
+            var self = this;
+            this.elements.forEach(function (e,i,a) { self.__isValid  &= input_validator(e) });
+            return this.__isValid ;
         },
-        send:function () {
-            g.xhr(this.opt);
+        __MODEL__: {},
+        set MODEL(d) {
+            if (d && typeof d === 'object') {
+                this.__MODEL__ = d;
+                for (var i = 0; i < this.elements.length; i++) if (d.hasOwnProperty(this.elements[i].name)) {
+                    this.elements[i].value = d[this.elements[i].name];
+                    if (['checkbox', 'radio'].indexOf((this.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
+                        this.elements[i].checked = parseInt(d[this.elements[i].name]) !== 0;
+                    }
+                }
+            } else {
+                this.__MODEL__ = {};
+            }
+        },
+        get MODEL() {
+            this.__MODEL__ = {};
+            for (var i = 0; i < this.elements.length; i++) {
+                var n = this.elements[i].value.length ? new Number(this.elements[i].value) : NaN;
+                this.__MODEL__[this.elements[i].name || i] = ['checkbox', 'radio'].indexOf((this.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? this.elements[i].value : n) : (this.elements[i].checked ? (this.elements[i].value.indexOf('on') == -1 ? this.elements[i].value : 1) : (this.elements[i].value.indexOf('on') == -1 ? '' : 0));
+            }
+            return this.__MODEL__;
+        },
+        data: function() {
+            var data = []; for (var i = 0; i < this.elements.length; i++) { data.push(g.InputHTMLElementSerialize(this.elements[i])); }
+            return data.join('&');
+        },
+        fail: function (res) {
+            if (res.error) for (var i = 0; i < this.elements.length; i++) {
+                if (res.error.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
+                else this.elements[i].status = 'none';
+                return true;
+            }
+            return false;
+        },
+        send: function () {
+            if (this.isValid) {
+                var args = arguments, self= this;
+                self.opt.before();
+                g.xhr(Object.assign({data: self.data(), done: typeof args[0] == 'function' ?
+                        function() {
+                            var callback = args.shift();
+                            var result = callback.apply(self, args);
+                            self.opt.after(result);
+                            return result;
+                        } :
+                        function() {
+                            var res = {result:'error'};
+                            if ([200, 206].indexOf(this.status) < 0)
+                                res.message = this.status + ': ' + this.statusText;
+                            else try {
+                                res = JSON.parse(this.responseText);
+                            } catch (e) {
+                                res = {result:'error', message: 'Cервер вернул не коректные данные'};
+                            }
+
+                            if (res.result == 'error' ) {
+                                self.fail(res);
+                            } else if (res.result == 'ok') {
+                                self.feedback = res ;
+                            }
+
+                            self.opt.after(res);
+                        }
+                }, self.opt));
+            }
+
             return this;
         }
     }; g.group = group;

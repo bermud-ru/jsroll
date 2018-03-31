@@ -449,6 +449,8 @@
                         if (d && typeof d === 'object') {
                             f.__MODEL__ = d;
                             //TODO: for form elements name as array
+                            // var field = /\[([^\]]+)\]/.exec(this.elements[i].name)[1];
+                            // if (field && data[field]) this.elements[i].value = data[field];
                             for (var i = 0; i < f.elements.length; i++) if (d.hasOwnProperty(f.elements[i].name)) {
                                 f.elements[i].value = d[f.elements[i].name];
                                 if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
@@ -463,7 +465,7 @@
                     get: function MODEL() {
                         f.__MODEL__ = {};
                         for (var i=0; i < f.elements.length; i++) {
-                            var n = new Number(f.elements[i].value);
+                            var n = this.elements[i].value.length ? new Number(this.elements[i].value) : NaN;
                             f.__MODEL__[f.elements[i].name || i] = ['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? f.elements[i].value : n) : (f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0));
                         }
                         return f.__MODEL__;
@@ -481,17 +483,21 @@
                 };
 
                 f.update = function(data) {
-                    for (var i =0; i < f.elements.length; i++) if (data[f.elements[i].name]) f.elements[i].value = data[f.elements[i].name];
-                    else { var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
-                        if (field && data[field]) f.elements[i].value = data[field];
+                    for (var i = 0; i < f.elements.length; i++) {
+                        if (data[f.elements[i].name]) {
+                            f.elements[i].value = data[f.elements[i].name];
+                        } else {
+                            var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
+                            if (field && data[field]) f.elements[i].value = data[field];
+                        }
                     }
                     return f;
                 };
 
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
-                    if (res.form) for (var i =0; i < this.elements.length; i++) {
-                        if (res.form.hasOwnProperty(this.elements[i].name)) g.css.el(this.elements[i].parentElement).add('has-error');
-                        else g.css.el(this.elements[i].parentElement).del('has-error');
+                    if (res.form) for (var i = 0; i < this.elements.length; i++) {
+                        if (res.form.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
+                        else this.elements[i].status = 'none';
                         return true;
                     }
                     return false;
@@ -516,7 +522,7 @@
                                     else try {
                                         res = JSON.parse(this.responseText);
                                     } catch (e) {
-                                        res.message = 'Cервер вернул не коректные данные';
+                                        res = {result:'error', message: 'Cервер вернул не коректные данные'};
                                     }
 
                                     if (res.result == 'error' ) {
