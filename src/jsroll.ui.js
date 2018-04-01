@@ -999,7 +999,7 @@
                 if (idx && this.cache.hasOwnProperty(idx)) {
                     this.key = idx;
                 } else {
-                    this.owner.setValue({});
+                    // this.owner.setValue({});
                     return
                 }
                 var owner = this.owner, ch = this.cache[this.key] || {}, v = {};
@@ -1012,7 +1012,7 @@
                         v = Object.keys(ch)[idx];
                     }
                 }
-                owner.setValue(v);
+                // owner.setValue(v);
                 return
             },
             tmpl:function(data){
@@ -1034,7 +1034,7 @@
                     this.ui.on('mousedown', function (e) {
                         owner.value = this.innerHTML;
                         var ch = owner.typeahead.cache[owner.typeahead.key];
-                        owner.setValue(ch[parseInt(this.ui.attr('value'))]);
+                        // owner.setValue(ch[parseInt(this.ui.attr('value'))]);
                         return;
                     });
                 });
@@ -1044,7 +1044,7 @@
 
                 if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))){
                     if (owner.typeahead.cache === null) owner.typeahead.cache = {};
-                    // owner.typeahead.cache[owner.value.trim()] = {};
+                    owner.typeahead.cache[owner.value.trim()] = {};
                     return owner.typeahead.show([]);
                 }
 
@@ -1113,9 +1113,7 @@
                             case 13:
                                 th.stoped(); if (this.pannel) this.pannel.css.add('fade');
                             default:
-                                // e.preventDefault();
                                 return;
-                                // return false;
                         }
                         v = ch[(x = Object.keys(ch)[th.index])];
                         this.value = (typeof v === 'object' ? v[this.name] : v)||'';
@@ -1134,17 +1132,7 @@
                         }
                     }
                     this.setValue(v);
-                    this.dispatchEvent(new Event('change'));
                 }
-                return;
-            },
-            onChange: function (e) {
-                var idx, th = this.typeahead, v = {};
-                if ((idx = this.value.toLowerCase()) && (th.cache||{}).hasOwnProperty(idx)) {
-                    for (var k in th.cache[idx]) if (th.cache[idx][k][this.name] === idx) v = th.cache[idx][k];
-                }
-                this.setValue(v);
-                input_validator(this);
                 return;
             },
             onFocus:function(e){
@@ -1161,18 +1149,17 @@
             },
             onBlur:function(e){
                 if ( this.pannel) this.pannel.css.add('fade');
-                var v = {};
+                var v = undefined;
                 if (this.typeahead.cache !== null) {
                     var self = this, th = this.typeahead, ch = th.cache[th.key];
                     if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                    if ( ch && typeof ch === 'object' ) Object.keys(ch).forEach(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
+                    if ( ch && typeof ch === 'object' ) Object.keys(ch).forEach(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k]; }});
+                } else {
+                    v = {};
                 }
 
                 this.setValue(v);
-                if (this.typeahead.value && Object.keys(this.typeahead.value).length !== 0) {
-                    this.dispatchEvent(new Event('change'));
-                    input_validator(this);
-                }
+                input_validator(this);
                 return;
             }
         };
@@ -1181,15 +1168,18 @@
             element.typeahead = th;
             element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
+                // this.typeahead.value = v||{};
+                // this.dispatchEvent(new Event('change'));
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
                     if (this.typeahead.cache !== null) element.typeahead.opt.fn.call(element, this.typeahead.value);
                     else element.typeahead.opt.fn.call(element, undefined);
+                    this.dispatchEvent(new Event('change'));
                     // input_validator(element);
                 }
             };
             element.typeahead.owner = inputer(element);
-            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('change', th.onChange);
+            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown);//.ui.on('change', th.onChange);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
         }
         return element;
