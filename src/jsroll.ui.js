@@ -1168,7 +1168,7 @@
                     if ( ch && typeof ch === 'object' ) Object.keys(ch).forEach(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k] }});
                 }
 
-                if (his.typeahead.value && Object.keys(this.typeahead.value).length !== 0) {
+                if (this.typeahead.value && Object.keys(this.typeahead.value).length !== 0) {
                     this.setValue(v);
                     this.dispatchEvent(new Event('change'));
                     input_validator(this);
