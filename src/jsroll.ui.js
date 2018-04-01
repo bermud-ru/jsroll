@@ -1108,7 +1108,9 @@
                             case 13:
                                 th.stoped(); if (this.pannel) this.pannel.css.add('fade');
                             default:
-                                return false;
+                                // e.preventDefault();
+                                return;
+                                // return false;
                         }
                         v = ch[(x = Object.keys(ch)[th.index])];
                         this.value = (typeof v === 'object' ? v[this.name] : v)||'';
@@ -1129,7 +1131,9 @@
                     this.setValue(v);
                 }
                 //e.stopPropagation();
-                return false;
+                // return false;
+                // e.preventDefault();
+                return;
             },
             onChange: function (e) {
                 var idx, th = this.typeahead, v = {};
@@ -1138,19 +1142,24 @@
                 }
                 this.setValue(v);
                 input_validator(this);
-                return false;
+                // return false;
+                // e.preventDefault();
+                return;
             },
             onFocus:function(e){
                 if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
                 // if ( typeof this.status === 'undefined' ) input_validator(this);
                 if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) this.typeahead.delayed();
-                return false;
+                // return false;
+                e.preventDefault(); return;
             },
             onInput:function(e){
                 if ( this.pannel ) this.pannel.css.add('fade');
                 this.typeahead.delayed();
                 input_validator(this);
-                return false;
+                // return false;
+                // e.preventDefault();
+                return;
             },
             onBlur:function(e){
                 if ( this.pannel) this.pannel.css.add('fade');
@@ -1162,7 +1171,9 @@
                 }
                 this.setValue(v);
                 input_validator(this);
-                return false;
+                // return false;
+                // e.preventDefault();
+                return;
             }
         };
 
@@ -1234,12 +1245,16 @@
                 var text = this.value;
                 var pos = 0;
                 if (text) {
-                    this.value = this.ui.attr('placeholder');
-                    pos = this.value.indexOf('_');
-                    for (var i in text) if (/[\d_]/.test(text[i])) {
-                        this.value = this.value.replace('_', text[i]);
-                        pos = this.value.indexOf('_');
+                    this.value = '';
+                    var placeholder = this.ui.attr('placeholder');
+                    for (var i in placeholder) {
+                        if (text.length > i && placeholder[i] == text[i]) {
+                            this.value += text[i]; pos++;
+                        } else if (/_/.test(placeholder[i])) {
+                            this.value += (pos < text.length) ? text[pos++] : '_';
+                        }
                     }
+                    pos = this.value.indexOf('_');
                 } else {
                     if (!clear) this.value = this.ui.attr('placeholder');
                     pos = this.ui.attr('placeholder').indexOf('_');
@@ -1289,7 +1304,8 @@
                         if (el.ui.attr('disabled')) { index += way } else { el.ui.focus(); break; }
                     if (index <= 1 && way < 0) return e.preventDefault();
                     e.stopPropagation();
-                    return false;
+                    // return false;
+                    return;
                 case 37:
                     this.s1 = --this.selectionStart; this.e1 = --this.selectionEnd;
                     break;
@@ -1311,21 +1327,26 @@
                     break;
                 default: this.insertDigit(dg, selected);
             }
-            e.preventDefault(); e.stopPropagation();
-            return /\d/.test(dg);
+            e.preventDefault();
+            e.stopPropagation();
+            // return /\d/.test(dg);
+            return;
         }).ui.on('focus', function (e) {
             this.init(false);
-            return false;
+            // return false;
+            return;
         }).ui.on('blur',function(e) {
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             input_validator(this);
-            return false;
+            // return false;
+            return
         }).ui.on('paste',function(e) {
             var dgs = e.clipboardData.getData('Text').match(/\d+/g) ? e.clipboardData.getData('Text').match(/\d+/g).join('') : '';
             //TODO pate afte cursor position & past selected pice
             for (var i in dgs) this.insertDigit(dgs[i], selected);
-            return false;
+            // return false;
+            return;
         });
     }
     return el;
