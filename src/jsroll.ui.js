@@ -325,7 +325,15 @@
             after: function (e) { g.spinner = false; }
             }, opt);
         this.elements = typeof els === 'string' ? ui.els(els) : els;
+        var self = this;
+        this.elements.forEach(function (e,i,a) { e.group = self; });
     }; group.prototype = {
+        events:{},
+        on:function (event, fn, opt) {
+            var self = this;
+            self.events[event] = fn;
+            this.elements.forEach(function (e,i,a) { e.ui.on(event, self.events[event], opt); });
+        },
         get isValid () {
             this.__isValid = true;
             var self = this;
