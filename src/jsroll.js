@@ -395,24 +395,28 @@
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
         var opt = Object.assign({method:'GET'}, params);
+        x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
+        if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
+
         var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
 
         try {
             for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
-            if ((['GET', 'DELETE'].indexOf(opt.method.toUpperCase()) >= 0) && opt.data) {
+            if ((['GET', 'DELETE'].indexOf(x.method) >= 0) && opt.data) {
                 var u = opt.url || g.location;
                 opt.url = u  + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
                 opt.data = null;
             }
             if (typeof x.before == 'function') x.before.call(x, opt, x);
-            x.method = opt.method;
-            x.open(opt.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
+
+            x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
-            x.send(opt.data);
             x.id = id;
+            x.send(opt.data);
         } catch (e) {
             x.abort(); x.fail.call(x, e, x);
+            return x;
         }
         return g.xhr.ref[id] = x;
     }; xhr.ref = {}; g.xhr = xhr;

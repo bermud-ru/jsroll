@@ -77,10 +77,19 @@
          */
         del: function (c) {
             var h = this.instance;
-            if (c && h) c .split(' +').forEach(function (e, i, a) {
+            if (c && h) c.split(/\s+/).forEach(function (e, i, a) {
                 h.className = h.className.replace(re('(?:^|\\s)' + e + '(?!\\S)'), '').trim();
             });
             return this;
+        },
+        /**
+         * css.rpl - Replace Cascading Style Sheets class in HTMLelement
+         * @param t
+         * @param c
+         */
+        rpl: function (t,c) {
+            var h = this.instance;
+            if (t && c && h) h.className = h.className.replace(t,c);
         },
         /**
          * css.tgl - Toggle Cascading Style Sheets class of HTMLelement
@@ -601,6 +610,74 @@
                     }
                 }
             }},opt));
+        },
+        upload:function(stream, url, opt) {
+            var file = stream.files[0];
+            var done = opt.done; delete opt['done'];
+            var fail = opt.fail; delete opt['fail'];
+            var stop = opt.stop; delete opt['stop'];
+
+            if (!file) return console.warn('File not found!');
+
+            var slice = function (file, start, end, type) {
+                var slice = file.mozSlice ? file.mozSlice : file.webkitSlice ? file.webkitSlice : file.slice ? file.slice : function () { };
+                return slice.bind(file)(start, end);
+            };
+
+            var size = file.size, filename = file.name;
+            var sliceSize = opt.sliceSize||1024;
+            var start = opt.start||0, end;
+            var data, piece;
+
+            var loop = function () {
+                end = start + sliceSize;
+                if (size - end < 0) end = size;
+
+                piece = slice(file, start, end);
+                data = new FormData();
+                data.append('filename', filename);
+                data.append('size', size);
+                data.append('start', start);
+                data.append('end', end);
+                data.append('file', piece);
+
+                if (stop.call(this)) g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
+                    url: url,
+                    data: data,
+                    done: function (e, x) {
+                        if ([200, 206].indexOf(this.status) < 0) {
+                            app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
+                        } else try {
+                            var res = JSON.parse(this.responseText);
+                            if (res.result == 'ok') {
+                                if (typeof opt.progress === 'function') opt.progress.call(res,(Math.floor(res.end/size*1000)/10));
+                                if (res.end < size) {
+                                    start += sliceSize;
+                                    setTimeout(loop, 1);
+                                } else {
+                                    done.call(res);
+                                }
+                            } else {
+                                fail.call(res);
+                                app.msg.show({message:res.message});
+                            }
+                        } catch (e) {
+                            fail.call(res);
+                            console.error('сервер вернул не коректные данные', e);
+                        }
+                    },
+                    fail: function (e, x) {
+                        if (typeof opt.fail === 'function') opt.fail.call(x,e);
+                        console.log('upload error',e,x);
+                    }
+                },opt));
+
+            };
+
+            if (size > 0) setTimeout(loop, 1);
+
+            return;
+
         }
 
     }; g.app = new app(g.document);
