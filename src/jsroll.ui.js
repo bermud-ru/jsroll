@@ -4,10 +4,10 @@
  *
  * Классы RIA / SPA application framework UI (User Interface)
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 13/02/2018
+ * @data 16/04/2018
  * @status beta
- * @version 2.0.11b
- * @revision $Id: jsroll.js 2.0.11b 2018-02-13 21:22:01Z $
+ * @version 2.0.12b
+ * @revision $Id: jsroll.js 2.0.10b 2018-04-16 10:10:01Z $
  */
 
 (function ( g, undefined ) {

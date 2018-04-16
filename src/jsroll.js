@@ -4,16 +4,16 @@
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 19/12/2017
+ * @data 16/04/2018
  * @status beta
- * @version 2.0.10b
- * @revision $Id: jsroll.js 2.0.10b 2017-12-19 2:22:01Z $
+ * @version 2.0.12b
+ * @revision $Id: jsroll.js 2.0.10b 2018-04-16 10:10:01Z $
  */
 
 (function ( g, undefined ) {
     'suspected';
     'use strict';
-    var version = '2.0.11b';
+    var version = '2.0.12b';
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
@@ -75,6 +75,35 @@
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
     }; g.uuid = uuid;
+
+    /**
+     * Cyclic redundancy check, CRC32
+     *
+     * @param str
+     * @returns {number}
+     */
+    var crc32 = function(str) {
+        var makeCRCHelper = g.makeCRCHelper || (g.makeCRCHelper = function(){
+            var c;
+            var makeCRCHelper = [];
+            for(var n =0; n < 256; n++){
+                c = n;
+                for(var k =0; k < 8; k++){
+                    c = ((c&1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1));
+                }
+                makeCRCHelper[n] = c;
+            }
+            return makeCRCHelper;
+        });
+
+        var crc = 0 ^ (-1);
+
+        for (var i = 0; i < str.length; i++ ) {
+            crc = (crc >>> 8) ^ makeCRCHelper[(crc ^ str.charCodeAt(i)) & 0xFF];
+        }
+
+        return (crc ^ (-1)) >>> 0;
+    }; g.crc32 = crc32;
 
     /**
      * @function merge (...)
