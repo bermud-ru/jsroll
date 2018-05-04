@@ -1142,13 +1142,14 @@
                                     if (res.result == 'error') {
                                         owner.status = 'error';
                                     } else {
-                                        var ds = (res.data||[]).map(function(e,i,a) {
-                                            try { return JSON.parse(e);} catch (er) { return e; }
-                                        });
+                                        // var ds = (res.data||[]).map(function(e,i,a) {
+                                        //     if (typeof e === 'string') try { return JSON.parse(e);} catch (er) { console.error('Неверная структура JSON',e,er);return e; }
+                                        //     else return e;
+                                        // });
                                         if (owner.typeahead.cache === null) owner.typeahead.cache = {};
-                                        owner.typeahead.cache[index] = ds;
+                                        owner.typeahead.cache[index] = res.data||[];
                                         owner.typeahead.activeItem(index);
-                                        owner.typeahead.show(ds);
+                                        owner.typeahead.show(res.data||[]);
                                     }
                                 } catch (e) {
                                     console.error(e,'сервер вернул не коректные данные');
