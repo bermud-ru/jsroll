@@ -634,7 +634,7 @@
                         }
 
                         args[1] = Object.merge(args[1], data);
-                        if (before = pig.getAttribute('before')) func(before, pig, args);
+                        if (before = pig.getAttribute('before')) func(before, self, args);
                     } else {
                         if (opt && typeof opt.before == 'object') {
                             args[1] = Object.assign(args[1], opt.before);
