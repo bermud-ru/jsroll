@@ -719,6 +719,7 @@
                 el: elements,
                 index: index,
                 __valid: true,
+                transformer: null,
                 get valid(){
                     var self = this; self.__valid = true;
                     this.el.forEach(function (e,i,a) { self.__valid &= input_validator(e) });
@@ -756,6 +757,7 @@
                 get uri() {
                     var p = this.params;
                     p['page'] = this.index;
+                    if (typeof this.transformer === 'function') return location.encoder(this.transformer(p));
                     return location.encoder(p);
                 },
                 callback: function (res) {
