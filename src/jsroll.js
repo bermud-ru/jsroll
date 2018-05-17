@@ -180,11 +180,12 @@
      * Возвращает объект (Хеш-таблица) параметров
      *
      * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
+     * @argument RegExp регулярное выражение, по умолчанию /[?&]([^=#]+)=([^&#]*)/
      *
      * @result { Object }
      */
-    var decoder = function(search) {
-        var re=/[?&]([^=#]+)=([^&#]*)/g, p={}, m;
+    var decoder = function(search, re) {
+        var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
             if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
         } catch(e) { return null }
@@ -383,9 +384,8 @@
      * Хелпер запросов на основе xmlHttpRequest
      *
      * @argument { String } url (Uniform Resource Locator) путь до шаблона
-     * @argument { String } id идентификатор шаблона
      * @argument { Boolean } async режим XMLHttpRequest
-     * @event { XMLHttpRequest.onload & XMLHttpRequest.process }
+     * @event { XMLHttpRequest.onload & XMLHttpRequest.process & XMLHttpRequest.abort }
      *
      * @result { Object }
      */
@@ -393,22 +393,21 @@
         var x = new xmlHttpRequest();
         if (!x) return null;
 
-        //TODO: xmlHttpRequest.abort()
-
         x.fail = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, x);
-            if (typeof x.after == 'function') x.after.call(this, x);
+            if (typeof fn === 'function') return fn.call(this, params);
+            else if (typeof x.after == 'function') x.after.call(this, x);
             return this;
         };
 
         x.done = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, x);
+            if (typeof fn === 'function') return fn.call(this, params);
+            else if (typeof x.after == 'function') x.after.call(this, x);
             return this;
         };
 
         x.process = function(fn){
             x.onreadystatechange = function(e) {
-                if (typeof fn === 'function') return fn.call(this, e, x);
+                if (typeof fn === 'function') return fn.call(this, e, params);
             };
             return this;
         };
@@ -416,7 +415,7 @@
         x.onload = function(e) {
             x.done.call(this, e);
             if (typeof x.after == 'function') x.after.call(this, e, x);
-            return x;
+            return this;
         };
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
@@ -427,8 +426,6 @@
         x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
-
-        var id = opt.method + '_' + (opt.url ? opt.url.replace(/(\.|:|\/|\-)/g,'_') : g.uuid());
 
         try {
             for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
@@ -441,14 +438,13 @@
 
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
-            x.id = id;
             x.send(opt.data);
         } catch (e) {
-            x.abort(); x.fail.call(x, e, x);
+            x.abort(); x.fail.call(x, e);
             return x;
         }
-        return g.xhr.ref[id] = x;
-    }; xhr.ref = {}; g.xhr = xhr;
+        return x;
+    }; g.xhr = xhr;
 
     /**
      * @function InputHTMLElementSerialize
@@ -639,7 +635,7 @@
                         if (opt && typeof opt.before == 'object') {
                             args[1] = Object.assign(args[1], opt.before);
                         } else if (opt && typeof opt.before == 'function') {
-                            opt.before.call(this, args);
+                            opt.before.call(self, args);
                         }
                     }
 

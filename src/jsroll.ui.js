@@ -878,7 +878,7 @@
      * @returns {boolean}
      */
     var input_validator = function(element, tags) {
-        if (element && (tags ? (tags.indexOf(element.tagName) >-1) : (element.tagName === 'INPUT'))) {
+        if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
             var res = true, validator = null, pattern;
             if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
                 element.validator = func(validator);
@@ -951,35 +951,30 @@
      * @returns {*}
      */
     var inputer = function(el) {
-        if (el && !el.hasOwnProperty('status')) {
+        if (el && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
-                    // this.css.del('form-control-(danger|warning|success|spinner)');
                     this.css.del('is-(valid|invalid|warinig|spinner)');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
                             this.css.add('is-invalid');
-                            // this.css.add('form-control-danger');
                             this.parentElement.css.add('has-danger');
                             break;
                         case 'warning':
                             this._status = 'warning';
                             this.css.add('is-warning');
-                            // this.css.add('form-control-warning');
                             this.parentElement.css.add('has-warning');
                             break;
                         case 'success':
                             this._status = 'success';
                             this.css.add('is-valid');
-                            // this.css.add('form-control-success');
                             this.parentElement.css.add('has-success');
                             break;
                         case 'spinner':
                             this._status = 'spinner';
                             this.css.add('is-spinner');
-                            // this.css.add('form-control-spinner');
                             this.parentElement.css.add('has-spinner');
                             break;
                         case 'none':
@@ -997,7 +992,7 @@
     
     g.formvalidator = function(res) {
         var result = [];
-        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i],['INPUT','TEXTAREA'])) result.push(this.elements[i].name+': '+(this.elements[i].value||'поле с неверными данными или нет значения!'));
+        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i])) result.push(this.elements[i].name+': '+(this.elements[i].value||'поле с неверными данными или нет значения!'));
 
         if (result.length) {
             if (g.spinner) g.spinner = false;
