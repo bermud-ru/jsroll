@@ -380,7 +380,7 @@
     }; g.js = js;
 
     /**
-     * @function xhr9
+     * @function xhr
      * Хелпер запросов на основе xmlHttpRequest
      *
      * @argument { String } url (Uniform Resource Locator) путь до шаблона
@@ -394,27 +394,25 @@
         if (!x) return null;
 
         x.fail = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, params);
-            else if (typeof x.after == 'function') x.after.call(this, x);
+            if (typeof fn === 'function') return fn.call(this, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             return this;
         };
 
         x.done = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, params);
-            else if (typeof x.after == 'function') x.after.call(this, x);
+            if (typeof fn === 'function') return fn.call(this, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             return this;
         };
 
         x.process = function(fn){
             x.onreadystatechange = function(e) {
-                if (typeof fn === 'function') return fn.call(this, e, params);
+                if (typeof fn === 'function') return fn.call(this, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             };
             return this;
         };
 
         x.onload = function(e) {
-            x.done.call(this, e);
-            if (typeof x.after == 'function') x.after.call(this, e, x);
+            x.done.call(this, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+            if (typeof x.after == 'function') x.after.call(this);
             return this;
         };
 
@@ -438,6 +436,7 @@
 
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
+            x.response_header = null;
             x.send(opt.data);
         } catch (e) {
             x.abort(); x.fail.call(x, e);
@@ -470,8 +469,6 @@
      */
     Object.defineProperty(JSON, 'form', {
         value: function(f) {
-            f.setAttribute('valid', 1);
-            f.response = null;
             if (f && !f.hasOwnProperty('MODEL')) {
                 Object.defineProperty(f, 'MODEL', {
                     set: function MODEL(d) {
@@ -524,34 +521,34 @@
                 };
 
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
-                    if (res.form) for (var i = 0; i < this.elements.length; i++) {
-                        if (res.form.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
+                    f.setAttribute('valid', 0);
+                    var a = res.form||res.error;
+                    if (a) for (var i = 0; i < this.elements.length; i++) {
+                        if (a.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
                         else this.elements[i].status = 'none';
-                        return true;
                     }
-                    return false;
+                    return f;
                 };
 
                 f.send = function() {
                     var data = f.prepare(f.validator), before = true, args = arguments;
                     if (f.getAttribute('valid') != 0) {
                         if (typeof f.before == 'function') before = f.before.call(this);
-                        if (before == undefined || !!before) g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: typeof args[0] == 'function' ?
-                                function() {
+                        if (before == undefined || !!before) {
+                            var done = typeof args[0] == 'function' ? function() {
+                                    f.response_header = this.response_header;
                                     var callback = args.shift();
                                     var result = callback.apply(this, args);
                                     if (typeof f.after == 'function') return f.after.call(this, result, args);
                                     return f;
                                 } :
                                 function() {
-                                    var res = {result:'error'};
-                                    f.response = this.responseText;
-                                    if ([200, 206].indexOf(this.status) < 0)
-                                        res.message = this.status + ': ' + this.statusText;
-                                    else try {
+                                    f.response_header = this.response_header;
+                                    var res;
+                                    try {
                                         res = JSON.parse(this.responseText);
                                     } catch (e) {
-                                        res = {result:'error', message: 'Cервер вернул не коректные данные'};
+                                        res = {result:'error', message: this.status + ': ' + this.statusText};
                                     }
 
                                     if (res.result == 'error' ) {
@@ -564,17 +561,17 @@
                                         f.after.call(f, res, args);
                                     }
                                     return f;
-                                }
-                        }, f.opt));
+                                };
+                            g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done}, f.opt));
+                        }
                     } else f.setAttribute('valid',1);
                     return f;
                 };
             }
-
+            f.setAttribute('valid', 1);
             f.rest = f.getAttribute('rest') || f.method;
             f.validator = f.validator || null;
             f.opt = f.opt || {};
-            f.done = f.done || null;
 
             return f;
         },
@@ -594,7 +591,15 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         var self = Object.merge({
-                tmplContext: undefined,
+                response_header: null,
+                __tmplContext: undefined,
+                get tmplContext() {
+                    if (this.__tmplContext) this.__tmplContext.owner = self;
+                    return this.__tmplContext;
+                },
+                set tmplContext(v) {
+                    this.__tmplContext = v;
+                },
                 onTmplError: function (type, id, str, args, e ) {
                     console.error('ERROR['+type+'] jsRoll.tmpl()', [id, str], args, e); return;
                 }
@@ -664,10 +669,7 @@
                 case str.match(is_url) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache[id]) return build(null, id);
                     var opt = opt || {};  opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    return g.xhr(Object.assign({url:str, async: (typeof cb == 'function'), done:function(e) {
-                        if ([200, 206].indexOf(this.status) < 0) console.warn(this.status + ': ' + this.statusText);
-                        else build(this.responseText, id);
-                    }}, opt));
+                    return g.xhr(Object.assign({url:str, async: (typeof cb == 'function'), done: function(e, hr) { self.response_header = hr; build(this.responseText, id); }}, opt));
                 case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
                 default: return build( str );
             }
