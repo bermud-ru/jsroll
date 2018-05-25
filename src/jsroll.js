@@ -17,10 +17,14 @@
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
-    var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
+    g.indexedDB = g.indexedDB || g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB;
+    g.IDBTransaction = g.IDBTransaction || g.webkitIDBTransaction || g.msIDBTransaction;
+    g.IDBKeyRange = g.IDBKeyRange || g.webkitIDBKeyRange || g.msIDBKeyRange;
 
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
+
+    var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
 
     /**
      * @function re
