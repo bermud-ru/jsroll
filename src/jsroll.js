@@ -17,9 +17,11 @@
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
-    g.indexedDB = g.indexedDB || g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB;
-    g.IDBTransaction = g.IDBTransaction || g.webkitIDBTransaction || g.msIDBTransaction;
-    g.IDBKeyRange = g.IDBKeyRange || g.webkitIDBKeyRange || g.msIDBKeyRange;
+    if (!('indexedDB' in g)) {
+        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB;
+        g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction;
+        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
+    }
 
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
