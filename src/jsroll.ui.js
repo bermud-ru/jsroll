@@ -376,8 +376,8 @@
             return data.join('&');
         },
         fail: function (res) {
-            if (res.error) for (var i = 0; i < this.elements.length; i++) {
-                if (res.error.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
+            if (res.message) for (var i = 0; i < this.elements.length; i++) {
+                if (res.message.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
                 else this.elements[i].status = 'none';
                 return true;
             }
@@ -761,14 +761,23 @@
                     return location.encoder(p);
                 },
                 callback: function (res) {
-                   var result = true, er = Object.keys(res.error||{}), wr = Object.keys(res.warning||{}), fl = Object.keys(res.filter||{});
+                   var result = true, msg = Object.keys(res.message||{});
                     if (typeof res === 'undefined') return res;
 
-                    if (er.length || wr.length || fl.length) {
+                    if (msg.length) {
                         for (var i in this.el) {
-                            if (er.length && er.indexOf(this.el[i].name) >-1) { this.el[i].status='error'; result &= false }
-                            else if (wr.length && wr.indexOf(this.el[i].name) >-1) { this.el[i].status='warning'; result &= false }
-                            else if (fl.length && fl.indexOf(this.el[i].name) >-1) { result &= input_validator(this.el[i]) }
+                            if (msg.indexOf(this.el[i].name) >-1) {
+                                switch (res.result) {
+                                    case 'ok':
+                                        this.el[i].status = 'success'; break;
+                                    case 'error':
+                                        result &= false;
+                                    // case 'warning':
+                                    default:
+                                        this.el[i].status = res.rusult;
+                                }
+                            }
+                            else { result &= input_validator(this.el[i]) }
                         }
                     }
                     return result;

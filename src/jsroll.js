@@ -15,6 +15,52 @@
     'use strict';
     var version = '2.0.12b';
 
+    g.HTTP_RESPONSE_CODE = {
+        100: 'Continue',
+        101: 'Switching Protocol',
+        102: 'Processing',
+        200: 'OK',
+        201: 'Created',
+        202: 'Accepted',
+        203: 'Non-Authoritative Information',
+        204: 'No Content',
+        205: 'Reset Content',
+        206: 'Partial Content',
+        300: 'Multiple Choice',
+        301: 'Moved Permanently',
+        302: 'Found',
+        303: 'See Other',
+        304: 'Not Modified',
+        305: 'Use Proxy',
+        306: 'Switch Proxy',
+        307: 'Temporary Redirect',
+        308: 'Permanent Redirect',
+        400: 'Bad Request',
+        401: 'Unauthorized',
+        402: 'Payment Required',
+        403: 'Forbidden',
+        404: 'Not Found',
+        405: 'Method Not Allowed',
+        406: 'Not Acceptable',
+        407: 'Proxy Authentication Required',
+        408: 'Request Timeout',
+        409: 'Conflict',
+        410: 'Gone',
+        411: 'Length Required',
+        412: 'Precondition Failed',
+        413: 'Request Entity Too Large',
+        414: 'Request-URI Too Long',
+        415: 'Unsupported Media Type',
+        416: 'Requested Range Not Satisfiable',
+        417: 'Expectation Failed',
+        500: 'Internal Server Error',
+        501: 'Not Implemented',
+        502: 'Bad Gateway',
+        503: 'Service Unavailable',
+        504: 'Gateway Timeout',
+        505: 'HTTP Version Not Supported'
+    };
+
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
@@ -400,26 +446,27 @@
         if (!x) return null;
 
         x.fail = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            return this;
+            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+            return x;
         };
 
         x.done = function(fn) {
-            if (typeof fn === 'function') return fn.call(this, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            return this;
+            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+            return x;
         };
 
-        x.process = function(fn){
-            x.onreadystatechange = function(e) {
-                if (typeof fn === 'function') return fn.call(this, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+        x.process = function(fn) {
+            x.onreadystatechange = function() {
+                if (typeof fn === 'function') fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                else if (x.readyState == 4 && x.status >= 400) x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             };
-            return this;
+            return x;
         };
 
         x.onload = function(e) {
-            x.done.call(this, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+            x.done.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             if (typeof x.after == 'function') x.after.call(this);
-            return this;
+            return x;
         };
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
@@ -443,7 +490,7 @@
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
             x.response_header = null;
-            x.send(opt.data);
+            x.process(opt.process).send(opt.data);
         } catch (e) {
             x.abort(); x.fail.call(x, e);
             return x;
@@ -528,7 +575,7 @@
 
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
                     f.setAttribute('valid', 0);
-                    var a = res.form||res.error;
+                    var a = res.form||res.message;
                     if (a) for (var i = 0; i < this.elements.length; i++) {
                         if (a.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
                         else this.elements[i].status = 'none';
