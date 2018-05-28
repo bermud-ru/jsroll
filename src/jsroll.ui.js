@@ -1001,13 +1001,13 @@
     }; g.inputer = inputer;
     
     g.formvalidator = function(res) {
-        var result = [];
-        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i])) result.push(this.elements[i].name+': '+(this.elements[i].value||'поле с неверными данными или нет значения!'));
+        var m = {};
+        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i])) m[this.elements[i].name] = this.elements[i].value||'Поле с неверными данными или пустым значения!';
 
-        if (result.length) {
+        if (Object.keys(m).length) {
             if (g.spinner) g.spinner = false;
-            result.unshift('<b>ФОРМА: неверно заполнены поля формы!</b>');
-            msg.show({message: result});
+            m['caption'] = 'Неверно заполнена форма!';
+            msg.show({message: m});
             return false;
         }
 
