@@ -769,12 +769,13 @@
                             if (msg.indexOf(this.el[i].name) >-1) {
                                 switch (res.result) {
                                     case 'ok':
-                                        this.el[i].status = 'success'; break;
+                                        this.el[i].status = 'success';
+                                        break;
                                     case 'error':
                                         result &= false;
                                     // case 'warning':
                                     default:
-                                        this.el[i].status = res.rusult;
+                                        this.el[i].status = res.result;
                                 }
                             }
                             else { result &= input_validator(this.el[i]) }
