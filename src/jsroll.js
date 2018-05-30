@@ -588,31 +588,26 @@
                     if (f.getAttribute('valid') != 0) {
                         if (typeof f.before == 'function') before = f.before.call(this);
                         if (before == undefined || !!before) {
-                            var done = typeof args[0] == 'function' ? function() {
-                                    f.response_header = this.response_header;
+                            var done = typeof args[0] == 'function' ? function(hr) {
+                                    f.response_header = hr;
                                     var callback = args.shift();
                                     var result = callback.apply(this, args);
-                                    if (typeof f.after == 'function') return f.after.call(this, result, args);
                                     return f;
                                 } :
-                                function() {
-                                    f.response_header = this.response_header;
-                                    var res;
+                                function(hr) {
+                                    f.response_header = hr;
                                     try {
-                                        res = JSON.parse(this.responseText);
+                                        var res = JSON.parse(this.responseText);
                                     } catch (e) {
-                                        res = {result:'error', message: this.status + ': ' + this.statusText};
+                                        var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                                     }
 
                                     if (res.result == 'error' ) {
                                         if (typeof f.fail == 'function') f.fail.call(f, res, args);
-                                    } else if (res.result == 'ok') {
+                                    } else {
                                         if (typeof f.done == 'function') f.done.call(f, res, args);
                                     }
-                                    if (typeof f.after == 'function') {
-                                        res.result == 'ok';
-                                        f.after.call(f, res, args);
-                                    }
+                                    if (typeof f.after == 'function') { f.after.call(f, res, args) }
                                     return f;
                                 };
                             g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done}, f.opt));
