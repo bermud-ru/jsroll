@@ -1064,7 +1064,7 @@
             delayed: function () {
                 if (!this.timer) {
                     var fn = function fn () {
-                            if (this.request == this.owner.value) {  if (this.owner.pannel) this.owner.pannel.css.add('fade'); this.xhr(); }
+                            if (this.request == this.owner.value) {  if (this.owner.pannel) { this.owner.pannel.css.add('fade'); }  this.xhr(); }
                             clearTimeout(this.timer); this.timer = null;
                             if (this.request && this.request != 'null' && this.request != this.owner.value ) {
                                 this.request = this.owner.value;
@@ -1126,8 +1126,8 @@
             xhr:function(){
                 var owner = this.owner, params = {};
 
-                if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))){
-                    if (owner.typeahead.cache === null) owner.typeahead.cache = {};
+                if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))) {
+                    if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
                     owner.typeahead.cache[owner.value.trim()] = {};
                     return owner.typeahead.show([]);
                 }
@@ -1141,28 +1141,17 @@
                         before: function () { owner.status = 'spinner'; if (owner.pannel) owner.pannel.css.add('fade'); },
                         after: function () { if (owner.status = 'spinner') owner.status = ''; },
                         done: function (e) {
-                            if ([200, 206].indexOf(this.status) < 0) {
-                                msg.show({message: this.status + ': ' + this.statusText});
-                            } else {
-                                try {
-                                    var res = JSON.parse(this.responseText);
-                                    if (res.result == 'error') {
-                                        owner.status = 'error';
-                                    } else {
-                                        // var ds = (res.data||[]).map(function(e,i,a) {
-                                        //     if (typeof e === 'string') try { return JSON.parse(e);} catch (er) { console.error('Неверная структура JSON',e,er);return e; }
-                                        //     else return e;
-                                        // });
-                                        if (owner.typeahead.cache === null) owner.typeahead.cache = {};
-                                        owner.typeahead.cache[index] = res.data||[];
-                                        owner.typeahead.activeItem(index);
-                                        owner.typeahead.show(res.data||[]);
-                                    }
-                                } catch (e) {
-                                    console.error(e,'сервер вернул не коректные данные');
-                                    owner.status = 'error';
-                                }
+                            try {
+                                var res = JSON.parse(this.responseText);
+                            } catch (e) {
+                                var res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                             }
+                                    
+                            if (res.result != 'ok') { owner.status = res.result; }
+                            if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
+                            owner.typeahead.cache[index] = res.data||[];
+                            owner.typeahead.activeItem(index);
+                            owner.typeahead.show(res.data||[]);
                             return this;
                         },
                         fail: function (e) { console.error('typeahead',e); }
@@ -1251,14 +1240,20 @@
 
         if (!element.typeahead) {
             element.typeahead = th;
+            element.isSet = !!element.value.length;
             element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.setValue = function (v) {
                 // this.typeahead.value = v||{};
                 // this.dispatchEvent(new Event('change'));
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
-                    if (this.typeahead.cache !== null) element.typeahead.opt.fn.call(element, this.typeahead.value);
-                    else element.typeahead.opt.fn.call(element, undefined);
+                    if (this.typeahead.cache !== null) {
+                        element.typeahead.opt.fn.call(element, this.typeahead.value);
+                        element.isSet = typeahead.value && typeahead.value.hasOwnProperty(element.name) ? true : false;
+                    } else {
+                        element.isSet = false;
+                        element.typeahead.opt.fn.call(element, undefined);
+                    }
                     this.dispatchEvent(new Event('change'));
                     // input_validator(element);
                 }
