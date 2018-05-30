@@ -326,16 +326,17 @@
     if ( typeof ui === 'undefined' ) return false;
 
     var group = function (els, opt) {
-        this.__isValid = true;
+        this.__valid = true;
         this.opt = Object.merge({
             method: 'get',
             url: g.location.href,
             before: function (e) { g.spinner = true; },
             after: function (e) { g.spinner = false; }
             }, opt);
+        this.wrongs = [];
         this.elements = typeof els === 'string' ? ui.els(els) : els;
-        var self = this;
-        this.elements.forEach(function (e,i,a) { e.group = self; });
+        this.length = this.elements.length || 0;
+        var self = this; this.elements.forEach(function (e,i,a) { e.group = self; });
     }; group.prototype = {
         events:{},
         on:function (event, fn, opt) {
@@ -343,16 +344,37 @@
             self.events[event] = fn;
             this.elements.forEach(function (e,i,a) { e.ui.on(event, self.events[event], opt); });
         },
-        get isValid () {
-            this.__isValid = true;
-            var self = this;
-            this.elements.forEach(function (e,i,a) { self.__isValid  &= input_validator(e) });
-            return this.__isValid ;
+        set valid (res) {
+            this.wrongs = [];
+            if (res.message) for (var i = 0; i < this.elements.length; i++) {
+                this.__valid = true;
+                if (res.message.hasOwnProperty(this.elements[i].name)) {
+                    this.elements[i].status = 'error';
+                    this.__valid = false;
+                    this.wrongs.push(this.elements[i].name);
+                } else {
+                    this.elements[i].status = 'none';
+                }
+            }
+        },
+        get valid () {
+            this.__valid = true;
+            var self = this; this.wrongs = [];
+            this.elements.forEach(function (e,i,a) { var chk = input_validator(e); if (!chk) { self.wrongs.push(e.name);}  self.__valid &= chk; });
+            return this.__valid ;
+        },
+        is_wrong:function () {
+            if (arguments.length) {
+                var self = this, arg = typeof arguments[0] === 'object' ? arguments[0] : Array.prototype.slice.call(arguments, 0);
+                var x = true; arg.forEach(function (e,i,a) { x &= self.wrongs.indexOf(e) > -1; });
+                return x;
+            }
+            return !!this.wrongs.length;
         },
         __MODEL__: {},
         set MODEL(d) {
             if (d && typeof d === 'object') {
-                this.__MODEL__ = d;
+                this.__MODEL__ = d;  this.wrongs = [];
                 for (var i = 0; i < this.elements.length; i++) if (d.hasOwnProperty(this.elements[i].name)) {
                     this.elements[i].value = d[this.elements[i].name];
                     if (['checkbox', 'radio'].indexOf((this.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
@@ -375,44 +397,33 @@
             var data = []; for (var i = 0; i < this.elements.length; i++) { data.push(g.InputHTMLElementSerialize(this.elements[i])); }
             return data.join('&');
         },
-        fail: function (res) {
-            if (res.message) for (var i = 0; i < this.elements.length; i++) {
-                if (res.message.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
-                else this.elements[i].status = 'none';
-                return true;
-            }
-            return false;
-        },
         send: function () {
-            if (this.isValid) {
-                var args = arguments, self= this;
-                if (typeof self.after == 'function') { self.opt.after(); }
-                g.xhr(Object.assign({data: self.data(), done: typeof args[0] == 'function' ?
-                        function(hr) {
-                            self.response_header = hr;
-                            var callback = args.shift();
-                            var result = callback.apply(this, args);
-                            return f;
-                        } :
-                        function(hr) {
-                            self.response_header = hr;
-                            try {
-                                var res = JSON.parse(this.responseText);
-                            } catch (e) {
-                                var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
-                            }
-
-                            if (res.result == 'error' ) {
-                                if (typeof self.fail == 'function') self.fail.call(f, res, args);
-                            } else {
-                                if (typeof self.done == 'function') self.done.call(f, res, args);
-                            }
-                            if (typeof self.after == 'function') { self.after.call(f, res, args) }
-                            return f;
+            var args = arguments, self= this;
+            if (typeof self.after == 'function') { self.opt.after(); }
+            g.xhr(Object.assign({data: self.data(), done: typeof args[0] == 'function' ?
+                    function(hr) {
+                        self.response_header = hr;
+                        var callback = args.shift();
+                        var result = callback.apply(this, args);
+                        return f;
+                    } :
+                    function(hr) {
+                        self.response_header = hr;
+                        try {
+                            var res = JSON.parse(this.responseText);
+                        } catch (e) {
+                            res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                         }
-                }, self.opt));
-            }
 
+                        if (res.result == 'error' ) {
+                            if (typeof self.fail == 'function') self.fail.call(f, res, args);
+                        } else {
+                            if (typeof self.done == 'function') self.done.call(f, res, args);
+                        }
+                        if (typeof self.after == 'function') { self.after.call(f, res, args) }
+                        return f;
+                    }
+            }, self.opt));
             return this;
         }
     }; g.group = group;
@@ -647,7 +658,7 @@
                         try {
                             var res = JSON.parse(this.responseText);
                         } catch (e) {
-                            var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
+                            res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                         }
 
                         if (res.result == 'ok') {
@@ -1142,7 +1153,7 @@
                             try {
                                 var res = JSON.parse(this.responseText);
                             } catch (e) {
-                                var res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+                                res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                             }
                                     
                             if (res.result != 'ok') { owner.status = res.result; }

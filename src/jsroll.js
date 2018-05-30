@@ -599,7 +599,7 @@
                                     try {
                                         var res = JSON.parse(this.responseText);
                                     } catch (e) {
-                                        var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
+                                        res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                                     }
 
                                     if (res.result == 'error' ) {
