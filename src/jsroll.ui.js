@@ -386,31 +386,29 @@
         send: function () {
             if (this.isValid) {
                 var args = arguments, self= this;
-                self.opt.before();
+                if (typeof self.after == 'function') { self.opt.after(); }
                 g.xhr(Object.assign({data: self.data(), done: typeof args[0] == 'function' ?
-                        function() {
+                        function(hr) {
+                            self.response_header = hr;
                             var callback = args.shift();
-                            var result = callback.apply(self, args);
-                            self.opt.after(result);
-                            return result;
+                            var result = callback.apply(this, args);
+                            return f;
                         } :
-                        function() {
-                            var res = {result:'error'};
-                            if ([200, 206].indexOf(this.status) < 0)
-                                res.message = this.status + ': ' + this.statusText;
-                            else try {
-                                res = JSON.parse(this.responseText);
+                        function(hr) {
+                            self.response_header = hr;
+                            try {
+                                var res = JSON.parse(this.responseText);
                             } catch (e) {
-                                res = {result:'error', message: 'Cервер вернул не коректные данные'};
+                                var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                             }
 
                             if (res.result == 'error' ) {
-                                self.fail(res);
-                            } else if (res.result == 'ok') {
-                                self.feedback = res ;
+                                if (typeof self.fail == 'function') self.fail.call(f, res, args);
+                            } else {
+                                if (typeof self.done == 'function') self.done.call(f, res, args);
                             }
-
-                            self.opt.after(res);
+                            if (typeof self.after == 'function') { self.after.call(f, res, args) }
+                            return f;
                         }
                 }, self.opt));
             }
@@ -559,7 +557,8 @@
         download:function(url, opt){
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url, done: function(e, x) {
                 if ([200, 206].indexOf(this.status) < 0) {
-                    app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
+                    // app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
+                    console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 } else {
                     try {
                         var filename = g.uuid();
@@ -645,32 +644,31 @@
                     url: url,
                     data: data,
                     done: function (e, x) {
-                        if ([200, 206].indexOf(this.status) < 0) {
-                            app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
-                        } else try {
+                        try {
                             var res = JSON.parse(this.responseText);
-                            if (res.result == 'ok') {
-                                if (typeof opt.progress === 'function') opt.progress.call(res,(Math.floor(res.end/size*1000)/10));
-                                if (res.end < size) {
-                                    start += sliceSize;
-                                    setTimeout(loop, 1);
-                                } else {
-                                    done.call(res);
-                                }
-                            } else {
-                                fail.call(res);
-                                app.msg.show({message:res.message});
-                            }
                         } catch (e) {
-                            fail.call(res);
-                            console.error('сервер вернул не коректные данные', e);
+                            var res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                         }
+
+                        if (res.result == 'ok') {
+                            if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
+                            if (res.end < size) {
+                                start += sliceSize;
+                                setTimeout(loop, 1);
+                            } else {
+                                done.call(res);
+                            }
+                        } else {
+                            fail.call(res);
+                            app.msg.show(res);
+                        }
+                        return
                     },
                     fail: function (e, x) {
                         if (typeof opt.fail === 'function') opt.fail.call(x,e);
-                        console.log('upload error',e,x);
+                        console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
-                },opt));
+                }, opt));
 
             };
 
