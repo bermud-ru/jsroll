@@ -763,9 +763,15 @@
                         return map;
                     }, {});
                 },
+                update:function (url) {
+                    var p = this.params;
+                    p['page'] = this.index||0;
+                    if (typeof url === 'string' || typeof url === 'object') return g.location.update(url, p);
+                    return '?' + location.encoder(p);
+                },
                 get uri() {
                     var p = this.params;
-                    p['page'] = this.index;
+                    p['page'] = this.index||0;
                     if (typeof this.transformer === 'function') return location.encoder(this.transformer(p));
                     return location.encoder(p);
                 },
