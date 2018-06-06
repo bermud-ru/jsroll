@@ -1108,7 +1108,7 @@
                     var idx = values.indexOf(owner.value);
                     if (idx != -1) {
                         owner.pannel.ui.el('[value="' + idx + '"]', function () { this.css.add('active') });
-                        v = Object.keys(ch)[idx];
+                        // v = Object.keys(ch)[idx];
                     }
                 }
                 // owner.setValue(v);
@@ -1222,19 +1222,20 @@
                     }
                     this.setValue(v);
                 }
-                return;
+                return
             },
             onFocus:function(e){
                 if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
-                // if ( typeof this.status === 'undefined' ) input_validator(this);
+                this.__value = this.value;
                 if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) this.typeahead.delayed();
-                return;
+                return
             },
             onInput:function(e){
                 if ( this.pannel ) this.pannel.css.add('fade');
                 this.typeahead.delayed();
+                if (this.__value !== this.value) this.setValue();
                 input_validator(this);
-                return;
+                return
             },
             onBlur:function(e){
                 if ( this.pannel) this.pannel.css.add('fade');
@@ -1246,16 +1247,16 @@
                 } else {
                     v = {};
                 }
-
                 this.setValue(v);
                 input_validator(this);
-                return;
+                return
             }
         };
 
         if (typeof element.typeahead === 'undefined') {
             element.typeahead = th;
             element.isSet = !!element.value.length;
+            element.__value = element.value;
             element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
             element.onError = function (res, xhr) {
                 this.status = res.result; this.isSet = false;
@@ -1266,12 +1267,18 @@
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
                     if (this.typeahead.cache !== null) {
                         element.typeahead.opt.fn.call(element, this.typeahead.value);
-                        element.isSet = element.value &&  this.typeahead.value.hasOwnProperty(element.name) ? true : false;
+                        element.isSet = element.value && this.typeahead.value.hasOwnProperty(element.name) ? true : false;
+                        this.dispatchEvent(new Event('change'));
                     } else {
-                        element.isSet = false;
-                        element.typeahead.opt.fn.call(element, undefined);
+                        if (this.__value !== this.value){
+                            element.typeahead.opt.fn.call(element, {});
+                            this.dispatchEvent(new Event('change'));
+                            element.isSet = false;
+                        } else {
+                            element.isSet = true;
+                            element.typeahead.opt.fn.call(element, undefined);
+                        }
                     }
-                    this.dispatchEvent(new Event('change'));
                 }
             };
             element.typeahead.owner = inputer(element);
