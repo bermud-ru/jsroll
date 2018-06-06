@@ -1162,7 +1162,7 @@
                                 res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                             }
                                     
-                            if (res.result != 'ok') { owner.status = res.result; }
+                            if (res.result != 'ok') { owner.onError(res, this); }
                             if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
                             owner.typeahead.cache[index] = res.data||[];
                             owner.typeahead.activeItem(index);
@@ -1253,28 +1253,29 @@
             }
         };
 
-        if (!element.typeahead) {
+        if (typeof element.typeahead === 'undefined') {
             element.typeahead = th;
             element.isSet = !!element.value.length;
             element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
+            element.onError = function (res, xhr) {
+                this.status = res.result; this.isSet = false;
+                console.error(res.message);
+            };
             element.setValue = function (v) {
-                // this.typeahead.value = v||{};
-                // this.dispatchEvent(new Event('change'));
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
                     if (this.typeahead.cache !== null) {
                         element.typeahead.opt.fn.call(element, this.typeahead.value);
-                        element.isSet = typeahead.value && typeahead.value.hasOwnProperty(element.name) ? true : false;
+                        element.isSet = element.value &&  this.typeahead.value.hasOwnProperty(element.name) ? true : false;
                     } else {
                         element.isSet = false;
                         element.typeahead.opt.fn.call(element, undefined);
                     }
                     this.dispatchEvent(new Event('change'));
-                    // input_validator(element);
                 }
             };
             element.typeahead.owner = inputer(element);
-            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown);//.ui.on('change', th.onChange);
+            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
         }
         return element;
