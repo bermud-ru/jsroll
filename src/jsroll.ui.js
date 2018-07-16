@@ -125,7 +125,7 @@
             var node = this, nodes = (node.parentNode || node.document).querySelectorAll(selector), i = -1;
             while (nodes[++i] && nodes[i] != node);
             return !!nodes[i];
-        }
+        };
 
     /**
      * class ui - HTML elements Extention
@@ -453,6 +453,12 @@
         bootstrap: function(rt) {
             this.route.set(rt).chk(rt).lsn();
             return this;
+        },
+        get store(){
+            return str2json(storage.getItem('app'));
+        },
+        set store(u){
+            storage.setItem('app', u === 'string' ? u : JSON.stringify(u));
         },
         widget: function (cfg, t, d, opt) {
             var self = this, root = typeof cfg.root == 'string' ? g.ui.el(cfg.root) : cfg.root;
@@ -1365,6 +1371,7 @@
                 this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
             }
 
+            //TODO: CromeMobile This is How You Handle Android keyCode 229
             //var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
             var key =  e.charCode || e.keyCode || 0;
             if ([13,27,82].indexOf(key) != -1) return true;
