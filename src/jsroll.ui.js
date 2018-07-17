@@ -571,12 +571,10 @@
             return this;
         },
         fader: function (s, opt) { g.fader(s, opt); return this },
-        download:function(url, opt){
-            return g.xhr(Object.assign({responseType: 'arraybuffer', url: url, done: function(e, x) {
-                if ([200, 206].indexOf(this.status) < 0) {
-                    // app.msg.show({message: this.status + ': ' + this.statusText + ' (URL: ' + url + ')'});
-                    console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-                } else {
+        download:function(owner, url, opt) {
+            var self = owner;
+            return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
+                done: function(e, x) {
                     try {
                         var filename = g.uuid();
                         if (opt && opt.hasOwnProperty('filename')) {
@@ -591,6 +589,13 @@
                         }
                         var type = this.getResponseHeader('Content-Type');
                         var blob = g.bb(this.response, {type: type});
+
+                        self.disabled = false; self.css.del('spinner');
+                        if (this.getResponseHeader('Action-Status')) {
+                            msg.show({message:this.getResponseHeader('Action-Status')});
+                            return
+                        }
+
 
                         if (typeof g.navigator.msSaveBlob !== 'undefined') {
                             // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for
@@ -618,14 +623,19 @@
                                 //g.location = downloadUrl;
                                 g.open(downloadUrl);
                             }
-
                             setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
                         }
                     } catch (e) {
-                        console.error('сервер вернул не коректные данные', e);
+                        self.disabled = false; self.css.del('spinner');
+                        msg.show({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
+                        console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
+                },
+                fail: function (e) {
+                    self.disabled = false; self.css.del('spinner');
+                    console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
-            }},opt));
+            },opt));
         },
         upload:function(stream, url, opt) {
             var file = stream.files[0];
@@ -775,10 +785,16 @@
                 update:function (url) {
                     var p = this.params;
                     p['page'] = this.index||0;
-                    if (typeof url === 'string' || typeof url === 'object') {
-                        var u = typeof url === 'string' ? location.decoder(url) : url;
+                    if (typeof url === 'string') {
+                        var u = location.decoder(url);
                         for (var i in this.el) { if (Object.keys(u).indexOf(this.el[i].name) >-1) u[this.el[i].name] = InputHTMLElementValue(this.el[i],''); }
                         return g.location.update(url, Object.assign(u,p));
+                    } else if (typeof url === 'object') {
+                        for (var i in this.el) { if (Object.keys(url).indexOf(this.el[i].name) >-1) {
+                            url[this.el[i].name] = InputHTMLElementValue(this.el[i],null);
+                            if (url[this.el[i].name] === null) delete url[this.el[i].name];
+                        } }
+                        return Object.assign(url,p);
                     }
                     return '?' + location.encoder(p);
                 },

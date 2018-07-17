@@ -517,7 +517,7 @@
         if (el instanceof HTMLElement) {
             n = el.value ? (Number(el.value) == el.value ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
             if (['checkbox', 'radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1) {
-                n = f.elements[i].checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
+                n = el.checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
             }
         }
         return n;
