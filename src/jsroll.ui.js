@@ -753,12 +753,15 @@
                 get params() {
                     var params = {}, self = this;
                     this.el.forEach(function (e,i,a) {
-                        if (e.value) switch (e.tagName) {
-                            case 'INPUT': params[e.name] = e.value; input_validator(e);
-                                break;
-                            case 'SELECT': if (e.value != 0) params[e.name] = e.value;
-                                break;
-                            }
+                        // if (e.value) switch (e.tagName) {
+                            // case 'INPUT': params[e.name] = e.value; input_validator(e);
+                            //     break;
+                            // case 'SELECT': if (e.value != 0) params[e.name] = e.value;
+                            //     break;
+                            // }
+                        var v = InputHTMLElementValue(e);
+                        if (v) params[e.name] = v;
+
                     });
                     return params;
                 },
@@ -772,7 +775,11 @@
                 update:function (url) {
                     var p = this.params;
                     p['page'] = this.index||0;
-                    if (typeof url === 'string' || typeof url === 'object') return g.location.update(url, p);
+                    if (typeof url === 'string' || typeof url === 'object') {
+                        var u = typeof url === 'string' ? location.decoder(url) : url;
+                        for (var i in this.el) { if (Object.keys(u).indexOf(this.el[i].name) >-1) u[this.el[i].name] = InputHTMLElementValue(this.el[i],''); }
+                        return g.location.update(url, Object.assign(u,p));
+                    }
                     return '?' + location.encoder(p);
                 },
                 get uri() {

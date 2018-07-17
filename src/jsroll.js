@@ -95,7 +95,7 @@
      * @argument { String } s - строка JSON
      * @returns {*}
      */
-    var str2json= function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; }; g.str2json = str2json;
+    var str2json = function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; }; g.str2json = str2json;
 
     /**
      * obj2array
@@ -511,6 +511,17 @@
         if (el instanceof HTMLElement) return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(el.value) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
         return null;
     }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
+    
+    var InputHTMLElementValue = function(el, def) {
+        var n = undefined;
+        if (el instanceof HTMLElement) {
+            n = el.value ? (Number(el.value) == el.value ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
+            if (['checkbox', 'radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1) {
+                n = f.elements[i].checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
+            }
+        }
+        return n;
+    }; g.InputHTMLElementValue = InputHTMLElementValue;
 
     /**
      * @function form
@@ -547,11 +558,12 @@
                             // var n = this.elements[i].value.length ? new Number(this.elements[i].value) : NaN;
                             // f.__MODEL__[f.elements[i].name || i] = ['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? f.elements[i].value : n) : (f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0));
                             var field = f.elements[i].name && /\[.*\]$/.test(f.elements[i].name) ? f.elements[i].name.replace(/\[.*\]$/,'') : (f.elements[i].name || String(i));
-                            var value  = this.elements[i].value;
-                            var n = value ? (Number(value) == value ? Number(value) : String(value)) : null;
-                            if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
-                                n = f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? n : 1) : (f.elements[i].value.indexOf('on') == -1 ? null : 0);
-                            }
+                            // var value  = this.elements[i].value;
+                            // var n = value ? (Number(value) == value ? Number(value) : String(value)) : null;
+                            // if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
+                            //     n = f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? n : 1) : (f.elements[i].value.indexOf('on') == -1 ? null : 0);
+                            // }
+                            var n = InputHTMLElementValue(f.elements[i]);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
