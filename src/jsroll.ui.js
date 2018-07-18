@@ -590,7 +590,8 @@
                         var type = this.getResponseHeader('Content-Type');
                         var blob = g.bb(this.response, {type: type});
 
-                        self.disabled = false; self.css.del('spinner');
+
+                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         if (this.getResponseHeader('Action-Status')) {
                             msg.show({message:this.getResponseHeader('Action-Status')});
                             return
@@ -626,13 +627,13 @@
                             setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
                         }
                     } catch (e) {
-                        self.disabled = false; self.css.del('spinner');
+                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         msg.show({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
                         console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
                 },
                 fail: function (e) {
-                    self.disabled = false; self.css.del('spinner');
+                    if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                     console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
             },opt));
