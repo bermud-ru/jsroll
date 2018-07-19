@@ -285,6 +285,7 @@
      */
     function fader(s, opt) {
         if (!s) return false;
+        var res = null;
 
         var opt = Object.assign({display:false,timeout:500,context:null},opt),
             init = function (v) {
@@ -297,7 +298,7 @@
                         set: function(is) {
                             if (is) {
                                 v.css.add('fade');
-                                if (v.opt.display) setTimeout(function(){ v.style.display = 'none' }, v.opt.timeout);
+                                if (v.opt.display) setTimeout(function(){ v.style.display = 'none'; }, v.opt.timeout);
                                 return v.faded = true;
                             } else {
                                 if (v.opt.display) v.style.display = v.getAttribute('display') ? v.getAttribute('display') : 'inherit';
@@ -309,12 +310,13 @@
                         configurable: true
                     });
                 }
-            }
+                return v;
+            };
 
-        if (typeof s === 'string') g.ui.els(s).forEach(function (v,i,a) { init(v) });
-        else if (s instanceof HTMLElement) init(s);
-        else if (typeof s === 'object') s.forEach(function (v,i,a) { init(v) });
-        else return false;
+        if (typeof s === 'string') { res = g.ui.els(s); res.forEach(function (v,i,a) { init(v) }); }
+        else if (s instanceof HTMLElement) res = init(s);
+        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v) }); }
+        return res
     }; g.fader = fader;
 
 }( window ));
@@ -514,15 +516,12 @@
             }
             return false;
         },
-        elem: ui.el(g.config.msg.container),
-        msg: {
-            show: function (params, close) {
-                tmpl(g.config.msg.tmpl, params, g.app.elem);
-                // g.app.elem.css.del('fade');
-                g.app.elem.fade = false;
-                if (typeof close == 'undefined' || !close) g.app.elem.fade = true; //g.app.elem.css.add('fade');
-                return g.app.elem;
-            }
+        elem: fader(config.msg.container)[0],
+        msg: function (params) {
+            var self = this;
+            tmpl(config.msg.tmpl, params, self.elem);
+            self.elem.fade = false; setTimeout(function(){ self.elem.fade = true; }, 3000);
+            return this;
         },
         spinner_count: 0,
         spinner_element: ui.el(g.config.spinner),
@@ -688,7 +687,7 @@
                             }
                         } else {
                             fail.call(res);
-                            app.msg.show(res);
+                            app.msg(res);
                         }
                         return
                     },
