@@ -1008,6 +1008,7 @@
         if (el && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
+                    var parent = !!this.getAttribute('paretnStatus') ? true : false;
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
                     this.css.del('is-(valid|invalid|warinig|spinner)');
                     switch (stat) {
