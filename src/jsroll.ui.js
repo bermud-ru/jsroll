@@ -778,7 +778,7 @@
                 diff: function (b) {
                     var a = this.params;
                     return Object.keys(a).concat(Object.keys(b)).reduce(function(map, k) {
-                        if (a[k] !== b[k]) map[k] = b[k];
+                        if (a[k] != b[k]) map[k] = b[k];
                         return map;
                     }, {});
                 },
