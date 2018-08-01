@@ -563,7 +563,7 @@
                             // if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
                             //     n = f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? n : 1) : (f.elements[i].value.indexOf('on') == -1 ? null : 0);
                             // }
-                            var n = InputHTMLElementValue(f.elements[i]);
+                            var n = ['text', 'textarea'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) >-1 ? f.elements[i].value : InputHTMLElementValue(f.elements[i]);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
