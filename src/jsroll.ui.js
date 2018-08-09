@@ -763,14 +763,17 @@
                 get params() {
                     var params = {}, self = this;
                     this.el.forEach(function (e,i,a) {
-                        // if (e.value) switch (e.tagName) {
+                        // -- if (e.value) switch (e.tagName) {
                             // case 'INPUT': params[e.name] = e.value; input_validator(e);
                             //     break;
                             // case 'SELECT': if (e.value != 0) params[e.name] = e.value;
                             //     break;
-                            // }
+                        // -- }
                         var v = InputHTMLElementValue(e);
-                        if (v) params[e.name] = v;
+                        if (v !== null) {
+                            params[e.name] = v;
+                            input_validator(e);
+                        }
 
                     });
                     return params;

@@ -437,7 +437,11 @@
      *
      * @argument { String } url (Uniform Resource Locator) путь до шаблона
      * @argument { Boolean } async режим XMLHttpRequest
-     * @event { XMLHttpRequest.onload & XMLHttpRequest.process & XMLHttpRequest.abort }
+     * @event { XMLHttpRequest } onload
+     * @event { XMLHttpRequest } fail
+     * @event { XMLHttpRequest } process
+     * @event { XMLHttpRequest } freeze
+     * @event { XMLHttpRequest } abort
      *
      * @result { Object }
      */
@@ -455,11 +459,20 @@
             return x;
         };
 
-        x.process = function(fn) {
+        x.process = function(opt) {
+            var proc = opt.process;
             x.onreadystatechange = function() {
-                if (typeof fn === 'function') fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-                else if (x.readyState == 4 && x.status >= 400) x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                if (typeof proc === 'function') return proc.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                else if (x.readyState == 4 && x.status >= 400) return x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             };
+
+            x.timeout = opt.timeout;
+            if (typeof opt.freeze === 'function') {
+                x.ontimeout = function () { x.abort(); return opt.freeze.call(x, [opt]); }
+            } else {
+                x.ontimeout = function () { x.abort(); x.fail.call(x, null); }
+            }
+
             return x;
         };
 
@@ -473,7 +486,7 @@
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
-        var opt = Object.assign({method:'GET'}, params);
+        var opt = Object.assign({method:'GET',timeout:10000}, params);
         x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
@@ -490,7 +503,7 @@
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
             x.response_header = null;
-            x.process(opt.process).send(opt.data);
+            x.process(opt).send(opt.data);
         } catch (e) {
             x.abort(); x.fail.call(x, e);
             return x;
