@@ -7,7 +7,7 @@
  * @data 16/04/2018
  * @status beta
  * @version 2.0.12b
- * @revision $Id: jsroll.js 2.0.10b 2018-04-16 10:10:01Z $
+ * @revision $Id: jsroll.js 2.0.12b 2018-04-16 10:10:01Z $
  */
 
 (function ( g, undefined ) {
@@ -215,7 +215,7 @@
      * @returns {*}
      */
     var func = function (str, self, args) {
-        if (typeof str !== 'string') return console.error('jsRoll::func(', str, self, args,') ERROR: Source of context not defined!');
+        if (typeof str !== 'string') return console.error('jsRoll::func(', str, self, args,') Source of context not defined!');
         try {
             var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
             switch ( true ) {
@@ -223,7 +223,7 @@
                 default: return (function () { return eval(s) }).apply(self||this, args||[self]);
             }
         } catch( e ) {
-            return console.error( 'jsRoll::func(', str, self, args, ') ERROR: ', e );
+            return console.error( 'jsRoll::func(', str, self, args, ')', e );
         }
     }; g.func = func;
 
@@ -438,10 +438,13 @@
      * @argument { String } url (Uniform Resource Locator) путь до шаблона
      * @argument { Boolean } async режим XMLHttpRequest
      * @event { XMLHttpRequest } onload
-     * @event { XMLHttpRequest } fail
-     * @event { XMLHttpRequest } process
-     * @event { XMLHttpRequest } freeze
-     * @event { XMLHttpRequest } abort
+     * @event { XMLHttpRequest } ontimeout
+     * @event { XMLHttpRequest } onreadystatechange
+     * @function { XMLHttpRequest } done
+     * @function { XMLHttpRequest } fail
+     * @function { XMLHttpRequest } process
+     * @function { XMLHttpRequest } hang
+     * @function { XMLHttpRequest } abort
      *
      * @result { Object }
      */
@@ -467,10 +470,10 @@
             };
 
             x.timeout = opt.timeout;
-            if (typeof opt.freeze === 'function') {
-                x.ontimeout = function () { x.abort(); return opt.freeze.call(x, [opt]); }
+            if (typeof opt.hang === 'function') {
+                x.ontimeout = function () { x.abort(); return opt.hang.call(x, opt); }
             } else {
-                x.ontimeout = function () { x.abort(); x.fail.call(x, null); }
+                x.ontimeout = function () { x.abort(); return x.fail.call(x,{result:'error',message:'Request timeout '+x.timeout+' ms'}); }
             }
 
             return x;
@@ -486,7 +489,7 @@
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
-        var opt = Object.assign({method:'GET',timeout:10000}, params);
+        var opt = Object.assign({method:'GET',timeout:10000,hang:null}, params);
         x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
