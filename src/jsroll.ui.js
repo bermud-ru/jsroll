@@ -234,17 +234,35 @@
             }, !!opt);
             return this.instance;
         },
+        /**
+         * Default: [text/xml], результирующий объект будет типа XMLDocument (#document->...) !+ xmlns="http://www.w3.org/1999/xhtml"
+         * [application/xml] возвращает Document, но не SVGDocument или HTMLDocument
+         * [image/svg+xml] возвращает SVGDocument, который так же является экземпляром класса Document
+         * [text/html] возвращает  HTMLDocument (<html><body>...</body></html>, который так же является экземпляром класса Document
+         **/
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
             var nodes = g.dom(d, mime).childNodes;
             return nodes.length > 1 ? nodes : nodes[0];
+        },
+        up: function (d, mime) {
+            var nodes = g.dom(d, mime).childNodes, el = this.instance === g.document ? g.ui.el('body') : this.instance;
+            for (var i = 0; i < nodes.length; i++) {
+                el.appendChild(nodes[i]);
+            }
+            return el;
+        },
+        rm: function (s) {
+            if ( !s || typeof s !== 'string' ) return null;
+            this.els(s).forEach(function (el) { el.parentNode.removeChild(el); });
+            return this.instance;
         },
         get active() {
             return this.instance === g.document.activeElement;
         },
         focus: function(s) {
             var el;
-            if (s) el = (typeof s == 'string' ? this.el(s) : s); else el = this.instance;
+            if (s) { el = (typeof s == 'string' ? this.el(s) : s); } else { el = this.instance; }
             if (el) g.setTimeout(function() { el.focus(); return false }, 0);
             return el;
         }

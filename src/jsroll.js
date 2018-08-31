@@ -64,9 +64,11 @@
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
-        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB;
-        g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction;
-        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
+        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || null; //g.shimIndexedDB || null;
+        if (g.indexedDB) {
+            g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction;
+            g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
+        }
     }
 
     g.URL = g.URL || g.webkitURL;
@@ -89,7 +91,7 @@
     var re = function (s, f) { return new RegExp(s, f || 'g') }; g.re = re;
 
     /**
-     * str2json
+     * @function str2json
      * Создание JSON объекта из стоки
      *
      * @argument { String } s - строка JSON
@@ -98,7 +100,7 @@
     var str2json = function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; }; g.str2json = str2json;
 
     /**
-     * obj2array
+     * @function obj2array
      * 
      * @param a
      * @returns {Array}
@@ -129,6 +131,7 @@
     }; g.uuid = uuid;
 
     /**
+     * @function crc32
      * Cyclic redundancy check, CRC32
      *
      * @param str
@@ -158,6 +161,7 @@
     }; g.crc32 = crc32;
 
     /**
+     * Object extension
      * @function merge (...)
      *
      * Метод Object.assign() копирует из исходных объектов в целевой объект только перечисляемые и собственные
@@ -177,12 +181,49 @@
                 Object.defineProperties(o, Object.keys(v||{}).reduce( function (d, key) {
                     if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
                         o[key] = v[key]; d[key] = Object.getOwnPropertyDescriptor(o, key);
-                    } else d[key] = Object.getOwnPropertyDescriptor(v, key);
-                    // d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    } else {
+                        d[key] = Object.getOwnPropertyDescriptor(v, key);
+                    }
                     return d;
                 }, {}));
             });
             return o;
+        },
+        enumerable: false
+    });
+
+    /**
+     * Object extension
+     * @function inherit (...)
+     * @argument { Object } родитель
+     * @argument { Object | undefined } свойства и методы длы объекта
+     * Статческое наследование свойств родительского объекта
+     */
+    Object.defineProperty(Object.prototype, 'inherit', {
+        value: function() {
+            if (!arguments.length || typeof arguments[0] !== 'object') return null;
+            this.__proto__ = Object.merge(arguments[0]);
+            if (arguments[1] === 'object') this.merge(arguments[1]);
+            return this;
+        },
+        enumerable: false
+    });
+
+    /**
+     * Object extension
+     * @function parent (...)
+     * @argument { Object } родитель
+     * @argument { Object | undefined } свойства и методы длы объекта
+     * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
+     */
+    Object.defineProperty(Object.prototype, 'parent', {
+        value: function() {
+            if (!arguments.length || typeof arguments[0] !== 'object') return null;
+            this.__proto__ = arguments[0];
+            if (arguments[0].hasOwnProperty('childs')) arguments[0].childs.push(this);
+            else arguments[0].childs = [this];
+            if (arguments[1] === 'object') this.merge(arguments[1]);
+            return this;
         },
         enumerable: false
     });
@@ -473,7 +514,7 @@
             if (typeof opt.hang === 'function') {
                 x.ontimeout = function () { x.abort(); return opt.hang.call(x, opt); }
             } else {
-                x.ontimeout = function () { x.abort(); return x.fail.call(x,{result:'error',message:'Request timeout '+x.timeout+' ms'}); }
+                x.ontimeout = function () { x.abort(); return x.done.call(x, null, {status:408}); }
             }
 
             return x;
@@ -498,7 +539,7 @@
             for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
             if ((['GET', 'DELETE'].indexOf(x.method) >= 0) && opt.data) {
                 var u = opt.url || g.location;
-                opt.url = u  + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
+                opt.url = u + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
                 opt.data = null;
             }
             if (typeof x.before == 'function') x.before.call(x, opt, x);
@@ -519,15 +560,21 @@
      * Сериализация элемента
      *
      * @param el
-     * @param v
      * @returns {*}
-     * @constructor
      */
     var InputHTMLElementSerialize = function (el) {
         if (el instanceof HTMLElement) return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(el.value) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
         return null;
     }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
-    
+
+    /**
+     * @function InputHTMLElementValue
+     * Хэлпер получения HTML элемента
+     *
+     * @param el
+     * @param def
+     * @returns {*}
+     */
     var InputHTMLElementValue = function(el, def) {
         var n = undefined;
         if (el instanceof HTMLElement) {
@@ -540,7 +587,7 @@
     }; g.InputHTMLElementValue = InputHTMLElementValue;
 
     /**
-     * @function form
+     * @property form
      * Хелпер работы с данными формы
      *
      * @param f DOM элемент форма + f.rolling = ['post','get','put','delete' ets]
@@ -552,34 +599,67 @@
             if (f && !f.hasOwnProperty('MODEL')) {
                 Object.defineProperty(f, 'MODEL', {
                     set: function MODEL(d) {
-                        if (d && typeof d === 'object') {
-                            f.__MODEL__ = d;
-                            //TODO: for form elements name as array
-                            // var field = /\[([^\]]+)\]/.exec(this.elements[i].name)[1];
-                            // if (field && data[field]) this.elements[i].value = data[field];
-                            for (var i = 0; i < f.elements.length; i++) if (d.hasOwnProperty(f.elements[i].name)) {
-                                f.elements[i].value = d[f.elements[i].name];
-                                if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
-                                    f.elements[i].checked = parseInt(d[f.elements[i].name]) !== 0;
+                        f.reset();
+                        if (typeof d === 'object') {
+                            var is_array, field, index, el, value;
+                            for (var i = 0; i < f.elements.length; i++) {
+                                field = null; index = null; el = f.elements[i];
+                                if (el.getAttribute('type') && el.type.toLowerCase() === 'button') { continue; }
+
+                                if ( is_array = /\[.*\]$/.test(el.name) ) {
+                                    field = el.name.replace(/\[.*\]$/,'');
+                                    if ( !d.hasOwnProperty(field) ) { continue; }
+                                    else { value = d[field]; }
+                                    if ( index = /\[([^\]]+)\]/.exec(this.elements[i].name) ) {
+                                        index = String(index[1]);
+                                        if ( !d[field].hasOwnProperty(index) ) { continue; }
+                                        else { value = d[field][index]; }
+                                    }
+                                } else {
+                                    field = el.name || String(i);
+                                    if ( !d.hasOwnProperty(field) ) { continue; }
+                                    else { value = d[field]; }
+                                }
+
+                                switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
+                                    case 'text':
+                                    case 'textarea':
+                                        el.value = decodeURIComponent(value);
+                                        break;
+                                    case 'checkbox': case 'radio':
+                                        if (is_array) {
+                                            el.checked = el.value === 'on' ? !!value : str2json(value, []).indexOf(el.value) !== -1;
+                                        } else {
+                                            el.checked = el.value === 'on' ? !!value : String(el.value) == String(value);
+                                        }
+                                        break;
+                                    case 'number':
+                                        el.value = Number(value);
+                                        break;
+                                    case 'color':
+                                    case 'date':
+                                    case 'date':
+                                    case 'datetime-local':
+                                    case 'email':
+                                    case 'month':
+                                    case 'range':
+                                    case 'search':
+                                    case 'tel':
+                                    case 'time':
+                                    case 'url':
+                                    case 'week':
+                                    default: el.value = String(value);
                                 }
                             }
-                        } else {
-                            f.__MODEL__ = {};
-                            f.reset();
                         }
                     },
                     get: function MODEL() {
-                        f.__MODEL__ = {};
+                        f.__MODEL__ = {}; var el;
                         for (var i=0; i < f.elements.length; i++) {
-                            // var n = this.elements[i].value.length ? new Number(this.elements[i].value) : NaN;
-                            // f.__MODEL__[f.elements[i].name || i] = ['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? f.elements[i].value : n) : (f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? f.elements[i].value : 1) : (f.elements[i].value.indexOf('on') == -1 ? '' : 0));
-                            var field = f.elements[i].name && /\[.*\]$/.test(f.elements[i].name) ? f.elements[i].name.replace(/\[.*\]$/,'') : (f.elements[i].name || String(i));
-                            // var value  = this.elements[i].value;
-                            // var n = value ? (Number(value) == value ? Number(value) : String(value)) : null;
-                            // if (['checkbox', 'radio'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
-                            //     n = f.elements[i].checked ? (f.elements[i].value.indexOf('on') == -1 ? n : 1) : (f.elements[i].value.indexOf('on') == -1 ? null : 0);
-                            // }
-                            var n = ['text', 'textarea'].indexOf((f.elements[i].getAttribute('type') || 'text').toLowerCase()) >-1 ? f.elements[i].value : InputHTMLElementValue(f.elements[i]);
+                            el = f.elements[i];
+                            if (el.getAttribute('type') && el.type.toLowerCase() === 'button') { continue; }
+                            var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
+                            var n = ['text', 'textarea'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1 ? el.value : InputHTMLElementValue(el);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
@@ -601,24 +681,17 @@
                     return data.join('&');
                 };
 
-                f.update = function(data) {
-                    for (var i = 0; i < f.elements.length; i++) {
-                        if (data[f.elements[i].name]) {
-                            f.elements[i].value = data[f.elements[i].name];
-                        } else {
-                            var field = /\[([^\]]+)\]/.exec(f.elements[i].name)[1];
-                            if (field && data[field]) f.elements[i].value = data[field];
-                        }
-                    }
-                    return f;
-                };
+                // f.update = function(data) {
+                //     if (data) f.MODEL = data;
+                //     return f;
+                // };
 
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
                     f.setAttribute('valid', 0);
                     var a = res.form||res.message;
                     if (a) for (var i = 0; i < this.elements.length; i++) {
-                        if (a.hasOwnProperty(this.elements[i].name)) this.elements[i].status = 'error';
-                        else this.elements[i].status = 'none';
+                        if (a.hasOwnProperty(this.elements[i].name)) { this.elements[i].status = 'error'; }
+                        else { this.elements[i].status = 'none'; }
                     }
                     return f;
                 };
@@ -807,6 +880,10 @@
     /**
      * @function dom
      * Создаёт объект DOM из string
+     * application/xml возвращает Document, но не SVGDocument или HTMLDocument
+     * image/svg+xml возвращает SVGDocument, который так же является экземпляром класса Document
+     * text/xml, результирующий объект будет типа XMLDocument (#document->...) !+ xmlns="http://www.w3.org/1999/xhtml"
+     * text/html возвращает  HTMLDocument (<html><body>...</body></html>, который так же является экземпляром класса Document
      *
      * @result { DOM | null }
      */
