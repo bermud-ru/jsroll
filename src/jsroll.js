@@ -498,7 +498,6 @@
      * @function { XMLHttpRequest } done
      * @function { XMLHttpRequest } fail
      * @function { XMLHttpRequest } process
-     * @function { XMLHttpRequest } hang
      * @function { XMLHttpRequest } abort
      *
      * @result { Object }
@@ -525,12 +524,12 @@
             };
 
             x.timeout = opt.timeout;
-            if (typeof opt.hang === 'function') {
-                x.ontimeout = function () { x.abort(); return opt.hang.call(x, opt); }
-            } else {
-                x.ontimeout = function () { x.abort(); return x.done.call(x, null, {status:408}); }
+            x.ontimeout = function (e) {
+                x.done.call(x, e, {status:408});
+                if (typeof x.after == 'function') x.after.call(this);
+                x.abort();
+                return x;
             }
-
             return x;
         };
 
@@ -544,7 +543,7 @@
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
-        var opt = Object.assign({method:'GET',timeout:10000,hang:null}, params);
+        var opt = Object.assign({method:'GET',timeout:10000}, params);
         x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
@@ -563,7 +562,7 @@
             x.response_header = null;
             x.process(opt).send(opt.data);
         } catch (e) {
-            x.abort(); x.fail.call(x, e);
+            x.fail.call(x, e); x.abort();
             return x;
         }
         return x;
