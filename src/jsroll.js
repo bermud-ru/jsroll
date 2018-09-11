@@ -119,6 +119,20 @@
     }; g.coalesce = coalesce;
 
     /**
+     * @function bitfields
+     *
+     * @param status
+     * @param d
+     * @returns {Array}
+     */
+    var bitfields = function (status, d) {
+        var res = [], st = parseInt(status);
+        if (st == 0 || typeof d !== 'object') return res;
+        for (var i=0; i < d.length; i++) { if (st & Math.pow(2,i)) res.push(d[i]); }
+        return res;
+    }; g.bitfields = bitfields;
+
+    /**
      * @function uuid
      * Генерация Universally Unique Identifier 16-байтный (128-битный) номер
      *
@@ -752,6 +766,14 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         var self = Object.merge({
+                progress: false,
+                timer: null,
+                wait: function(after, args) {
+                    var item = this;
+                    if (item.progress) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return false; }
+                    if (typeof after == 'function') { after.apply(item.tmplContext, args); } else { func(after, item.tmplContext, args); }
+                    return;
+                },
                 response_header: null,
                 __tmplContext: undefined,
                 get tmplContext() {
@@ -818,9 +840,9 @@
                     if (typeof cb == 'function') self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl;
                     else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) self.tmplContext.innerHTML = result;
 
-                    if (self.tmplContext && pig && (after = pig.getAttribute('after'))) func(after, self.tmplContext, args);
-                    else if (opt && typeof opt.after == 'function') opt.after.apply(self.tmplContext, args);
-
+                    if (self.tmplContext && pig && (after = pig.getAttribute('after'))) self.wait(after, args);
+                    else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
+                    return;
                 } catch( e ) { return self.onTmplError('tmpl-build', id, str, args, e) }
                 return result;
             };
