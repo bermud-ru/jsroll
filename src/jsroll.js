@@ -592,7 +592,7 @@
     var InputHTMLElementValue = function(el, def) {
         var n = undefined;
         if (el instanceof HTMLElement) {
-            n = el.value ? (Number(el.value) == el.value ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
+            n = el.value ? (Number(el.value) == el.value && !/^0{1,}\d{1,}$/.test(el.value) ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
             if (['checkbox', 'radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1) {
                 n = el.checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
             }
