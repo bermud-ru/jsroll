@@ -16,6 +16,8 @@
     var version = '2.0.12b';
 
     g.HTTP_RESPONSE_CODE = {
+        0: 'APP error!',
+        10: 'APP offline!',
         100: 'Continue',
         101: 'Switching Protocol',
         102: 'Processing',
@@ -519,23 +521,38 @@
         x.process = function(opt) {
             var proc = opt.process;
             x.onreadystatechange = function() {
-                if (typeof proc === 'function') return proc.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-                else if (x.readyState == 4 && x.status >= 400) return x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                if (typeof proc === 'function') {
+                    g.removeEventListener('offline', x.offline);
+                    return proc.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                } else if (x.readyState == 4 && x.status >= 400) {
+                    g.removeEventListener('offline', x.offline);
+                    return x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                }
             };
 
             x.timeout = opt.timeout;
             x.ontimeout = function (e) {
                 x.done.call(x, e, {status:408});
                 if (typeof x.after == 'function') x.after.call(this);
+                g.removeEventListener('offline', x.offline);
                 x.abort();
                 return x;
             }
             return x;
         };
 
+        x.offline = function (e) {
+            x.fail.call(x, e, {status:10});
+            if (typeof x.after == 'function') x.after.call(this);
+            g.removeEventListener('offline', x.offline);
+            x.abort();
+            return false;
+        };
+
         x.onload = function(e) {
             x.done.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             if (typeof x.after == 'function') x.after.call(this);
+            g.removeEventListener('offline', x.offline);
             return x;
         };
 
@@ -560,9 +577,17 @@
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
             x.response_header = null;
-            x.process(opt).send(opt.data);
+            if (!navigator.onLine) {
+                x.fail.call(x, null, {status:10});
+                if (typeof x.after == 'function') x.after.call(this);
+                x.abort();
+            } else {
+                g.addEventListener('offline', x.offline);
+                x.process(opt).send(opt.data);
+            }
         } catch (e) {
             x.fail.call(x, e); x.abort();
+            g.removeEventListener('offline', x.offline);
             return x;
         }
         return x;
