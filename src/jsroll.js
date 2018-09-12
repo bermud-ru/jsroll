@@ -16,8 +16,8 @@
     var version = '2.0.12b';
 
     g.HTTP_RESPONSE_CODE = {
-        0: 'APP error!',
-        10: 'APP offline!',
+        0: 'Request error',
+        10: 'Application offline',
         100: 'Continue',
         101: 'Switching Protocol',
         102: 'Processing',
@@ -519,42 +519,45 @@
         };
 
         x.process = function(opt) {
+            g.addEventListener('offline', x.onerror);
             var proc = opt.process;
             x.onreadystatechange = function() {
                 if (typeof proc === 'function') {
-                    g.removeEventListener('offline', x.offline);
                     return proc.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
                 } else if (x.readyState == 4 && x.status >= 400) {
-                    g.removeEventListener('offline', x.offline);
-                    return x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                    g.removeEventListener('offline', x.onerror);
+                    x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                    if (typeof x.after == 'function') x.after.call(x);
                 }
+                return x;
             };
 
             x.timeout = opt.timeout;
             x.ontimeout = function (e) {
                 x.done.call(x, e, {status:408});
-                if (typeof x.after == 'function') x.after.call(this);
-                g.removeEventListener('offline', x.offline);
+                if (typeof x.after == 'function') x.after.call(x);
+                g.removeEventListener('offline', x.onerror);
                 x.abort();
                 return x;
             }
             return x;
         };
 
-        x.offline = function (e) {
+        x.onerror = function (e) {
             x.fail.call(x, e, {status:10});
-            if (typeof x.after == 'function') x.after.call(this);
-            g.removeEventListener('offline', x.offline);
+            if (typeof x.after == 'function') x.after.call(x);
+            g.removeEventListener('offline', x.onerror);
             x.abort();
             return false;
         };
 
         x.onload = function(e) {
             x.done.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            if (typeof x.after == 'function') x.after.call(this);
-            g.removeEventListener('offline', x.offline);
+            if (typeof x.after == 'function') x.after.call(x);
+            g.removeEventListener('offline', x.onerror);
             return x;
         };
+
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
@@ -579,15 +582,16 @@
             x.response_header = null;
             if (!navigator.onLine) {
                 x.fail.call(x, null, {status:10});
-                if (typeof x.after == 'function') x.after.call(this);
+                if (typeof x.after == 'function') x.after.call(x);
                 x.abort();
             } else {
-                g.addEventListener('offline', x.offline);
                 x.process(opt).send(opt.data);
             }
         } catch (e) {
-            x.fail.call(x, e); x.abort();
-            g.removeEventListener('offline', x.offline);
+            x.fail.call(x, e, {status:0});
+            if (typeof x.after == 'function') x.after.call(x);
+            g.removeEventListener('offline', x.onerror);
+            x.abort();
             return x;
         }
         return x;
