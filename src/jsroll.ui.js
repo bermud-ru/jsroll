@@ -470,6 +470,8 @@
         // ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
         return this;
     }; app.prototype = {
+        online: function(e) { console.log('app::online'); },
+        offline: function(e) { console.log('app::offline'); },
         bootstrap: function(rt) {
             this.route.set(rt).chk(rt).lsn();
             return this;

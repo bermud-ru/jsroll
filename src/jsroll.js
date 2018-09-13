@@ -16,7 +16,7 @@
     var version = '2.0.12b';
 
     g.HTTP_RESPONSE_CODE = {
-        0: 'Request error',
+        0: 'Request runtime error',
         10: 'Application offline',
         100: 'Continue',
         101: 'Switching Protocol',
@@ -618,10 +618,11 @@
      * @returns {*}
      */
     var InputHTMLElementValue = function(el, def) {
-        var n = undefined;
+        var n = undefined, type;
         if (el instanceof HTMLElement) {
-            n = el.value ? (Number(el.value) == el.value && !/^0{1,}\d{1,}$/.test(el.value) ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
-            if (['checkbox', 'radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1) {
+            type = (el.getAttribute('type') || 'text').toLowerCase();
+            n = el.value ? (Number(el.value) == el.value && (type =='number' || !/^0{1,}\d{1,}$/.test(el.value)) ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
+            if (['checkbox', 'radio'].indexOf(type) > -1) {
                 n = el.checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
             }
         }
@@ -643,10 +644,11 @@
                     set: function MODEL(d) {
                         f.reset();
                         if (typeof d === 'object') {
-                            var is_array, field, index, el, value;
+                            var is_array, field, index, el, value, type;
                             for (var i = 0; i < f.elements.length; i++) {
                                 field = null; index = null; el = f.elements[i];
-                                if (el.getAttribute('type') && el.type.toLowerCase() === 'button') { continue; }
+                                type = (el.getAttribute('type') || 'text').toLowerCase();
+                                if (type === 'button') { continue; }
 
                                 if ( is_array = /\[.*\]$/.test(el.name) ) {
                                     field = el.name.replace(/\[.*\]$/,'');
@@ -663,7 +665,7 @@
                                     else { value = d[field]; }
                                 }
 
-                                switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
+                                switch ( type ) {
                                     case 'text':
                                     case 'textarea':
                                         el.value = decodeURIComponent(value);
@@ -696,12 +698,13 @@
                         }
                     },
                     get: function MODEL() {
-                        f.__MODEL__ = {}; var el;
+                        f.__MODEL__ = {}; var el, type;
                         for (var i=0; i < f.elements.length; i++) {
                             el = f.elements[i];
-                            if (el.getAttribute('type') && el.type.toLowerCase() === 'button') { continue; }
+                            type = (el.getAttribute('type') || 'text').toLowerCase();
+                            if (type === 'button') { continue; }
                             var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
-                            var n = ['text', 'textarea'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1 ? el.value : InputHTMLElementValue(el);
+                            var n = ['text', 'textarea'].indexOf(type) >-1 ? el.value : InputHTMLElementValue(el);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
