@@ -867,7 +867,7 @@
 
         var rt =  route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
         var rest = function (self, method, data) {
-            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+data[i]); data = raw.join('&') }
+            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
             return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
         };
 
@@ -1175,12 +1175,17 @@
                     var n = ui.dom(tmpl(this.opt.tmpl, {data:data, field: owner.name}));
                     if (n) owner.pannel.innerHTML = n.innerHTML;
                 } else {
-                    owner.parentElement.insertAdjacentHTML('beforeend', tmpl(this.opt.tmpl, {data: data, field: owner.name}));
-                    owner.parentElement.css.add('dropdown');
-                    owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
+                    var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
+                    if (panel) {
+                        owner.parentElement.insertAdjacentHTML('beforeend', panel);
+                        owner.parentElement.css.add('dropdown');
+                        owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
+                    } else {
+                        console.warn('typeahead ['+owner.name+'] panel not defined');
+                    }
                 }
 
-                if (!this.opt.wrapper) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
+                if (!this.opt.wrapper && owner.pannel) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                 this.activeItem(this.key);
                 owner.parentElement.ui.els('.dropdown-menu.list li', function () {
                     this.ui.on('mousedown', function (e) {
@@ -1233,7 +1238,7 @@
                 var owner = this.owner;
                 if (owner.ui.active) {
                     if (data && Object.keys(data).length) {
-                        this.tmpl(data); owner.pannel.css.del('fade');
+                        this.tmpl(data); if (owner.pannel) owner.pannel.css.del('fade');
                     } else if (owner.pannel) {
                         owner.pannel.css.add('fade');
                     }

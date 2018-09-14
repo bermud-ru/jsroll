@@ -521,12 +521,12 @@
         x.process = function(opt) {
             g.addEventListener('offline', x.onerror);
             var proc = opt.process;
-            x.onreadystatechange = function() {
+            x.onreadystatechange = function(e) {
                 if (typeof proc === 'function') {
-                    return proc.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                    return proc.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
                 } else if (x.readyState == 4 && x.status >= 400) {
                     g.removeEventListener('offline', x.onerror);
-                    x.fail.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+                    x.fail.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
                     if (typeof x.after == 'function') x.after.call(x);
                 }
                 return x;
@@ -873,7 +873,6 @@
 
                     if (self.tmplContext && pig && (after = pig.getAttribute('after'))) self.wait(after, args);
                     else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
-                    return;
                 } catch( e ) { return self.onTmplError('tmpl-build', id, str, args, e) }
                 return result;
             };
