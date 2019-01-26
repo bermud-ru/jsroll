@@ -815,7 +815,7 @@
                     this.__tmplContext = v;
                 },
                 onTmplError: function (type, id, str, args, e ) {
-                    console.error('ERROR['+type+'] jsRoll.tmpl()', [id, str], args, e); return;
+                    console.error('tmpl type=['+type+']', [id, str], args, e); return;
                 }
             }, typeof this !== 'undefined' ? this : {});
         var args = arguments; args[1] = args[1] || {};

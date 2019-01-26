@@ -305,7 +305,7 @@
         if (!s) return false;
         var res = null;
 
-        var opt = Object.assign({display:false,timeout:500,context:null},opt),
+        var opt = Object.assign({display:false,timeout:300,context:null},opt),
             init = function (v) {
                 if (!v.hasOwnProperty('fade')) {
                     v.faded = v.style.opacity == 0;
@@ -345,6 +345,12 @@
 
     if ( typeof ui === 'undefined' ) return false;
 
+    /**
+     * Helper group
+     *
+     * @param els
+     * @param opt
+     */
     var group = function (els, opt) {
         this.__valid = true;
         this.opt = Object.merge({
@@ -454,6 +460,50 @@
         spinner: '.locker.spinner',
         popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
     };
+
+    /**
+     * Helper modalDialog
+     *
+     * @param Object | String s selector
+     * @returns {*}
+     */
+    function modalDialog (s) {
+        var wnd = typeof s === 'object' ? s : ui.el(s);
+        if (wnd) {
+            if (!wnd.hasOwnProperty('modal')) {
+                wnd.modal = {
+                    visible: false,
+                    callback: null,
+                    event: function (e) { if (e.keyCode == 27 && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
+                    show: function (s, model, cb) {
+                        if (s && !wnd.css.has('show')) {
+                            tmpl(s, (model ? model : {}), wnd);
+                            wnd.css.add('show');
+                            g.addEventListener('keydown', wnd.modal.event);
+                            this.visible = true;
+                            if (typeof cb === 'function') {
+                                this.callback = cb;
+                                this.callback();
+                            }
+                        }
+                    },
+                    hide: function (cb) {
+                        g.removeEventListener('keydown', wnd.modal.event);
+                        wnd.css.del('show');
+                        wnd.innerHTML = '';
+                        this.visible = false;
+                        this.callback = cb || this.callback;
+                        if (typeof this.callback  === 'function') {
+                            this.callback();
+                        }
+                    }
+                };
+            }
+            return wnd;
+        }
+        console.error('modalDialog: "'+s+'" wrong dialog object or selector!');
+        return null;
+    }; g.modalDialog = modalDialog;
 
     /**
      * Application
