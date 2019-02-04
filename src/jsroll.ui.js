@@ -917,29 +917,30 @@
 
         var rt =  route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
         var rest = function (self, method, data) {
-            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
+            // var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
             return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
         };
 
         var p = {
             methods: methods ? methods : ['GET','POST','PUT','DELETE'],
             route: route,
-            opt: opt,
+            opt: opt ? opt : this,
             rs: {},
             error: {},
             proc: null,
             before: null,
             after: null,
+            process: function (data, method) { return data; },
             abort:function () { if (this.proc) this.proc.abort(); this.proc = null },
-            done:function (data,  method) { return this.rs[method] = data },
-            fail:function (data,  method) { return this.error = data }
+            done:function (data, method) { return this.rs[method] = data },
+            fail:function (data, method) { return this.error = data }
         };
 
-        for (var n in methods) {
-            var l = methods[n].toLowerCase(), u = l.toUpperCase();
-            p.rs[u] = null;
-            p[l] = (function(u){ return function(data) { this.rs[u] = null; return this.proc = rest(this,u,data); }}).apply(p,[u]);
-            Object.defineProperty(p, u, { get: function() { return this.rs[u]; }});
+        for (var n in p.methods) {
+            var u = methods[n].toUpperCase();
+            p.rs[u] = {};
+            p[u] = (function(u){ return function(data) { this.rs[u] = null; return this.proc = rest(this,u,data); }}).apply(p,[u]);
+            // Object.defineProperty(p, u, { get: function() { return this.rs[u]; }});
         }
 
         if (rt) return p; else console.warn('Can\'t resolve route:' ,route);

@@ -192,16 +192,30 @@
     Object.defineProperty(Object.prototype, 'merge', {
         value: function() {
             if (!arguments.length) return null;
-            var o = (typeof this !== 'function' ? this : {});
-            Array.prototype.slice.call(arguments).forEach( function(v, k, a) {
-                Object.defineProperties(o, Object.keys(v||{}).reduce( function (d, key) {
-                    if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
-                        o[key] = v[key]; d[key] = Object.getOwnPropertyDescriptor(o, key);
-                    } else {
-                        d[key] = Object.getOwnPropertyDescriptor(v, key);
-                    }
-                    return d;
-                }, {}));
+
+            var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : null));
+            if (typeof this === 'function' && o && o.__proto__.__proto__) o.__proto__.constructor = this;
+
+            obj2array(arguments).forEach( function(v, k, a) {
+                if (o === null) {
+                    o = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
+                    if (o && typeof v === 'function') o.__proto__.constructor = v;
+                    return o;
+                }
+                var x = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
+                if (typeof v === 'function') x.__proto__.constructor = v;
+                if (x) {
+                    if (x.__proto__.__proto__) o.__proto__ = merge(o.__proto__, x.__proto__);
+                    Object.defineProperties(o, Object.getOwnPropertyNames(x).reduce(function (d, key) {
+                        if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
+                            o[key] = x[key];
+                            d[key] = Object.getOwnPropertyDescriptor(o, key);
+                        } else {
+                            d[key] = Object.getOwnPropertyDescriptor(x, key);
+                        }
+                        return d;
+                    }, {}));
+                }
             });
             return o;
         },
@@ -211,16 +225,36 @@
     /**
      * Object extension
      * @function inherit (...)
-     * @argument { Object } родитель
-     * @argument { Object | undefined } свойства и методы длы объекта
+     * @argument { Object | Function (Class) } родитель
+     * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Статческое наследование свойств родительского объекта
      */
     Object.defineProperty(Object.prototype, 'inherit', {
         value: function() {
-            if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            this.__proto__ = Object.merge(arguments[0]);
-            if (arguments[1] === 'object') this.merge(arguments[1]);
-            return this;
+            if (!arguments.length) return {};
+            var self = arguments[0], extension = arguments[1];
+            switch (typeof self) {
+                case 'function':
+                    var fn = self;
+                    if (typeof extension === 'object') fn.prototype = Object.merge(fn.prototype, extension);
+                    else if (typeof extension === 'function') fn.prototype = Object.merge(fn.prototype, extension.prototype);
+                    self = new fn;
+                    self.__proto__.constructor = fn;
+                    if (typeof extension === 'function') self.merge(extension);
+                    break;
+                case 'object':
+                    if (typeof extension === 'object') self.__proto__ = Object.merge(self.__proto__, extension);
+                    else if (typeof extension === 'function') {
+                        self.__proto__ = Object.merge(self.__proto__, extension.prototype);
+                        self.__proto__.constructor = extension;
+                        self.merge(extension);
+                    }
+                    break;
+                default:
+                    return null;
+            }
+
+            return self;
         },
         enumerable: false
     });
@@ -229,17 +263,32 @@
      * Object extension
      * @function parent (...)
      * @argument { Object } родитель
-     * @argument { Object | undefined } свойства и методы длы объекта
+     * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
      */
     Object.defineProperty(Object.prototype, 'parent', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            this.__proto__ = arguments[0];
-            if (arguments[0].hasOwnProperty('childs')) arguments[0].childs.push(this);
-            else arguments[0].childs = [this];
-            if (arguments[1] === 'object') this.merge(arguments[1]);
-            return this;
+            var self = this, parent = arguments[0];
+            switch (typeof arguments[1]) {
+                case 'function':
+                    var fn = arguments[1];
+                    // fn.prototype = Object.merge(fn.prototype, parent);
+                    self = new fn;
+                    self.__proto__ = Object.merge(self.__proto__, parent);
+                    self.__proto__.constructor = fn;
+                    break;
+                case 'object':
+                    self = Object.merge(arguments[1]);
+                case 'undefined':
+                default:
+                    self.__proto__ = parent;
+            }
+            self['__parent__'] = parent;
+            if (parent.hasOwnProperty('__childs__')) parent.__childs__.push(self);
+            else parent.__childs__ = [self];
+
+            return self;
         },
         enumerable: false
     });
@@ -272,7 +321,7 @@
      * @returns {*}
      */
     var func = function (str, self, args) {
-        if (typeof str !== 'string') return console.error('jsRoll::func(', str, self, args,') Source of context not defined!');
+        if (typeof str !== 'string') return console.error('jsRoll.func(', str, self, args,') Source of context not defined!');
         try {
             var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
             switch ( true ) {
@@ -280,7 +329,7 @@
                 default: return (function () { return eval(s) }).apply(self||this, args||[self]);
             }
         } catch( e ) {
-            return console.error( 'jsRoll::func(', str, self, args, ')', e );
+            return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
         }
     }; g.func = func;
 
@@ -335,33 +384,6 @@
         if (res.length) return ((!u.length && !h.length) ? url : (u.length?u[0]:h[0])) + '?' + res.join('&') + (h.length ? h[1] : '');
         return url;
     }; g.location.update = update;
-
-    /**
-     * @function timer
-     * Кратное выполнение функции с заданным интервалом времени
-     *
-     * @argument { Number } t итервал в милисекунах до вызова функции f
-     * @argument { Number } c количество вызовов функции f
-     * @argument { Function } f функция
-     * @argument { undefined | Function } done функуиф вызвается по завершению всх циклов или сигнала exit
-     */
-    function timer(t, c, f, done) {
-        if (t && c && typeof f === 'function') {
-            var fn = function fn (c, f, done) {
-                    var r = f.call(this, c);
-                    if (!c || (r !== undefined && !r)) {
-                        clearTimeout(thread);
-                        if (typeof done === 'function') return done.call(this, r);
-                        return null;
-                    } else {
-                        return thread = g.setTimeout(fn.bind(this, --c, f, done), t);
-                    }
-                },
-                thread = g.setTimeout(fn.bind(this, c, f, done), t);
-            return thread;
-        }
-        return undefined;
-    }; g.timer = timer;
 
     /**
      * @function router
@@ -453,7 +475,7 @@
             done: function(fn){ this.donned = fn },
             fail: function(fn){ this.failed = fn }
         };
-        c.tuple = Array.prototype.slice.call(arguments).map(function(fn){
+        c.tuple = obj2array(arguments).map(function(fn){
             fn.onload =  function(){ c.pool.apply(fn, arguments) };
             fn.chain = c; return fn;
         });
@@ -539,7 +561,7 @@
                 g.removeEventListener('offline', x.onerror);
                 x.abort();
                 return x;
-            }
+            };
             return x;
         };
 
@@ -557,7 +579,6 @@
             g.removeEventListener('offline', x.onerror);
             return x;
         };
-
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
@@ -749,7 +770,7 @@
                             var done = typeof args[0] == 'function' ? function(e, hr) {
                                     f.response_header = hr||{};
                                     var callback = args.shift();
-                                    var result = callback.apply(this, args);
+                                    callback.apply(this, args);
                                     return f;
                                 } :
                                 function(e, hr) {
@@ -815,7 +836,7 @@
                     this.__tmplContext = v;
                 },
                 onTmplError: function (type, id, str, args, e ) {
-                    console.error('tmpl type=['+type+']', [id, str], args, e); return;
+                    console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
                 }
             }, typeof this !== 'undefined' ? this : {});
         var args = arguments; args[1] = args[1] || {};
