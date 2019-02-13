@@ -1140,18 +1140,19 @@
      * @param opt
      */
     var pattern_validator = function (element, opt) {
-        if (element && element.tagName) {
-            inputer(element).ui.on('focus', function (e) {
-                if ( typeof this.status === 'undefined' ) input_validator(this);
+        var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
+        els.forEach(function(el,i,a) {
+            if (el instanceof Element) inputer(el).ui.on('focus', function (e) {
+                if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
                 return false;
-            }).ui.on('input', function(e){
-                input_validator(this);
+            }).ui.on('input', function (e) {
+                if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
                 return false;
-            }).ui.on('blur', function(e){
+            }).ui.on('blur', function (e) {
                 input_validator(this);
                 return false;
             });
-        }
+        });
     }; g.pattern_validator = pattern_validator;
 
     /**
