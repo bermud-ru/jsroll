@@ -1084,14 +1084,14 @@
                 set: function status(stat) {
                     var parent = !!this.getAttribute('paretnStatus') ? true : false;
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
-                    this.css.del('is-(valid|invalid|warinig|spinner)');
+                    this.css.del('is-(valid|invalid|warning|spinner)');
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
                             this.css.add('is-invalid');
                             this.parentElement.css.add('has-danger');
                             break;
-                        case 'warning':
+                        case 'warning': case 'warn':
                             this._status = 'warning';
                             this.css.add('is-warning');
                             this.parentElement.css.add('has-warning');
@@ -1233,7 +1233,7 @@
                         owner.parentElement.css.add('dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                     } else {
-                        console.warn('typeahead ['+owner.name+'] panel not defined');
+                        this.opt.warn({messag:'typeahead ['+owner.name+'] panel not defined'}, this);
                     }
                 }
 
@@ -1249,7 +1249,7 @@
                 });
             },
             xhr:function(){
-                var owner = this.owner, params = {};
+                var self = this, owner = this.owner, params = {};
 
                 if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))) {
                     if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
@@ -1260,26 +1260,38 @@
                 params[owner.name] = owner.value;
                 var index = owner.value ? owner.value.toLowerCase() : 'null';
                 if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
-                    owner.status = 'spinner';
+                    var __status = owner.status; owner.status = 'spinner';
+                    owner.isSet = false;
                     this.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
                         rs: this.opt.rs,
                         before: function () { owner.status = 'spinner'; if (owner.pannel) owner.pannel.css.add('fade'); },
-                        after: function () { if (owner.status = 'spinner') owner.status = ''; },
+                        after: function () { if (owner.status = 'spinner') owner.status = __status; },
                         done: function (e) {
                             try {
                                 var res = JSON.parse(this.responseText);
                             } catch (e) {
                                 res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                             }
-                                    
-                            if (res.result != 'ok') { owner.onError(res, this); }
-                            if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
-                            owner.typeahead.cache[index] = res.data||[];
-                            owner.typeahead.activeItem(index);
-                            owner.typeahead.show(res.data||[]);
+                            __status = res.result;
+                            switch (res.result) {
+                                case 'ok': case 'success':
+                                    owner.isSet = true;
+                                    if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
+                                    owner.typeahead.cache[index] = res.data||[];
+                                    owner.typeahead.activeItem(index);
+                                    owner.typeahead.show(res.data||[]);
+                                    break;
+                                case 'error':
+                                    owner.status = 'error';
+                                    self.opt.error(res, this);
+                                    break;
+                                case 'warn': default:
+                                    owner.status = 'warning';
+                                    self.opt.warn(res, this);
+                            }
                             return this;
                         },
-                        fail: function (e) { console.error('typeahead',e); }
+                        fail: function (e) { self.opt.error(e, this); }
                     });
                 } else {
                     if (this.cache && this.cache.hasOwnProperty(index)) owner.typeahead.show(this.cache[index]);
@@ -1367,11 +1379,14 @@
             element.typeahead = th;
             element.isSet = !!element.value.length;
             element.__value = element.value;
-            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{}}, opt);
-            element.onError = function (res, xhr) {
-                this.status = res.result; this.isSet = false;
-                console.error(res.message);
-            };
+            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{},
+                error: function (res, xhr) {
+                    console.error(res.message);
+                },
+                warn: function (res, xhr) {
+                    console.warn(res.message);
+                }
+            }, opt);
             element.setValue = function (v) {
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
