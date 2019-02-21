@@ -229,7 +229,7 @@
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Статческое наследование свойств родительского объекта
      */
-    Object.defineProperty(Object.prototype, 'inherit', {
+    Object.defineProperty(Object.prototype, '__inherit__', {
         value: function() {
             if (!arguments.length) return {};
             var self = arguments[0], extension = arguments[1];
@@ -266,7 +266,7 @@
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
      */
-    Object.defineProperty(Object.prototype, 'parent', {
+    Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
             var self = this, parent = arguments[0];
