@@ -1096,7 +1096,7 @@
                             this.css.add('is-warning');
                             this.parentElement.css.add('has-warning');
                             break;
-                        case 'success':
+                        case 'success': case 'ok':
                             this._status = 'success';
                             this.css.add('is-valid');
                             this.parentElement.css.add('has-success');
