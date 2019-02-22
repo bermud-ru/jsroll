@@ -1030,15 +1030,11 @@
             var el = element.type != 'hidden' ? element : false;
             if (el) {
                 inputer(ui.wrap(el));
-                if (!res) {
-                    el.status = 'error'
-                } else {
-                    if (!el.disabled) {
-                        if (el.value.length) { el.status = 'success' } else { el.status = 'none' }
-                    } else {
-                        el.status = 'none'
-                    }
-                }
+                if (!el.disabled) {
+                    if (res === false) { el.status = 'error' } else
+                    if (    res === null || res === undefined) { el.status = 'warning' }
+                    else { if (el.value.length) { el.status = 'success' } else { el.status = 'none' } }
+                } else { el.status = 'none' }
             }
             return res;
         }
