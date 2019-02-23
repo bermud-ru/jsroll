@@ -1078,9 +1078,9 @@
         if (el && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    var parent = !!this.getAttribute('paretnStatus') ? true : false;
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
                     this.css.del('is-(valid|invalid|warning|spinner)');
+                    if (this.disabled) stat = 'none';
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
@@ -1173,7 +1173,7 @@
             stoped: function () {
                // if (!this.timer) clearTimeout(this.timer); this.timer = null;
                 if (this.owner.status = 'spinner') {
-                    this.owner.status = '';
+                    this.owner.status = 'warning';
                     if (this.__xhr) this.__xhr.abort();
                 }
             },
@@ -1229,7 +1229,7 @@
                         owner.parentElement.css.add('dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                     } else {
-                        this.opt.warn({messag:'typeahead ['+owner.name+'] panel not defined'}, this);
+                        this.opt.warn('typeahead ['+owner.name+'] panel not defined', this);
                     }
                 }
 
@@ -1377,10 +1377,10 @@
             element.__value = element.value;
             element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
-                    console.error(res.message);
+                    console.error(typeof res === 'object' ? res.message : res);
                 },
                 warn: function (res, xhr) {
-                    console.warn(res.message);
+                    console.warn(typeof res === 'object' ? res.message : res);
                 }
             }, opt);
             element.setValue = function (v) {
