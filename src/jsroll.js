@@ -818,13 +818,13 @@
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
         var self = Object.merge({
-                progress: false,
+                processing: false,
                 timer: null,
                 wait: function(after, args) {
-                    var item = this;
-                    if (item.progress) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return false; }
-                    if (typeof after == 'function') { after.apply(item.tmplContext, args); } else { func(after, item.tmplContext, args); }
-                    return;
+                    var item = this, self = this;
+                    if (item.processing) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return self; }
+                    else if (typeof after == 'function') { after.apply(item.tmplContext, args); } else { func(after, item.tmplContext, args); }
+                    return self;
                 },
                 response_header: null,
                 __tmplContext: undefined,
@@ -869,11 +869,13 @@
                             return self.onTmplError('tmpl-arguments', id, str, args,a);
                         }
 
-                        args[1] = Object.merge(args[1], data);
+                        // args[1] = Object.merge(args[1], data);
+                        args[1].merge(data);
                         if (before = pig.getAttribute('before')) func(before, self, args);
                     } else {
                         if (opt && typeof opt.before == 'object') {
-                            args[1] = Object.assign(args[1], opt.before);
+                            // args[1] = Object.assign(args[1], opt.before);
+                            args[1].merge(opt.before);
                         } else if (opt && typeof opt.before == 'function') {
                             opt.before.call(self, args);
                         }
@@ -886,14 +888,21 @@
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
 
-                    if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон') }
-                    result = pattern.call(g.tmpl, args[1]);
+                    if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон'); }
 
-                    if (typeof cb == 'function') self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl;
-                    else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) self.tmplContext.innerHTML = result;
+                    var awaiting = function (self) {
+                        if (self.processing) { self.timer = setTimeout(function () { awaiting(self); }, 50); return; }
 
-                    if (self.tmplContext && pig && (after = pig.getAttribute('after'))) self.wait(after, args);
-                    else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
+                        result = pattern.call(g.tmpl, args[1]);
+
+                        if (typeof cb == 'function') self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl;
+                        else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) self.tmplContext.innerHTML = result;
+
+                        if (self.tmplContext && pig && (after = pig.getAttribute('after'))) self.wait(after, args);
+                        else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
+                        return result;
+                    };
+                    return awaiting(self);
                 } catch( e ) { return self.onTmplError('tmpl-build', id, str, args, e) }
                 return result;
             };
