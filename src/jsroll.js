@@ -325,8 +325,10 @@
         try {
             var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
             switch ( true ) {
-                case /^\s*function.*[}|;]\s*$/i.test(s) : return new Function('return ' + s + '.apply(this, arguments)');
-                default: return (function () { return eval(s) }).apply(self||this, args||[self]);
+                case /^\s*function.*[}|;]\s*$/i.test(s) :
+                    return new Function('return ' + s + '.apply(this, arguments)');
+                default:
+                    return (function () { return eval(s) }).apply(self||this||g, args||[self]);
             }
         } catch( e ) {
             return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );

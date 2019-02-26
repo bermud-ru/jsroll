@@ -1008,9 +1008,6 @@
     var input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
             var res = true, validator = null, pattern;
-            if (!element.hasOwnProperty('validator') && (validator = element.getAttribute('validator')) !== null) {
-                element.validator = func(validator);
-            }
             if ((element.getAttribute('required') !== null) && !element.value) res = false;
             else if ((element.getAttribute('required') === null) && !element.value) res = true;
             else if ((pattern = element.getAttribute('pattern')) === null) res = true;
@@ -1025,7 +1022,8 @@
                 }
                 res = element.testPattern;
             }
-            if (res && element.hasOwnProperty('validator')) res = element.validator.call(element, res);
+            if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
+            else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element, validator, element, [res]);
 
             var el = element.type != 'hidden' ? element : false;
             if (el) {
@@ -1226,7 +1224,7 @@
                     var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
                     if (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
-                        owner.parentElement.css.add('dropdown');
+                        owner.parentElement.css.add(this.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                     } else {
                         this.opt.warn('typeahead ['+owner.name+'] panel not defined', this);
@@ -1375,7 +1373,7 @@
             element.typeahead = th;
             element.isSet = !!element.value.length;
             element.__value = element.value;
-            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, tmpl: 'typeahead-tmpl', rs:{},
+            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, up:false, tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1387,14 +1385,14 @@
                 this.typeahead.value = typeof v === 'object' ? v : {};
                 if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
                     if (this.typeahead.cache !== null) {
-                        element.typeahead.opt.fn.call(element, this.typeahead.value);
                         element.isSet = element.value && this.typeahead.value.hasOwnProperty(element.name) ? true : false;
+                        element.typeahead.opt.fn.call(element, this.typeahead.value);
                         this.dispatchEvent(new Event('change'));
                     } else {
                         if (this.__value !== this.value){
+                            element.isSet = false;
                             element.typeahead.opt.fn.call(element, {});
                             this.dispatchEvent(new Event('change'));
-                            element.isSet = false;
                         } else {
                             element.isSet = true;
                             element.typeahead.opt.fn.call(element, undefined);
