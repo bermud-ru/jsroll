@@ -1161,71 +1161,78 @@
         var th = {
             index: 0,
             key: null,
-            cache: null,
+            cache: {},
             value: null,
             opt: {},
             delta: 330,
             timer: null,
-            request: null,
             __xhr:null,
             stoped: function () {
-               // if (!this.timer) clearTimeout(this.timer); this.timer = null;
-                if (this.owner.status = 'spinner') {
-                    this.owner.status = 'warning';
+                if ( this.timer !== null ) {
                     if (this.__xhr) this.__xhr.abort();
+                    if (this.timer) {
+                        clearTimeout(this.timer);
+                        this.timer = null;
+                    }
                 }
             },
             delayed: function () {
                 if (!this.timer) {
                     var fn = function fn () {
-                            if (this.request == this.owner.value) {  if (this.owner.pannel) { this.owner.pannel.css.add('fade'); }  this.xhr(); }
-                            clearTimeout(this.timer); this.timer = null;
-                            if (this.request && this.request != 'null' && this.request != this.owner.value ) {
-                                this.request = this.owner.value;
-                                this.timer = g.setTimeout(fn.bind(this), this.delta);
-                            }
-                        };
+                        if (this.key == this.owner.value) {  if (this.owner.pannel) { this.owner.pannel.css.add('fade'); }  this.xhr(); }
+                        clearTimeout(this.timer); this.timer = null;
+                        if (this.key && this.key != 'null' && this.key != this.owner.value.trim().toLowerCase() ) {
+                            this.key = this.owner.value.trim().toLowerCase();
+                            this.timer = g.setTimeout(fn.bind(this), this.delta);
+                        }
+                        return false;
+                    };
                     this.timer = g.setTimeout(fn.bind(this), this.delta);
-                    this.request = this.owner.value;
+                    this.key = this.owner.value;
                 } else {
                     this.stoped();
                 }
 
                 return this.timer;
             },
-            activeItem:function (idx) {
-                if (idx && this.cache.hasOwnProperty(idx)) {
-                    this.key = idx;
-                } else {
-                    // this.owner.setValue({});
-                    return
-                }
-                var owner = this.owner, ch = this.cache[this.key] || {}, v = {};
-                if ( owner.pannel && Object.keys(ch).length ) {
+            activeItem:function (key) {
+                var owner = this.owner;
+                if (key && this.cache[key]) { this.key = key; } else { if (owner.pannel) owner.pannel.css.add('fade'); return false; }
+
+                var ch = this.cache[this.key] || [];
+                if ( owner.pannel && ch.length ) {
                     owner.pannel.ui.el('.active', function () { this.css.del('active') });
-                    var values = Object.keys(ch).map(function(k){return ch[k]});
-                    var idx = values.indexOf(owner.value);
-                    if (idx != -1) {
-                        owner.pannel.ui.el('[value="' + idx + '"]', function () { this.css.add('active') });
-                        // v = Object.keys(ch)[idx];
-                    }
+                    var idx = -1; ch.forEach(function(v,i,a){ if (v[owner.name] && (v[owner.name] == owner.value)) { idx = i; }});
+                    this.index = (idx < 0) ? 0 : idx;
+                    owner.pannel.ui.el('[value="' + this.index + '"]', function () { this.css.add('active') });
+                    this.value = ch[this.index];
+                } else {
+                    owner.status = 'warning';
+                    if (owner.pannel) owner.pannel.css.add('fade');
                 }
-                // owner.setValue(v);
-                return
+
+                return false;
             },
             tmpl:function(data){
                 var owner = this.owner;
-                this.index = -1; this.key = owner.value.toLowerCase() || 'null';
+                this.index = data.length ? 0 : -1;
+                this.key = owner.value.trim().toLowerCase() || 'null';
 
                 if (owner.pannel) {
-                    var n = ui.dom(tmpl(this.opt.tmpl, {data:data, field: owner.name}));
-                    if (n) owner.pannel.innerHTML = n.innerHTML;
+                    if (data.length) {
+                        var n = ui.dom(tmpl(this.opt.tmpl, {data: data, field: owner.name}));
+                        if (n) owner.pannel.innerHTML = n.innerHTML;
+                    }
                 } else {
                     var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
                     if (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
                         owner.parentElement.css.add(this.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
+                        owner.pannel.ui.dg('li', 'mousedown', function (e) {
+                            owner.value = this.innerHTML;
+                            return false;
+                        });
                     } else {
                         this.opt.warn('typeahead ['+owner.name+'] panel not defined', this);
                     }
@@ -1233,27 +1240,22 @@
 
                 if (!this.opt.wrapper && owner.pannel) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                 this.activeItem(this.key);
-                owner.parentElement.ui.els('.dropdown-menu.list li', function () {
-                    this.ui.on('mousedown', function (e) {
-                        owner.value = this.innerHTML;
-                        var ch = owner.typeahead.cache[owner.typeahead.key];
-                        // owner.setValue(ch[parseInt(this.ui.attr('value'))]);
-                        return;
-                    });
-                });
+
+                return false;
             },
             xhr:function(){
                 var self = this, owner = this.owner, params = {};
+                var key = owner.value ? owner.value.trim().toLowerCase() : 'null';
 
                 if (this.opt.skip > owner.value.trim().length || (this.opt.validate && !input_validator(this.owner))) {
-                    if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
-                    owner.typeahead.cache[owner.value.trim()] = {};
-                    return owner.typeahead.show([]);
+                    // if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
+                    // if (owner.value.length) owner.typeahead.cache[owner.value.trim().toLowerCase() ] = {};
+                    // return owner.typeahead.show([]);
+                    return this;
                 }
 
                 params[owner.name] = owner.value;
-                var index = owner.value ? owner.value.toLowerCase() : 'null';
-                if ((this.cache === null || !this.cache.hasOwnProperty(index) || index == 'null') && owner.ui.attr('url')) {
+                if ((owner.value !== owner.__value) && (this.cache === null || !this.cache.hasOwnProperty(key) || key == 'null') && owner.ui.attr('url')) {
                     var __status = owner.status; owner.status = 'spinner';
                     owner.isSet = false;
                     this.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
@@ -1269,10 +1271,9 @@
                             __status = res.result;
                             switch (res.result) {
                                 case 'ok': case 'success':
-                                    owner.isSet = true;
                                     if (owner.typeahead.cache === null) { owner.typeahead.cache = {}; }
-                                    owner.typeahead.cache[index] = res.data||[];
-                                    owner.typeahead.activeItem(index);
+                                    owner.typeahead.cache[key] = res.data||[];
+                                    owner.typeahead.activeItem(key);
                                     owner.typeahead.show(res.data||[]);
                                     break;
                                 case 'error':
@@ -1288,92 +1289,109 @@
                         fail: function (e) { self.opt.error(e, this); }
                     });
                 } else {
-                    if (this.cache && this.cache.hasOwnProperty(index)) owner.typeahead.show(this.cache[index]);
+                    if (this.cache && this.cache.hasOwnProperty(key)) owner.typeahead.show(this.cache[key]);
                 }
                 return this;
             },
             show:function(data){
                 var owner = this.owner;
-                if (owner.ui.active) {
-                    if (data && Object.keys(data).length) {
-                        this.tmpl(data); if (owner.pannel) owner.pannel.css.del('fade');
-                    } else if (owner.pannel) {
+                if (owner.ui.active ) {
+                    if (data && data.length) {
+                        this.tmpl(data);
+                        if (owner.pannel) {
+                            owner.pannel.css.del('fade');
+                        }
+                    } else if (owner.pannel ) {
                         owner.pannel.css.add('fade');
                     }
                 }
                 return false;
             },
             onKeydown:function (e) {
-                var key = (e.charCode && e.charCode > 0) ? e.charCode : e.keyCode;
-                if (this.typeahead.cache !== null) {
-                    var th = this.typeahead, x, ch = th.cache[th.key], v = {};
-                    if (ch && typeof ch === 'object') {
-                        switch (key) {
-                            case 38:
-                                if (th.index > 0) th.index--; else th.index = Object.keys(ch).length - 1;
-                                break;
-                            case 40:
-                                if (th.index < Object.keys(ch).length - 1) th.index++; else th.index = 0;
-                                break;
-                            case 13:
-                                th.stoped(); if (this.pannel) this.pannel.css.add('fade');
-                            default:
-                                return;
-                        }
-                        v = ch[(x = Object.keys(ch)[th.index])];
-                        this.value = (typeof v === 'object' ? v[this.name] : v)||'';
-                        this.selectionStart = this.selectionEnd = this.value.length;
-                        if (this.pannel) {
-                            this.pannel.ui.el('.active', function () {
-                                this.css.del('active')
-                            });
-                            this.pannel.ui.el('[value="' + x + '"]', function () {
-                                this.css.add('active')
-                            });
-                        }
-                    } else {
-                        if (key != 9) {
-                            v = {}
-                        }
+                var key = g.eventCode(e), th = this.typeahead, ch = th.cache[th.key] || [];
+                if (th.index < 0 && ch.length) th.index = 0;
+
+                if (ch.length && ch[th.index]) {
+                    switch (key) {
+                        case 'Escape': case 27:
+                            this.stoped();
+                            break;
+                        case 'ArrowUp': case 38:
+                            if (th.index > 0) th.index--; else th.index = ch.length - 1;
+                            break;
+                        case 'ArrowDown': case 40:
+                            if (th.index < ch.length - 1) th.index++; else th.index = 0;
+                            break;
+                        case 'Enter': case 13:
+                            th.stoped();
+                            if (ch.length && ch[th.index])  {
+                                th.value = ch[th.index];
+                                if (th.value[this.name]) {
+                                    this.value = th.value[this.name];
+                                    if (this.value.length) input_validator(this); else this.status = 'none';
+                                } else {
+                                    this.status = 'error';
+                                }
+                            } else if (this.value.length) this.status = 'warning'; else this.status  = 'none';
+                        default:
+                            if (this.pannel) this.pannel.css.add('fade');
+                            e.stopPropagation();
+                            return false;
                     }
-                    this.setValue(v);
+
+                    th.value = ch[th.index];
+                    this.value = th.value ? th.value[this.name] : this.value;
+                    this.status = 'none';
+                    // if (this.value.length) th.key = this.value.toLowerCase();
+                    if (this.pannel) {
+                        this.pannel.ui.el('.active', function (){ this.css.del('active'); });
+                        this.pannel.ui.el('[value="' + th.index + '"]', function (){ this.css.add('active'); });
+                    }
+                } else if (key == 'Enter' || key == 13) {
+                        th.stoped();
+                        if (this.value.length) this.status = 'warning'; else this.status  = 'none';
+                        if (this.pannel) this.pannel.css.add('fade');
+
                 }
-                return
+
+                this.selectionStart = this.selectionEnd = this.value.length;
+                // this.setSelectionRange(this.value.length, this.value.length);
+                e.stopPropagation();
+                return false;
             },
             onFocus:function(e){
-                if ( this.value.length ) this.setSelectionRange(this.value.length, this.value.length);
-                this.__value = this.value;
-                if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) this.typeahead.delayed();
-                return
+                this.setSelectionRange(this.value.length, this.value.length);
+                if ( !this.value.length || (this.value.length && ['none','success'].indexOf(this.status) == -1) ) {
+                    this.__value = this.value;
+                    this.typeahead.delayed();
+                }
+
+                return false;
             },
             onInput:function(e){
                 if ( this.pannel ) this.pannel.css.add('fade');
                 this.typeahead.delayed();
                 if (this.__value !== this.value) this.setValue();
-                input_validator(this);
-                return
+                return false;
             },
             onBlur:function(e){
+                this.typeahead.stoped();
                 if ( this.pannel) this.pannel.css.add('fade');
-                var v = undefined;
+                var v = undefined; this.isSet = false;
                 if (this.typeahead.cache !== null) {
                     var self = this, th = this.typeahead, ch = th.cache[th.key];
-                    if ( th.timer ) { clearTimeout(th.timer); th.timer = null; }
-                    if ( ch && typeof ch === 'object' ) Object.keys(ch).forEach(function(k){ if ( ch[k][self.name] == self.value ) { v = ch[k]; }});
-                } else {
-                    v = {};
+                    if ( ch ) ch.forEach(function(x,i,a){ if ( x && (x[self.name] == self.value) ) { v = x; }});
                 }
-                this.setValue(v);
-                input_validator(this);
-                return
+
+                return this.setValue(v);
             }
         };
 
         if (typeof element.typeahead === 'undefined') {
             element.typeahead = th;
-            element.isSet = !!element.value.length;
+            if (element.isSet = !!element.value.length) th.key = element.value.trim().toLowerCase();
             element.__value = element.value;
-            element.typeahead.opt = Object.assign({wrapper:false, skip: 0, validate: false, up:false, tmpl: 'typeahead-tmpl', rs:{},
+            element.typeahead.opt = Object.assign({fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1382,24 +1400,17 @@
                 }
             }, opt);
             element.setValue = function (v) {
-                this.typeahead.value = typeof v === 'object' ? v : {};
-                if (element.typeahead.opt.hasOwnProperty('fn') && typeof element.typeahead.opt.fn === 'function') {
-                    if (this.typeahead.cache !== null) {
-                        element.isSet = element.value && this.typeahead.value.hasOwnProperty(element.name) ? true : false;
-                        element.typeahead.opt.fn.call(element, this.typeahead.value);
-                        this.dispatchEvent(new Event('change'));
-                    } else {
-                        if (this.__value !== this.value){
-                            element.isSet = false;
-                            element.typeahead.opt.fn.call(element, {});
-                            this.dispatchEvent(new Event('change'));
-                        } else {
-                            element.isSet = true;
-                            element.typeahead.opt.fn.call(element, undefined);
-                        }
-                    }
+                if (typeof v === 'undefined' && this.value.length){
+                    if (this.value != this.__value) this.status = 'warning';
+                    return false;
                 }
+
+                var th = this.typeahead;
+                if (!(this.isSet = (v && v.hasOwnProperty(this.name)) ? true : false)) this.status = 'warning'; else input_validator(this);
+                if (this.__value !== this.value) this.dispatchEvent(new Event('change'));
+                return (typeof th.opt.fn === 'function') ? th.opt.fn.call(this, v) : this.isSet;
             };
+
             element.typeahead.owner = inputer(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');

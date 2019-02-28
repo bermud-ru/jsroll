@@ -63,6 +63,21 @@
         505: 'HTTP Version Not Supported'
     };
 
+    var eventCode = function (e) {
+        if (e instanceof Event) switch (true) {
+            case e.key !== undefined:
+                return e.key;
+            case e.keyIdentifier !== undefined:
+                return e.keyIdentifier;
+            case e.keyCode !== undefined:
+                return e.keyCode;
+            default:
+                return e.charCode;
+        }
+
+        return null;
+    }; g.eventCode = eventCode;
+
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
