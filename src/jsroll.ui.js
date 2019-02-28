@@ -1390,7 +1390,7 @@
         if (typeof element.typeahead === 'undefined') {
             element.typeahead = th;
             if (element.isSet = !!element.value.length) th.key = element.value.trim().toLowerCase();
-            element.__value = element.value;
+            element.__value = element.value.length ? element.value : undefined;
             element.typeahead.opt = Object.assign({fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
