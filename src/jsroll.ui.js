@@ -1183,7 +1183,7 @@
                 return input_validator(this.owner);
             },
             delayed: function () {
-                var th = this, key = th.owner.value.trim().toLowerCase();
+                var th = this, key = th.owner.__key__;
                 var fn = function fn () {
                     if (th.key == key) {
                         if (th.owner.pannel) th.owner.pannel.css.add('fade');
@@ -1239,7 +1239,7 @@
                         this.opt.warn('typeahead ['+owner.name+'] panel not defined', this);
                     }
                 }
-                this.key = owner.value.trim().toLowerCase() || 'null';
+                this.key = owner.__key__;
                 this.activeItem(this.key);
                 return false;
             },
@@ -1249,7 +1249,7 @@
                 if ((this.opt.validate && !is_correct) || (owner.value.length && !is_correct)) {
                     return false;
                 }
-                var key = owner.value.trim().toLowerCase();
+                var key = owner.__key__;
 
                 if (this.opt.skip && this.opt.skip > key.length || (!this.opt.skip && !key.length)) key == 'null';
                 if ((key == 'null' && this.opt.skip) || (this.opt.skip > key.length)) {
@@ -1259,7 +1259,7 @@
                     return this;
                 }
 
-                if (is_correct && ((owner.value !== owner.__value) && (!th.cache.hasOwnProperty(key) || (th.cache.hasOwnProperty(key) && !th.cache[key].length)))) {
+                if (is_correct && ((!key.length || key !== owner.__value.trim().toLowerCase()) && (!th.cache.hasOwnProperty(key) || (th.cache.hasOwnProperty(key) && !th.cache[key].length)))) {
                     var __status = owner.status, params = {};
                     params[owner.name] = owner.value;
                     owner.status = 'spinner';
@@ -1363,16 +1363,18 @@
                 return false;
             },
             onInput:function(e){
-                this.typeahead.delayed();
-                this.typeahead.key = this.value.trim().toLowerCase();
+                if (this.typeahead.opt.proxyIO(e)) {
+                    this.typeahead.delayed();
+                    this.typeahead.key = this.__key__;
+                }
 
                 return false;
             },
             onBlur:function(e){
-                var th = this.typeahead;
-                th.stoped();
-                // input_validator(this);
-                if (this.__value !== this.value) this.setValue(th.current);
+                this.typeahead.stoped();
+                if (this.typeahead.opt.proxyIO(e)) {
+                    if (this.__value !== this.value) this.setValue(this.typeahead.current);
+                }
                 return false;
             }
         };
@@ -1380,9 +1382,16 @@
         if (typeof element.typeahead === 'undefined') {
             if (!element.ui.attr('url')) { console.error('Not have attrib url', element); return }
             element.typeahead = th;
-            if (element.isSet = !!element.value.length) th.key = element.value.trim().toLowerCase();
+            Object.defineProperty(element, '__key__', {
+                get: function status() {
+                    var str = this.value.trim().toLowerCase();
+                    return str.length ? str : 'null';
+                }
+            });
+            if (element.isSet = !!element.value.length) th.key = element.__key__;
             element.__value = element.value;
-            element.typeahead.opt = Object.assign({fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
+            element.typeahead.opt = merge({
+                proxyIO: function(){return true}, fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1409,7 +1418,7 @@
                     if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
                     if (this.__value !== this.value) {
                         this.dispatchEvent(new Event('change'));
-                        // if (this.value.length) this.typeahead.key = this.value.trim().toLowerCase();
+                        // if (this.value.length) this.typeahead.key = this.__key__;
                         input_validator(this);
                         this.__value = this.value;
                     }

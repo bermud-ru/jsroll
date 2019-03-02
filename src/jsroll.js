@@ -64,7 +64,9 @@
     };
 
     var eventCode = function (e) {
-        if (e instanceof Event) switch (true) {
+        if (g.InputEvent && (e instanceof InputEvent)) {
+            return e.data;
+        } else if (e instanceof Event) switch (true) {
             case e.key !== undefined:
                 return e.key;
             case e.keyIdentifier !== undefined:
@@ -73,7 +75,7 @@
                 return e.keyCode;
             default:
                 return e.charCode;
-        }
+        };
 
         return null;
     }; g.eventCode = eventCode;
@@ -329,10 +331,13 @@
     
     /**
      * @function func
-     * Создание фкнкции из строки или выполнение кода из строки в контексте
+     * - Создание фкнкции из строки
+     * - Создание фкнкции из строки, передача параметров в функцию и получение результата
+     * - или выполнение кода из строки в контексте
      *
      * @param str Текстовая строка содержащая определение функцц или содержащий JS код
      * @param self Контекст в котором будет выполнен код
+     * @param args Аргументы функци
      * @returns {*}
      */
     var func = function (str, self, args) {
@@ -342,7 +347,7 @@
             switch ( true ) {
                 case /^\s*function.*[}|;]\s*$/igm.test(s) :
                     var fn = new Function('return ' + s + '.apply(this, arguments)');
-                    if (typeof self === 'undefined') return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
+                    if (typeof self !== 'undefined' && this != g) return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
                     else return fn;
                 default:
                     return (function () { return eval(s) }).apply(self||this||g, args||[self]);
