@@ -342,7 +342,8 @@
             switch ( true ) {
                 case /^\s*function.*[}|;]\s*$/igm.test(s) :
                     var fn = new Function('return ' + s + '.apply(this, arguments)');
-                    return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
+                    if (typeof self === 'undefined') return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
+                    else return fn;
                 default:
                     return (function () { return eval(s) }).apply(self||this||g, args||[self]);
             }
