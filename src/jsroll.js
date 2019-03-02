@@ -340,8 +340,9 @@
         try {
             var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
             switch ( true ) {
-                case /^\s*function.*[}|;]\s*$/i.test(s) :
-                    return new Function('return ' + s + '.apply(this, arguments)');
+                case /^\s*function.*[}|;]\s*$/igm.test(s) :
+                    var fn = new Function('return ' + s + '.apply(this, arguments)');
+                    return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
                 default:
                     return (function () { return eval(s) }).apply(self||this||g, args||[self]);
             }

@@ -1023,7 +1023,7 @@
                 res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
-            else if ((validator = element.getAttribute('validator')) !== null) {var f = func(validator); res = f.call(element, res) }
+            else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element,validator, res);
 
             var el = element.type != 'hidden' ? element : false;
             if (el) {
