@@ -1363,7 +1363,7 @@
                 return false;
             },
             onInput:function(e){
-                if (this.typeahead.opt.proxyIO(e)) {
+                if (this.typeahead.opt.proxyInput(e)) {
                     this.typeahead.delayed();
                     this.typeahead.key = this.__key__;
                 }
@@ -1372,7 +1372,7 @@
             },
             onBlur:function(e){
                 this.typeahead.stoped();
-                if (this.typeahead.opt.proxyIO(e)) {
+                if (this.typeahead.opt.proxyInput(e)) {
                     if (this.__value !== this.value) this.setValue(this.typeahead.current);
                 }
                 return false;
@@ -1391,7 +1391,7 @@
             if (element.isSet = !!element.value.length) th.key = element.__key__;
             element.__value = element.value;
             element.typeahead.opt = merge({
-                proxyIO: function(){return true}, fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
+                proxyInput: function(){return true}, fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
