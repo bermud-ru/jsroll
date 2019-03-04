@@ -346,11 +346,15 @@
             var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
             switch ( true ) {
                 case /^\s*function.*[}|;]\s*$/igm.test(s) :
-                    var fn = new Function('return ' + s + '.apply(this, arguments)');
-                    if (typeof self !== 'undefined' && this != g) return typeof fn === 'function' ? fn.call(self||this||g, args) : undefined;
-                    else return fn;
+                    // var fn = new Function('return ' + s + '.apply(this, arguments)');
+                    // if (typeof self !== 'undefined' && this != g)  {
+                    //     return typeof fn === 'function' ? fn.call(self || this || g, args) : undefined;
+                    // } else {
+                    //     return fn;
+                    // }
+                    return new Function('return ' + s + '.apply(this, arguments)');
                 default:
-                    return (function () { return eval(s) }).apply(self||this||g, args||[self]);
+                    return (function () { return eval(s) });
             }
         } catch( e ) {
             return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
@@ -841,13 +845,14 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
-        var self = Object.merge({
+        var fn, self = Object.merge({
                 processing: false,
                 timer: null,
                 wait: function(after, args) {
                     var item = this, self = this;
                     if (item.processing) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return self; }
-                    else if (typeof after == 'function') { after.apply(item.tmplContext, args); } else { func(after, item.tmplContext, args); }
+                    else if (typeof after == 'function') { after.apply(item.tmplContext, args); }
+                    else if (after && (typeof (fn = func(after, item.tmplContext, args)) === 'function')) { fn.apply(item.tmplContext, args); }
                     return self;
                 },
                 response_header: null,
@@ -895,7 +900,8 @@
 
                         // args[1] = Object.merge(args[1], data);
                         args[1].merge(data);
-                        if (before = pig.getAttribute('before')) func(before, self, args);
+                        // if (before = pig.getAttribute('before')) func(before, self, args);
+                        if (pig.getAttribute('before') && (typeof (fn = func(pig.getAttribute('before'), self, args)) === 'function')) { fn.apply(self, args); }
                     } else {
                         if (opt && typeof opt.before == 'object') {
                             // args[1] = Object.assign(args[1], opt.before);
