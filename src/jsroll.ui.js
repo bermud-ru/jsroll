@@ -1003,6 +1003,7 @@
      * input_validator
      *
      * @param element
+     * @param tags
      * @returns {boolean}
      */
     var input_validator = function(element, tags) {
@@ -1023,16 +1024,13 @@
                 res = element.testPattern;
             }
             if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
-            else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element,validator, res);
+            else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element, validator, res);
 
-            var el = element.type != 'hidden' ? element : false;
-            if (el) {
-                inputer(ui.wrap(el));
-                if (!el.disabled) {
-                    if (res === false) { el.status = 'error' } else
-                    if ( res === null || res === undefined) { el.status = 'warning' }
-                    else { if (el.value.length) { el.status = 'success' } else { el.status = 'none' } }
-                } else { el.status = 'none' }
+            if (element.type != 'hidden') {
+                inputer(ui.wrap(element));
+                if (res === false) { element.status = 'error' }
+                else if ( res === null || res === undefined) { element.status = 'warning' }
+                else { if (element.value.length) element.status = 'success'; else element.status = 'none'; }
             }
             return res;
         }
@@ -1049,7 +1047,7 @@
     var set_default = function (els, attr) {
         if (!els) return null;
 
-        return this.ui.els(els,function () {
+        return this.ui.els(els, function () {
             if (['checkbox','radio'].indexOf((this.getAttribute('type') || 'text').toLowerCase()) >-1)
                 this.checked = this.ui.attr(attr||'default') || false;
             else switch (this.tagName) {
@@ -1131,9 +1129,9 @@
      * pattern_validator
      *
      * @param element
-     * @param opt
+     * @returns {*}
      */
-    var pattern_validator = function (element, opt) {
+    var pattern_validator = function (element) {
         var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
         els.forEach(function(el,i,a) {
             if (el instanceof Element) inputer(el).ui.on('focus', function (e) {
@@ -1147,6 +1145,8 @@
                 return false;
             });
         });
+
+        return;
     }; g.pattern_validator = pattern_validator;
 
     /**
@@ -1251,7 +1251,7 @@
                 }
                 var key = owner.__key__;
 
-                if (this.opt.skip && this.opt.skip > key.length || (!this.opt.skip && !key.length)) key == 'null';
+                if (this.opt.skip && this.opt.skip > key.length || (!this.opt.skip && !key.length)) key = 'null';
                 if ((key == 'null' && this.opt.skip) || (this.opt.skip > key.length)) {
                     th.cache[key] = [];
                     th.activeItem(key);
@@ -1312,6 +1312,7 @@
                         owner.pannel.css.add('fade');
                     }
                 }
+
                 return false;
             },
             onKeydown:function (e) {
@@ -1333,9 +1334,7 @@
                             if (ch.length && ch[th.index] && !self.isSet) {
                                 th.value = ch[th.index];
                                 self.setValue(th.value);
-                            } if (th.current) {
-                                self.setValue(th.value);
-                            }
+                            } else self.setValue();
                         default:
                             if (self.pannel) self.pannel.css.add('fade');
                             // e.stopPropagation();
@@ -1356,25 +1355,31 @@
                 return false;
             },
             onFocus:function(e){
-                this.setSelectionRange(this.value.length, this.value.length);
+                var th = this.typeahead;
+                // this.setSelectionRange(this.value.length, this.value.length);
                 this.__value = this.value;
-                this.typeahead.delayed();
+                if (th.opt.initInput.call(th, e, 'focus')) {
+                    th.delayed();
+                }
 
                 return false;
             },
             onInput:function(e){
-                if (this.typeahead.opt.proxyInput(e)) {
-                    this.typeahead.delayed();
-                    this.typeahead.key = this.__key__;
+                var th = this.typeahead;
+                if (th.opt.proxyInput.call(th, e, 'input')) {
+                    th.delayed();
+                    th.key = this.__key__;
                 }
 
                 return false;
             },
             onBlur:function(e){
-                this.typeahead.stoped();
-                if (this.typeahead.opt.proxyInput(e)) {
-                    if (this.__value !== this.value) this.setValue(this.typeahead.current);
+                var th = this.typeahead;
+                th.stoped();
+                if (th.opt.proxyInput.call(th, e, 'blur')) {
+                    if (this.__value !== this.value) this.setValue();
                 }
+
                 return false;
             }
         };
@@ -1391,7 +1396,11 @@
             if (element.isSet = !!element.value.length) th.key = element.__key__;
             element.__value = element.value;
             element.typeahead.opt = merge({
-                proxyInput: function(){return true}, fn: null, wrapper:false, skip: 0, validate: false, up:element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl', rs:{},
+                getFirst: true,
+                fn: null, wrapper:false, skip: 0, validate: false, rs:{},
+                up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
+                initInput: function(e, type){ this.owner.__value = this.owner.value; if (type != 'focus') this.owner.ui.focus(); return true },
+                proxyInput: function(){ return true },
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1400,13 +1409,18 @@
                 }
             }, opt);
             element.setValue = function (v) {
-                this.isSet = false; this.__value = undefined;
-                if (typeof v === 'undefined' && this.value.length) {
-                    if (typeof th.opt.fn === 'function') this.typeahead.opt.fn.call(this);
-                    if (this.value.length) input_validator(this); else this.status = 'none';
-                } else if (!(this.isSet = (v && v.hasOwnProperty(this.name)) ? true : false)) {
-                    if (th.validate) input_validator(this); else this.status = 'none';
+                var isSet = this.isSet = false;
+                if (typeof v === 'undefined') {
+                    if (this.value.trim().length && this.typeahead.opt.getFirst && this.typeahead.current && this.value != this.__value) {
+                        return this.setValue(this.typeahead.current);
+                    } else {
+                        if (typeof th.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
+                        if (this.value.trim().length) input_validator(this); else this.status = 'none';
+                    }
+                    // this.__value = undefined;
+                } else if (!(isSet = (v && v.hasOwnProperty(this.name)) ? true : false)) {
                     if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
+                    if (th.validate) input_validator(this); else this.status = 'none';
                 } else {
                     this.value = v[this.name];
                     if (this.value.length) {
@@ -1415,16 +1429,17 @@
                         // self.setSelectionRange(self.value.length, self.value.length);
                         g.setTimeout(function () { self.setSelectionRange(self.value.length, self.value.length); }, 1);
                     }
-                    if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
                     if (this.__value !== this.value) {
+                        if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
                         this.dispatchEvent(new Event('change'));
                         // if (this.value.length) this.typeahead.key = this.__key__;
                         input_validator(this);
                         this.__value = this.value;
+                        isSet = true;
                     }
                 }
 
-                return this.isSet;
+                return this.isSet = isSet;
             };
 
             element.typeahead.owner = inputer(element);
