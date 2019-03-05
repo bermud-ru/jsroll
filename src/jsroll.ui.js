@@ -917,7 +917,7 @@
 
         var rt =  route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
         var rest = function (self, method, data) {
-            // var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
+            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
             return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
         };
 
@@ -1133,7 +1133,10 @@
      * @returns {*}
      */
     var pattern_validator = function (element) {
+        if (!element) return console.error('pattern_validator of null object!');
+
         var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
+
         els.forEach(function(el,i,a) {
             if (el instanceof Element) inputer(el).ui.on('focus', function (e) {
                 if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
