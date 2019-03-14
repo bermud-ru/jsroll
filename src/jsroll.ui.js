@@ -107,6 +107,8 @@
     }; g.css = new css(g);
 
     /**
+     * CustomEvent
+     *
      *  polyfill
      */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
@@ -163,7 +165,7 @@
             if (typeof s === 'string') {
                 var r = [];
                 s.split(',').forEach((function (x) {
-                    r.push.apply(r,Array.prototype.slice.call(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
+                    r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                         if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
@@ -185,8 +187,8 @@
             } else if (typeof a === 'string' && typeof v === 'undefined') {
                 var mask = a.indexOf('*') != -1 ? re(a.split('*')[0], 'i') : null;
                 if (mask) {
-                    var data = {}
-                    Array.prototype.slice.call(this.instance.attributes).forEach(function (e, i, a) {
+                    var data = {};
+                    obj2array(this.instance.attributes).forEach(function (e, i, a) {
                         var name = e.nodeName.toString();
                         if (mask.test(name) && (name = name.replace(mask, '')))
                             data[name] = e.value; //.e.nodeValue
@@ -999,6 +1001,29 @@
         return false;
     }; g.setValueFromObject = setValueFromObject;
 
+
+    var isvalid = function (element) {
+        var res = true, validator = null, pattern;
+        if ((element.getAttribute('required') !== null) && !element.value) res = false;
+        else if ((element.getAttribute('required') === null) && !element.value) res = true;
+        else if ((pattern = element.getAttribute('pattern')) === null) res = true;
+        else { if (!element.hasOwnProperty('testPattern')) {
+            try {
+                var p = /[?\/](.+)(\/([igum]*$))/.exec(pattern) || [];
+                element.regex = new RegExp(p[1]||pattern,p[3]||'');
+                Object.defineProperty(element, 'testPattern', {
+                    get: function testPattern() { this.regex.lastIndex=0; return this.regex.test(this.value.trim()) }
+                });
+            } catch(e) { element['testPattern'] = false; console.error(element,pattern,e) }
+        }
+            res = element.testPattern;
+        }
+        // if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
+        // else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element, validator, res);
+        if (element.getAttribute('validator') && (typeof (validator = element.getAttribute('validator')) === 'function')) res = validator.apply(element, [res]);
+        return res;
+    };
+
     /**
      * input_validator
      *
@@ -1008,30 +1033,12 @@
      */
     var input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
-            var res = true, validator = null, pattern;
-            if ((element.getAttribute('required') !== null) && !element.value) res = false;
-            else if ((element.getAttribute('required') === null) && !element.value) res = true;
-            else if ((pattern = element.getAttribute('pattern')) === null) res = true;
-            else { if (!element.hasOwnProperty('testPattern')) {
-                    try {
-                        var p = /[?\/](.+)(\/([igum]*$))/.exec(pattern) || [];
-                        element.regex = new RegExp(p[1]||pattern,p[3]||'');
-                        Object.defineProperty(element, 'testPattern', {
-                            get: function testPattern() { this.regex.lastIndex=0; return this.regex.test(this.value.trim()) }
-                        });
-                    } catch(e) { element['testPattern'] = false; console.error(element,pattern,e) }
-                }
-                res = element.testPattern;
-            }
-            // if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
-            // else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element, validator, res);
-            if (element.getAttribute('validator') && (typeof (validator = element.getAttribute('validator')) === 'function')) res = validator.apply(element, [res]);
-
+            var res = isvalid(element);
             if (element.type != 'hidden') {
                 inputer(ui.wrap(element));
                 if (res === false) { element.status = 'error' }
                 else if ( res === null || res === undefined) { element.status = 'warning' }
-                else { if (element.value.length) element.status = 'success'; else element.status = 'none'; }
+                else { if (element.value.trim().length) element.status = 'success'; else element.status = 'none'; }
             }
             return res;
         }
@@ -1077,7 +1084,7 @@
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
                     this.css.del('is-(valid|invalid|warning|spinner)');
-                    if (this.disabled) stat = 'none';
+                    if (this.disabled) stat = 'none'; else if (stat === undefined || stat === null) stat = 'warn';
                     switch (stat) {
                         case 'error':
                             this._status = 'error';
@@ -1167,24 +1174,21 @@
             index: 0,
             key: null,
             cache: {},
-            value: null,
+            // value: null,
             opt: {},
-            delta: 330,
+            delta: 250,
             timer: null,
             __xhr: null,
-            get current (){
-                return this.cache.hasOwnProperty(this.key) && this.cache[this.key][this.index] ? this.cache[this.key][this.index] : [];
+            get value (){
+                return this.cache.hasOwnProperty(this.key) && this.cache[this.key][this.index] ? this.cache[this.key][this.index] : {};
             },
             stoped: function (opt) {
                 if ( this.timer !== null ) {
                     if (this.__xhr) this.__xhr.abort();
-                    if (this.timer) {
-                        g.clearTimeout(this.timer);
-                        this.timer = null;
-                    }
+                    if (this.timer) { g.clearTimeout(this.timer); this.timer = null }
                 }
                 if (this.owner.pannel) this.owner.pannel.css.add('fade');
-                return input_validator(this.owner);
+                return;
             },
             delayed: function () {
                 var th = this, key = th.owner.__key__;
@@ -1198,6 +1202,7 @@
                             th.key = key; th.timer = g.setTimeout(fn.bind(th), th.delta);
                         }
                     }
+
                     return false;
                 };
                 th.key = key; if (!th.timer) th.stoped();
@@ -1206,16 +1211,15 @@
                 return;
             },
             activeItem:function (key) {
-                var owner = this.owner;
-                if (key && this.cache[key]) { this.key = key; } else { if (owner.pannel) owner.pannel.css.add('fade'); return false; }
+                var owner = this.owner, th = this;
+                if (key && th.cache[key]) { th.key = key; } else { if (owner.pannel) owner.pannel.css.add('fade'); return false; }
 
-                var ch = this.cache[this.key] || [];
-                if ( owner.pannel && ch.length ) {
+                th.index = -1;
+                var list = th.cache[th.key] || [];
+                if ( owner.pannel && list.length ) {
                     owner.pannel.ui.el('.active', function () { this.css.del('active') });
-                    var idx = -1; ch.forEach(function(v,i,a){ if (v[owner.name] && (v[owner.name] == owner.value)) idx = i; });
-                    this.index = (idx < 0) ? 0 : idx;
-                    owner.pannel.ui.el('[value="' + this.index + '"]', function () { this.css.add('active') });
-                    this.value = ch[this.index];
+                    list.forEach(function(v,i,a) { if ((th.index < 0) && v[owner.name] && (v[owner.name].trim().toLowerCase() == owner.__key__)) th.index = i; });
+                    owner.pannel.ui.el('[value="' + (th.index < 0 ? 0 : th.index) + '"]', function () { this.css.add('active') });
                 } else {
                     if (owner.pannel) owner.pannel.css.add('fade');
                 }
@@ -1223,62 +1227,65 @@
                 return false;
             },
             tmpl:function(data){
-                var owner = this.owner;
-                this.index = data.length ? 0 : -1;
+                var th = this, owner = this.owner;
+                th.index = data.length ? 0 : -1;
 
                 if (owner.pannel) {
                     if (data.length) {
-                        var n = ui.dom(tmpl(this.opt.tmpl, {data: data, field: owner.name}));
-                        if (n) owner.pannel.innerHTML = n.innerHTML;
+                        var n = ui.dom(tmpl(th.opt.tmpl, {data: data, field: owner.name}));
+                        owner.pannel.innerHTML = n ? n.innerHTML : null;
                     }
                 } else {
                     var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
                     if (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
-                        owner.parentElement.css.add(this.opt.up ? 'dropup' : 'dropdown');
+                        owner.parentElement.css.add(th.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
-                        owner.pannel.ui.dg('li', 'mousedown', function (e) { owner.value = this.innerHTML; return false });
-                        if (!this.opt.wrapper) owner.pannel.setAttribute('style','left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
+                        owner.pannel.ui.dg('li', 'mousedown', function (e) {
+                            owner.value = this.innerHTML;
+                            owner.setValue(th.cache[th.key][th.index = parseInt(this.value)]);
+                            return false
+                        });
+
                     } else {
-                        this.opt.warn('typeahead ['+owner.name+'] panel not defined', this);
+                        th.opt.warn(owner.name+'.typeahead panel not defined!');
                     }
                 }
-                this.key = owner.__key__;
-                this.activeItem(this.key);
+                th.activeItem(th.key = owner.__key__);
                 return false;
             },
             xhr:function(){
                 var th = this, owner = this.owner;
-                var is_correct = input_validator(owner);
-                if ((this.opt.validate && !is_correct) || (owner.value.length && !is_correct)) {
-                    return false;
-                }
-                var key = owner.__key__;
-
-                if (this.opt.skip && this.opt.skip > key.length || (!this.opt.skip && !key.length)) key = 'null';
-                if ((key == 'null' && this.opt.skip) || (this.opt.skip > key.length)) {
-                    th.cache[key] = [];
-                    th.activeItem(key);
-                    th.show(th.cache[key]);
+                var is_correct = isvalid(owner);
+                
+                if ((th.opt.validate && !is_correct) || ((owner.__key__ === 'null' || owner.__key__.length) && !is_correct)) {
+                    if (owner.__key__ == 'null' && typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, null);
                     return this;
                 }
 
-                if (is_correct && ((!key.length || key !== owner.__value.trim().toLowerCase()) && (!th.cache.hasOwnProperty(key) || (th.cache.hasOwnProperty(key) && !th.cache[key].length)))) {
+                var key = owner.__key__, stored = th.cache.hasOwnProperty(key), len = stored ? th.cache[key].length : 0;
+                if ((stored && len) || (key == 'null' && th.opt.skip) || (th.opt.skip > key.length)) {
+                    if (!stored) th.cache[key] = [];
+                    th.activeItem(key);
+                    th.show(th.cache[key]);
+                    if (th.index >-1) {
+                        owner.__value = '';
+                        setTimeout(th.valueChanger.apply(th, [th.value]), 0);
+                    }
+                } else if (is_correct && ((key !== owner.__value.trim().toLowerCase()) && (!stored||!len))) {
                     var __status = owner.status, params = {};
                     params[owner.name] = owner.value;
                     owner.status = 'spinner';
-                    owner.isSet = false;
-                    this.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
-                        rs: this.opt.rs,
-                        before: function () { owner.status = 'spinner'; if (owner.pannel) owner.pannel.css.add('fade'); },
-                        after: function () { if (owner.status = 'spinner') owner.status = __status; },
+                    th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
+                        rs: th.opt.rs,
+                        before: function () { owner.status = 'spinner'; },
+                        after: function () { owner.status = __status; },
                         done: function (e) {
                             try {
                                 var res = JSON.parse(this.responseText);
                             } catch (e) {
                                 res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                             }
-                            __status = res.result;
                             switch (res.result) {
                                 case 'ok': case 'success':
                                     th.cache[key] = res.data||[];
@@ -1286,30 +1293,28 @@
                                     th.show(th.cache[key]);
                                     break;
                                 case 'error':
-                                    owner.status = 'error';
+                                    __status = 'error';
                                     th.opt.error(res, this);
                                     break;
                                 case 'warn': default:
-                                    owner.status = 'warning';
+                                    __status = 'warning';
                                     th.opt.warn(res, this);
                             }
                             return this;
                         },
-                        fail: function (e) { th.opt.error(e, this); }
+                        fail: function (e) { owner.status = 'error'; th.opt.error(e, this); }
                     });
-                } else if (th.cache.hasOwnProperty(key)) {
-                    th.activeItem(key);
-                    th.show(th.cache[key]);
                 }
-
                 return this;
             },
             show:function(data){
-                var owner = this.owner;
+                var owner = this.owner, th = this;
                 if (owner.ui.active ) {
                     if (data && data.length) {
-                        this.tmpl(data);
+                        th.tmpl(data);
+                        if (th.index != -1) owner.setValue(th.value);
                         if (owner.pannel) {
+                            if (!th.opt.wrapper) owner.pannel.setAttribute('style','margin-top:-'+g.getComputedStyle(owner).marginBottom+';left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                             owner.pannel.css.del('fade');
                         }
                     } else if (owner.pannel ) {
@@ -1320,71 +1325,81 @@
                 return false;
             },
             onKeydown:function (e) {
-                var self = this, key = g.eventCode(e), th = this.typeahead, ch = th.cache[th.key] || [];
-                if (th.index < 0 && ch.length) th.index = 0;
-                if (ch.length && ch[th.index]) {
+                var owner = this, key = g.eventCode(e), th = this.typeahead, list = th.cache[th.key] || [];
+                if (list.length && owner.pannel) {
                     switch (key) {
-                        case 'Escape': case 27:
-                            th.stoped();
-                            break;
                         case 'ArrowUp': case 38:
-                            if (th.index > 0) th.index--; else th.index = ch.length - 1;
+                            if (th.index < 0) th.index = 0;
+                            if (owner.pannel) owner.pannel.css.del('fade');
+                            if (th.index > 0) th.index--; else th.index = list.length - 1;
                             break;
                         case 'ArrowDown': case 40:
-                            if (th.index < ch.length - 1) th.index++; else th.index = 0;
+                            if (th.index < 0) th.index = 0;
+                            if (owner.pannel) owner.pannel.css.del('fade');
+                            if (th.index < list.length - 1) th.index++; else th.index = 0;
                             break;
                         case 'Enter': case 13:
                             th.stoped();
-                            if (ch.length && ch[th.index] && !self.isSet) {
-                                th.value = ch[th.index];
-                                self.setValue(th.value);
-                            } else self.setValue();
+                            owner.setValue(th.index > -1 ? th.value : th.cache[th.key][0]);
+                            if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
+                            return false;
+                        case 'Escape': case 27:
+                            th.stoped();
+                            return false;
                         default:
-                            if (self.pannel) self.pannel.css.add('fade');
-                            // e.stopPropagation();
+                            if (owner.pannel) owner.pannel.css.add('fade');
+                            setTimeout(th.valueChanger.bind(th), 0);
                             return false;
                     }
-                    th.value = ch[th.index];
-                    self.setValue(th.value);
-                    if (self.pannel) {
-                        self.pannel.ui.el('.active', function (){ this.css.del('active'); });
-                        self.pannel.ui.el('[value="' + th.index + '"]', function (){  this.css.add('active'); });
-                    }
+                    owner.pannel.ui.el('.active', function (){ this.css.del('active'); });
+                    owner.pannel.ui.el('[value="' + th.index + '"]', function (){  this.css.add('active'); });
+                    owner.setValue(th.value);
+                    if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
+                    return false;
                 } else if (key == 'Enter' || key == 13) {
                     th.stoped();
-                    if (self.value.length) self.status = 'warning'; else self.status  = 'none';
-                    if (self.pannel) self.pannel.css.add('fade');
+                    if (owner.pannel) owner.pannel.css.add('fade');
                 }
-                // e.stopPropagation();
+                setTimeout(th.valueChanger.bind(th), 0);
                 return false;
             },
             onFocus:function(e){
-                var th = this.typeahead;
-                // this.setSelectionRange(this.value.length, this.value.length);
-                this.__value = this.value;
-                if (th.opt.initInput.call(th, e, 'focus')) {
-                    th.delayed();
-                }
-
+                var owner = this, th = this.typeahead;
+                if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
+                th.delayed();
+                th.activeItem(th.key = owner.__key__);
                 return false;
             },
             onInput:function(e){
-                var th = this.typeahead;
-                if (th.opt.proxyInput.call(th, e, 'input')) {
-                    th.delayed();
-                    th.key = this.__key__;
-                }
-
+                var owner = this, th = this.typeahead;
+                th.delayed();
+                th.key = owner.__key__;
                 return false;
             },
             onBlur:function(e){
-                var th = this.typeahead;
+                var owner = this, th = this.typeahead;
                 th.stoped();
-                if (th.opt.proxyInput.call(th, e, 'blur')) {
-                    if (this.__value !== this.value) this.setValue();
-                }
-
+                input_validator(owner);
                 return false;
+            },
+            valueChanger: function (item) {
+                var th = this, owner = this.owner, __status = this.owner.status, key = 'null';
+                if (!item) {
+                    if (owner.value.length) {
+                        th.index = -1;
+                        var list = th.cache[th.key = owner.__key__] || [];
+                        list.forEach(function (v, i, a) {
+                            if ((th.index < 0) && (v[owner.name].trim().toLowerCase() == owner.__key__)) th.index = i;
+                        });
+                        if (th.index > -1) { item = th.value; key = th.value[owner.name].trim().toLowerCase()||'null'; } else if (owner.__value === owner.value) return;
+                    }
+                } else { if (item[owner.name]) key = item[owner.name].trim().toLowerCase()|| 'null'; }
+                if ( owner.__value !== owner.value || owner.__key__ !== key) {
+                    if (typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, item);
+                    else { if (th.validate) input_validator(owner); else owner.status = __status; }
+                    if (item) { owner.value = item[owner.name];  owner.__value = owner.value; }
+                    owner.dispatchEvent(new g.ce('change', {detail:item||{}}));
+                }
             }
         };
 
@@ -1392,19 +1407,17 @@
             if (!element.ui.attr('url')) { console.error('Not have attrib url', element); return }
             element.typeahead = th;
             Object.defineProperty(element, '__key__', {
-                get: function status() {
+                get: function() {
                     var str = this.value.trim().toLowerCase();
                     return str.length ? str : 'null';
-                }
+                },
+                enumerable: false
             });
-            if (element.isSet = !!element.value.length) th.key = element.__key__;
+
             element.__value = element.value;
             element.typeahead.opt = merge({
-                getFirst: true,
                 fn: null, wrapper:false, skip: 0, validate: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
-                initInput: function(e, type){ this.owner.__value = this.owner.value; if (type != 'focus') this.owner.ui.focus(); return true },
-                proxyInput: function(){ return true },
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1413,37 +1426,12 @@
                 }
             }, opt);
             element.setValue = function (v) {
-                var isSet = this.isSet = false;
-                if (typeof v === 'undefined') {
-                    if (this.value.trim().length && this.typeahead.opt.getFirst && this.typeahead.current && this.value != this.__value) {
-                        return this.setValue(this.typeahead.current);
-                    } else {
-                        if (typeof th.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
-                        if (this.value.trim().length) input_validator(this); else this.status = 'none';
-                    }
-                    // this.__value = undefined;
-                } else if (!(isSet = (v && v.hasOwnProperty(this.name)) ? true : false)) {
-                    if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
-                    if (th.validate) input_validator(this); else this.status = 'none';
-                } else {
-                    this.value = v[this.name];
-                    if (this.value.length) {
-                        var self = this;
-                        // self.selectionStart = self.selectionEnd = self.value.length;
-                        // self.setSelectionRange(self.value.length, self.value.length);
-                        g.setTimeout(function () { self.setSelectionRange(self.value.length, self.value.length); }, 1);
-                    }
-                    if (this.__value !== this.value) {
-                        if (typeof this.typeahead.opt.fn === 'function') this.typeahead.opt.fn.call(this, v);
-                        this.dispatchEvent(new Event('change'));
-                        // if (this.value.length) this.typeahead.key = this.__key__;
-                        input_validator(this);
-                        this.__value = this.value;
-                        isSet = true;
-                    }
-                }
-
-                return this.isSet = isSet;
+                var th = this.typeahead, owner = this, key,
+                    isSet = v && v.hasOwnProperty(this.name),
+                    eq = this.value === this.__value ? this.value.trim().length : 0;
+                if (eq && isSet && owner.__key__ === v[owner.name].trim().toLowerCase()) return false;
+                th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null));
+                return false;
             };
 
             element.typeahead.owner = inputer(element);
