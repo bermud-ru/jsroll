@@ -1270,7 +1270,6 @@
                     var len = stored ? th.cache[key].length : 0;
                     var no_skip = !((key == 'null' && th.opt.skip) || (th.opt.skip > key.length));
                     var no_eq = (key !== owner.__value.trim().toLowerCase());
-console.log('is_correct',is_correct, 'no_skip', no_skip , 'no_eq' , no_eq ,  '!len', !len);
                     if (is_correct && no_skip && no_eq && !len) {
                         var __status = owner.status, params = {};
                         params[owner.name] = owner.value;
