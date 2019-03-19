@@ -550,6 +550,7 @@
      * @function { XMLHttpRequest } done
      * @function { XMLHttpRequest } fail
      * @function { XMLHttpRequest } process
+     * @function { XMLHttpRequest } break
      * @function { XMLHttpRequest } abort
      *
      * @result { Object }
@@ -593,6 +594,13 @@
             return x;
         };
 
+        x.cancel = function() {
+            if (typeof x.after == 'function') x.after.call(x);
+            g.removeEventListener('offline', x.onerror);
+            x.abort();
+            return x;
+        };
+
         x.onerror = function (e) {
             x.fail.call(x, e, {status:10});
             if (typeof x.after == 'function') x.after.call(x);
@@ -607,6 +615,8 @@
             g.removeEventListener('offline', x.onerror);
             return x;
         };
+
+
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').

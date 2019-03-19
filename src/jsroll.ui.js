@@ -262,10 +262,9 @@
         get active() {
             return this.instance === g.document.activeElement;
         },
-        focus: function(s) {
-            var el;
-            if (s) { el = (typeof s == 'string' ? this.el(s) : s); } else { el = this.instance; }
-            if (el) g.setTimeout(function() { el.focus(); return false }, 0);
+        focus: function(opt) {
+            var el = this.instance;
+            setTimeout(el.focus.apply(el, [opt]), 0);
             return el;
         }
     }; g.ui = new ui(document);
@@ -1180,11 +1179,11 @@
             timer: null,
             __xhr: null,
             get value (){
-                return this.cache.hasOwnProperty(this.key) && this.cache[this.key][this.index] ? this.cache[this.key][this.index] : {};
+                return this.cache.hasOwnProperty(this.key) && this.cache[this.key][this.index] ? this.cache[this.key][this.index] : null;
             },
             stoped: function (opt) {
                 if ( this.timer !== null ) {
-                    if (this.__xhr) this.__xhr.abort();
+                    if (this.__xhr) this.__xhr.cancel();
                     if (this.timer) { g.clearTimeout(this.timer); this.timer = null }
                 }
                 if (this.owner.pannel) this.owner.pannel.css.add('fade');
@@ -1255,55 +1254,54 @@
                 return false;
             },
             xhr:function(){
-                var th = this, owner = this.owner;
-                var is_correct = isvalid(owner);
-                
-                if ((th.opt.validate && !is_correct) || ((owner.__key__ === 'null' || owner.__key__.length) && !is_correct)) {
-                    if (owner.__key__ == 'null' && typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, null);
-                    return this;
-                }
+                var th = this, owner = this.owner, is_correct = isvalid(owner);
+
+                if ((th.opt.validate && !is_correct) || (owner.__key__ !== 'null' && !is_correct)) { return this; }
 
                 var key = owner.__key__, stored = th.cache.hasOwnProperty(key), len = stored ? th.cache[key].length : 0;
-                if ((stored && len) || (key == 'null' && th.opt.skip) || (th.opt.skip > key.length)) {
-                    if (!stored) th.cache[key] = [];
+                if (stored) {
                     th.activeItem(key);
                     th.show(th.cache[key]);
                     if (th.index >-1) {
-                        owner.__value = '';
-                        setTimeout(th.valueChanger.apply(th, [th.value]), 0);
+                        owner.__value = undefined;
+                        th.valueChanger(th.value);
                     }
-                } else if (is_correct && ((key !== owner.__value.trim().toLowerCase()) && (!stored||!len))) {
-                    var __status = owner.status, params = {};
-                    params[owner.name] = owner.value;
-                    owner.status = 'spinner';
-                    th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
-                        rs: th.opt.rs,
-                        before: function () { owner.status = 'spinner'; },
-                        after: function () { owner.status = __status; },
-                        done: function (e) {
-                            try {
-                                var res = JSON.parse(this.responseText);
-                            } catch (e) {
-                                res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-                            }
-                            switch (res.result) {
-                                case 'ok': case 'success':
-                                    th.cache[key] = res.data||[];
-                                    th.activeItem(key);
-                                    th.show(th.cache[key]);
-                                    break;
-                                case 'error':
-                                    __status = 'error';
-                                    th.opt.error(res, this);
-                                    break;
-                                case 'warn': default:
-                                    __status = 'warning';
-                                    th.opt.warn(res, this);
-                            }
-                            return this;
-                        },
-                        fail: function (e) { owner.status = 'error'; th.opt.error(e, this); }
-                    });
+                } else {
+                    var no_skip = !((key == 'null' && th.opt.skip) || (th.opt.skip > key.length));
+                    var no_eq = (key !== owner.__value.trim().toLowerCase());
+                    if (is_correct && no_skip && no_eq && !len) {
+                        var __status = owner.status, params = {};
+                        params[owner.name] = owner.value;
+                        owner.status = 'spinner';
+                        th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
+                            rs: th.opt.rs,
+                            before: function () { owner.status = 'spinner'; },
+                            after: function () { owner.status = __status; },
+                            done: function (e) {
+                                try {
+                                    var res = JSON.parse(this.responseText);
+                                } catch (e) {
+                                    res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+                                }
+                                switch (res.result) {
+                                    case 'ok': case 'success':
+                                        th.cache[key] = res.data||[];
+                                        th.activeItem(key);
+                                        th.show(th.cache[key]);
+                                        break;
+                                    case 'error':
+                                        __status = 'error';
+                                        th.opt.error(res, this);
+                                        break;
+                                    case 'warn': default:
+                                        __status = 'warning';
+                                        th.opt.warn(res, this);
+                                }
+                                return this;
+                            },
+                            fail: function (e) { owner.status = 'error'; th.opt.error(e, this); }
+                        });
+                    }
                 }
                 return this;
             },
@@ -1360,7 +1358,7 @@
                     th.stoped();
                     if (owner.pannel) owner.pannel.css.add('fade');
                 }
-                setTimeout(th.valueChanger.bind(th), 0);
+                // setTimeout(th.valueChanger.bind(th), 0);
                 return false;
             },
             onFocus:function(e){
@@ -1374,6 +1372,7 @@
                 var owner = this, th = this.typeahead;
                 th.delayed();
                 th.key = owner.__key__;
+                th.valueChanger();
                 return false;
             },
             onBlur:function(e){
@@ -1385,20 +1384,26 @@
             valueChanger: function (item) {
                 var th = this, owner = this.owner, __status = this.owner.status, key = 'null';
                 if (!item) {
-                    if (owner.value.length) {
+                    if (owner.__key__ !== 'null') {
                         th.index = -1;
                         var list = th.cache[th.key = owner.__key__] || [];
                         list.forEach(function (v, i, a) {
                             if ((th.index < 0) && (v[owner.name].trim().toLowerCase() == owner.__key__)) th.index = i;
                         });
                         if (th.index > -1) { item = th.value; key = th.value[owner.name].trim().toLowerCase()||'null'; } else if (owner.__value === owner.value) return;
+                    } else {
+                        item = null;
                     }
-                } else { if (item[owner.name]) key = item[owner.name].trim().toLowerCase()|| 'null'; }
-                if ( owner.__value !== owner.value || owner.__key__ !== key) {
+                } else {
+                    if (item[owner.name]) key = item[owner.name].trim().toLowerCase() || 'null';
+                    else if (Object.keys(item).length === 0) item = null;
+                }
+
+                if ( owner.__key__ === 'null' || owner.__value !== owner.value || owner.__key__ !== key) {
                     if (typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, item);
                     else { if (th.validate) input_validator(owner); else owner.status = __status; }
-                    if (item) { owner.value = item[owner.name];  owner.__value = owner.value; }
-                    owner.dispatchEvent(new g.ce('change', {detail:item||{}}));
+                    if (item && item[owner.name])  owner.__value = owner.value = item[owner.name];
+                    owner.dispatchEvent(new g.ce('change', {detail:item}));
                 }
             }
         };
@@ -1435,7 +1440,7 @@
             };
 
             element.typeahead.owner = inputer(element);
-            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown);
+            element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('search', th.onInput);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
         }
         return element;
