@@ -990,7 +990,7 @@
      */
     var setValueFromObject = function(owner, v) {
         if (owner && owner.tagName) {
-            if (typeof v === 'object' && v.hasOwnProperty(owner.name)) {
+            if (v && typeof v === 'object' && v.hasOwnProperty(owner.name)) {
                 owner.value = v[owner.name];
             } else {
                 owner.value = null;
