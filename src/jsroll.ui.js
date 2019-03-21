@@ -637,7 +637,9 @@
                 if (typeof arguments[0] == 'function') arguments[0].apply(self, obj2array(arguments).slice(1));
                 self.container.innerHTML = null;
                 self.wnd.fade = true;
-                if (self.list) self.list.ui.focus('[role="popup-box"]');
+                if (self.list) self.list.ui.el('[role="popup-box"]', function () {
+                    this.ui.focus();
+                });
             }
             return this;
         },
