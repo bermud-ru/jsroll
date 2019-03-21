@@ -133,8 +133,8 @@
      * @returns {variant | null}
      */
     var coalesce = function() {
-        for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null) return arguments[i] };
-        return null;
+        for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null && arguments[i] !== '') return arguments[i] };
+        return undefined;
     }; g.coalesce = coalesce;
 
     /**

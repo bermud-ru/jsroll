@@ -262,9 +262,10 @@
         get active() {
             return this.instance === g.document.activeElement;
         },
-        focus: function(opt) {
-            var el = this.instance;
-            setTimeout(el.focus.apply(el, [opt]), 0);
+        focus: function(s) {
+            var el;
+            if (s) { el = (typeof s == 'string' ? (this.el(s) || this.instance): s); } else { el = this.instance; }
+            if (el) g.setTimeout(function() { el.focus(); return false }, 0);
             return el;
         }
     }; g.ui = new ui(document);
