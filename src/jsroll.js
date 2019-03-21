@@ -16,8 +16,8 @@
     var version = '2.0.12b';
 
     g.HTTP_RESPONSE_CODE = {
-        0: 'Request runtime error',
-        10: 'Application offline',
+          0: 'Request runtime error',
+         10: 'Application offline',
         100: 'Continue',
         101: 'Switching Protocol',
         102: 'Processing',
@@ -124,11 +124,11 @@
      * @param a
      * @returns {Array}
      */
-    var obj2array = function (a) { return Array.prototype.slice.call(a); }; g.obj2array = obj2array;
+    var obj2array = function (a) { return typeof a === 'object' ? Array.prototype.slice.call(a) : []; }; g.obj2array = obj2array;
 
     /**
      * @function coalesce
-     * Return first not null or undefined in the function arguments
+     * Return first not empty in the function arguments
      *
      * @returns {variant | null}
      */
@@ -136,6 +136,28 @@
         for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null && arguments[i] !== '') return arguments[i] };
         return undefined;
     }; g.coalesce = coalesce;
+
+    /**
+     * @function quoter
+     * Заменяет одинарные и двойные кавычки на Html коды и возрващает строку
+     *
+     * @param v
+     * @returns {string}
+     */
+    var quoter = function(v) {
+        var s = typeof v === 'string' ? v : JSON.stringify(v);
+        return s ? s.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+    }; g.quoter = quoter;
+
+    /**
+     * @function bundler
+     * Возращает массив не empty элементо массива
+     *
+     * @returns {*[]}
+     */
+    var bundler = function() {
+        return obj2array(arguments).filter(function (v) { return (typeof v !== 'undefined' && v !== null && v !== ''); });
+    }; g.bundler = bundler;
 
     /**
      * @function bitfields
