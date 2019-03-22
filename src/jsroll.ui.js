@@ -466,7 +466,7 @@
     /**
      * Helper modalDialog
      *
-     * @param Object | String s selector
+     * @param s {Object|String} selector
      * @returns {*}
      */
     function modalDialog (s) {
@@ -476,7 +476,7 @@
                 wnd.modal = {
                     visible: false,
                     callback: null,
-                    event: function (e) { if (e.keyCode == 27 && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
+                    event: function (e) { var key = g.eventCode(e); if ((key == 27 || key == 'Escape') && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
                     show: function (s, model, cb) {
                         if (s && !wnd.css.has('show')) {
                             tmpl(s, (model ? model : {}), wnd);
