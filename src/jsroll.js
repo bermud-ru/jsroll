@@ -600,24 +600,21 @@
                 } else if (x.readyState == 4 && x.status >= 400) {
                     g.removeEventListener('offline', x.onerror);
                     x.fail.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-                    if (typeof x.after == 'function') x.after.call(x);
+                    if (typeof x.after == 'function') x.after.call(x, {status:parseInt(x.status)});
                 }
                 return x;
             };
 
             x.timeout = opt.timeout;
             x.ontimeout = function (e) {
-                x.done.call(x, e, {status:408});
-                if (typeof x.after == 'function') x.after.call(x);
-                g.removeEventListener('offline', x.onerror);
-                x.abort();
+                x.cancel({status:408});
                 return x;
             };
             return x;
         };
 
-        x.cancel = function() {
-            if (typeof x.after == 'function') x.after.call(x);
+        x.cancel = function(opt) {
+            if (typeof x.after == 'function') x.after.call(x, opt);
             g.removeEventListener('offline', x.onerror);
             x.abort();
             return x;
@@ -625,15 +622,13 @@
 
         x.onerror = function (e) {
             x.fail.call(x, e, {status:10});
-            if (typeof x.after == 'function') x.after.call(x);
-            g.removeEventListener('offline', x.onerror);
-            x.abort();
+            x.cancel({status:500});
             return false;
         };
 
         x.onload = function(e) {
             x.done.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            if (typeof x.after == 'function') x.after.call(x);
+            if (typeof x.after == 'function') x.after.call(x, {status:parseInt(x.status)});
             g.removeEventListener('offline', x.onerror);
             return x;
         };
@@ -663,16 +658,13 @@
             x.response_header = null;
             if (!navigator.onLine) {
                 x.fail.call(x, null, {status:10});
-                if (typeof x.after == 'function') x.after.call(x);
-                x.abort();
+                x.cancel({status:10});
             } else {
                 x.process(opt).send(opt.data);
             }
         } catch (e) {
             x.fail.call(x, e, {status:0});
-            if (typeof x.after == 'function') x.after.call(x);
-            g.removeEventListener('offline', x.onerror);
-            x.abort();
+            x.cancel({status:0});
             return x;
         }
         return x;
@@ -807,11 +799,6 @@
                     return data.join('&');
                 };
 
-                // f.update = function(data) {
-                //     if (data) f.MODEL = data;
-                //     return f;
-                // };
-
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
                     f.setAttribute('valid', 0);
                     var a = res.form||res.message;
@@ -825,8 +812,8 @@
                 f.send = function() {
                     var data = f.prepare(f.validator), before = true, args = arguments;
                     if (f.getAttribute('valid') != 0) {
-                        if (typeof f.before == 'function') before = f.before.call(this);
-                        if (before == undefined || !!before) {
+                        if (typeof f.before === 'function') before = f.before();
+                        if (before === undefined || !!before) {
                             var done = typeof args[0] == 'function' ? function(e, hr) {
                                     f.response_header = hr||{};
                                     var callback = args.shift();
@@ -836,20 +823,23 @@
                                 function(e, hr) {
                                     f.response_header = hr||{};
                                     try {
-                                        var res = JSON.parse(this.responseText);
+                                        f.response = JSON.parse(this.responseText);
                                     } catch (e) {
-                                        res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
+                                        f.response = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
                                     }
 
-                                    if (res.result == 'error' ) {
-                                        if (typeof f.fail == 'function') f.fail.call(f, res, hr, args);
+                                    if (f.response.result == 'error' ) {
+                                        if (typeof f.fail == 'function') f.fail.call(f, f.response, hr, args);
                                     } else {
-                                        if (typeof f.done == 'function') f.done.call(f, res, hr, args);
+                                        if (typeof f.done == 'function') f.done.call(f, f.response, hr, args);
                                     }
-                                    if (typeof f.after == 'function') { f.after.call(f, res, hr, args) }
                                     return f;
                                 };
-                            g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done}, f.opt));
+                            var after = (typeof f.after === 'function') ? f.after.bind(f) : undefined;
+                            f.response = null;
+                            g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done, after: after, fail: function (e, hr) {
+                                    console.error('JSON.form['+f.name+']: ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                                }}, f.opt));
                         }
                     } else f.setAttribute('valid',1);
                     return f;
