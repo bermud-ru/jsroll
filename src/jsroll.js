@@ -836,7 +836,7 @@
                                     return f;
                                 };
                             var after = (typeof f.after === 'function') ? f.after.bind(f) : undefined;
-                            f.response = null;
+                            f.response = {result: undefined};
                             g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done, after: after, fail: function (e, hr) {
                                     console.error('JSON.form['+f.name+']: ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                                 }}, f.opt));
