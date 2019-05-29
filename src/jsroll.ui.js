@@ -218,8 +218,8 @@
             return this.instance;
         },
         src: function (e) {
-            var el = e ? e : this.instance;
-            return new ui(el.srcElement || el.target);
+            var el = (e instanceof Event) ? e : this.instance;
+            return this.wrap(el.srcElement || el.target);
         },
         on: function (event, fn, opt) {
             var self = this;
@@ -466,14 +466,16 @@
     /**
      * Helper modalDialog
      *
+     * @param e {Event|undefined} HTML element Event
      * @param s {Object|String} selector
      * @returns {*}
      */
-    function modalDialog (s) {
+    function modalDialog (e, s) {
         var wnd = typeof s === 'object' ? s : ui.el(s);
         if (wnd) {
             if (!wnd.hasOwnProperty('modal')) {
                 wnd.modal = {
+                    kicker: e,
                     visible: false,
                     callback: null,
                     event: function (e) { var key = g.eventCode(e); if ((key == 27 || key == 'Escape') && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
@@ -498,9 +500,11 @@
                         if (typeof this.callback  === 'function') {
                             this.callback();
                         }
+
+                        if(this.kicker instanceof HTMLElement) this.kicker.ui.focus();
                     }
                 };
-            }
+            } else if (e instanceof HTMLElement) wnd.modal.kicker = e;
             return wnd;
         }
         console.error('modalDialog: "'+s+'" wrong dialog object or selector!');
@@ -1081,7 +1085,7 @@
      * @returns {*}
      */
     var inputer = function(el) {
-        if (el && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
+        if (el instanceof Element && ui.wrap(el) && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
@@ -1117,6 +1121,7 @@
                     return this._status;
                 }
             });
+
         }
         return el;
     }; g.inputer = inputer;
@@ -1147,7 +1152,7 @@
         var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
 
         els.forEach(function(el,i,a) {
-            if (el instanceof Element) inputer(el).ui.on('focus', function (e) {
+            if (el instanceof Element && ui.wrap(el)) inputer(el).ui.on('focus', function (e) {
                 if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
                 return false;
             }).ui.on('input', function (e) {
