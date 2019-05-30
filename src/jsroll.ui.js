@@ -264,9 +264,9 @@
         },
         focus: function(s) {
             var el;
-            if (s) { el = (typeof s == 'string' ? (this.el(s) || this.instance): s); } else { el = this.instance; }
-            if (el) g.setTimeout(function() { el.focus(); return false }, 0);
-            return el;
+            if (s) { el = (typeof s == 'string' ? this.el(s): s); } else { el = this.instance; }
+            if (el instanceof HTMLElement) g.setTimeout(function(e) { el.focus(); }, 0);
+            return this.instance;
         }
     }; g.ui = new ui(document);
 
@@ -490,6 +490,11 @@
                                 this.callback();
                             }
                         }
+                        if (this.kicker instanceof HTMLElement) wnd.kicker = this.kicker
+                        return this;
+                    },
+                    getKicker: function() {
+                        return wnd.kicker;
                     },
                     hide: function (cb) {
                         g.removeEventListener('keydown', wnd.modal.event);
@@ -501,7 +506,8 @@
                             this.callback();
                         }
 
-                        if(this.kicker instanceof HTMLElement) this.kicker.ui.focus();
+                        if (wnd.kicker) wnd.kicker.ui.focus();
+                        return this;
                     }
                 };
             } else if (e instanceof HTMLElement) wnd.modal.kicker = e;
