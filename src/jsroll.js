@@ -238,13 +238,14 @@
             obj2array(arguments).forEach( function(v, k, a) {
                 if (o === null) {
                     o = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
-                    if (o && typeof v === 'function') o.__proto__.constructor = v;
+                    if (o && typeof v === 'function' && o.__proto__) o.__proto__.constructor = v;
                     return o;
                 }
                 var x = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
-                if (typeof v === 'function') x.__proto__.constructor = v;
                 if (x) {
-                    if (x.__proto__.__proto__) o.__proto__ = merge(o.__proto__, x.__proto__);
+                    if (typeof v === 'function' && x.__proto__) x.__proto__.constructor = v;
+                    //TODO: https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Operators/Object_initializer
+                    if (Object.getPrototypeOf(x) !== Object.prototype) Object.merge(o.__proto__, x.__proto__);
                     Object.defineProperties(o, Object.getOwnPropertyNames(x).reduce(function (d, key) {
                         if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
                             o[key] = x[key];
