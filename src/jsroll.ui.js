@@ -263,10 +263,10 @@
             return this.instance === g.document.activeElement;
         },
         focus: function(s) {
-            var el;
+            var el = null;
             if (s) { el = (typeof s == 'string' ? this.el(s): s); } else { el = this.instance; }
             if (el instanceof HTMLElement) g.setTimeout(function(e) { el.focus(); }, 0);
-            return this.instance;
+            return el;
         }
     }; g.ui = new ui(document);
 
