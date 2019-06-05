@@ -539,10 +539,12 @@
             return this;
         },
         get store(){
-            return str2json(storage.getItem('app'));
+            return str2json(storage.getItem('app'), {});
         },
         set store(u){
-            storage.setItem('app', u === 'string' ? u : JSON.stringify(u));
+            var store = str2json(storage.getItem('app'), {});
+            if (typeof u === 'object') storage.setItem('app', JSON.stringify( Object.merge(store, u)));
+            else console.error('app::store only Object instance can store! ['+ JSON.stringify(u)+']');
         },
         widget: function (cfg, t, d, opt) {
             var self = this, root = typeof cfg.root == 'string' ? g.ui.el(cfg.root) : cfg.root;
