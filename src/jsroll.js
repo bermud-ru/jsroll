@@ -366,7 +366,7 @@
     var func = function (str, self, args) {
         if (typeof str !== 'string') return console.error('jsRoll.func(', str, self, args,') Source of context not defined!');
         try {
-            var s = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)/igm,'');
+            var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
             switch ( true ) {
                 case /^\s*function.*[}|;]\s*$/igm.test(s) :
                     // var fn = new Function('return ' + s + '.apply(this, arguments)');
@@ -893,7 +893,7 @@
             }, typeof this !== 'undefined' ? this : {});
         var args = arguments; args[1] = args[1] || {};
         var compile = function( str ) {
-            var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/(\/\*[\w\'\s\r\n\*]*\*\/)|(\/\/[^\r\n]*)|(\<![\-\-\s\w\>\/]*\>)/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
+            var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
             if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
             // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
             return source.length ? new Function(_e,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+_e+"){p.push('"+
