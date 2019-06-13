@@ -1133,15 +1133,26 @@
         }
         return el;
     }; g.inputer = inputer;
-    
-    g.formvalidator = function(res) {
-        var m = {};
-        for (var i =0; i < this.elements.length; i++) if (!input_validator(this.elements[i])) m[this.elements[i].name] = this.elements[i].value||'Поле с неверными данными или пустым значения!';
+
+    /**
+     * @function formvalidator
+     * Default form validator
+     * @param res
+     * @returns {boolean}
+     */
+    g.formvalidator = function(res, pushed) {
+        var m = res && res.hasOwnProperty('message') && typeof res.message === 'object' && res.message ? res.message: {};
+
+        for (var i = 0; i < this.elements.length; i++) {
+            if (!m.hasOwnProperty(this.elements[i].name) && !input_validator(this.elements[i])) {
+                m[this.elements[i].name] = this.elements[i].value || 'Поле с неверными данными или пустым значения!';
+            }
+        }
 
         if (Object.keys(m).length) {
             if (g.spinner) g.spinner = false;
             m['caption'] = 'Неверно заполнена форма!';
-            msg.show({message: m});
+            if (typeof pushed === 'undefined' || !!pushed) msg.show({message: m});
             return false;
         }
 
@@ -1149,7 +1160,7 @@
     };
 
     /**
-     * pattern_validator
+     * @function pattern_validator
      *
      * @param element
      * @returns {*}
