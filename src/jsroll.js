@@ -145,7 +145,7 @@
      * @returns {string}
      */
     var quoter = function(v) {
-        var s = typeof v === 'string' ? v : JSON.stringify(v);
+        var s = typeof v === 'string' ? v : ( v ? JSON.stringify(v) : null );
         return s ? s.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
     }; g.quoter = quoter;
 
