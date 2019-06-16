@@ -168,7 +168,7 @@
      */
     var bitfields = function (status, d) {
         var res = [], st = parseInt(status);
-        if (st == 0 || typeof d !== 'object') return res;
+        if (!st || typeof d !== 'object' || d === null) return res;
         for (var i=0; i < d.length; i++) { if (st & Math.pow(2,i)) res.push(d[i]); }
         return res;
     }; g.bitfields = bitfields;
