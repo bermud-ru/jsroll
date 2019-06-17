@@ -1003,19 +1003,36 @@
      * @param owner
      * @param v
      */
-    var setValueFromObject = function(owner, v) {
-        if (owner && owner.tagName) {
-            if (v && typeof v === 'object' && v.hasOwnProperty(owner.name)) {
-                owner.value = v[owner.name];
+    var setValueFromObject = function(el, v, required) {
+        if (el && el.tagName) {
+            el.value = null;
+            if (!(this instanceof HTMLElement)) el.required = !!required;
+            if (typeof v === 'object' && v && v.hasOwnProperty(el.name)) {
+                el.value = v[el.name];
             } else {
-                owner.value = null;
+                el.value = typeof v === 'undefined' ? null : v;
             }
-            return true;
+            var status = el.required ? input_validator(el) : !!el.value;
+            if (this instanceof HTMLElement){
+                if (!!required && !status) {
+                    this.status = 'error';
+                } else if (this.value) {
+                    this.status = 'success';
+                }
+            }
+
+            return status;
         }
         return false;
+
     }; g.setValueFromObject = setValueFromObject;
 
-
+    /**
+     * @function isvalid
+     *
+     * @param element
+     * @returns {boolean}
+     */
     var isvalid = function (element) {
         var res = true, validator = null, pattern;
         if ((element.getAttribute('required') !== null) && !element.value) res = false;
@@ -1270,6 +1287,7 @@
                         owner.pannel.ui.dg('li', 'mousedown', function (e) {
                             owner.value = this.innerHTML;
                             owner.setValue(th.cache[th.key][th.index = parseInt(this.value)]);
+                            owner.ui.focus();
                             return false
                         });
 
@@ -1459,11 +1477,11 @@
                 }
             }, opt);
             element.setValue = function (v) {
-                var th = this.typeahead, owner = this, key,
+                var th = this.typeahead, owner = this,
                     isSet = v && v.hasOwnProperty(this.name),
                     eq = this.value === this.__value ? this.value.trim().length : 0;
-                if (eq && isSet && owner.__key__ === v[owner.name].trim().toLowerCase()) return false;
-                th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null));
+                if (eq && isSet && owner.__key__ === v[owner.name].trim().toLowerCase()) { if (typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, v); }
+                else { th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null)); }
                 return false;
             };
 
