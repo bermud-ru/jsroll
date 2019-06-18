@@ -144,10 +144,18 @@
      * @param v
      * @returns {string}
      */
-    var quoter = function(v) {
+    var quoter = function(v, opt) {
         var s = typeof v === 'string' ? v : ( v ? JSON.stringify(v) : null );
-        return s ? s.replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+        if (s) {
+            opt = typeof opt === 'undefined' ? quoter.CODE_QOUTAS : opt;
+            if (opt & quoter.SLASHES_QOUTAS) s =  s.replace(/\\"/g, '"').replace(/\\'/g, "'");
+            if (opt & quoter.CODE_QOUTAS) s =  s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            return s;
+        }
+        return '';
     }; g.quoter = quoter;
+    g.quoter.CODE_QOUTAS = 1;
+    g.quoter.SLASHES_QOUTAS = 2;
 
     /**
      * @function bundler
