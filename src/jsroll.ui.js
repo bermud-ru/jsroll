@@ -6,8 +6,8 @@
  * @author Андрей Новиков <andrey@novikov.be>
  * @data 16/04/2018
  * @status beta
- * @version 2.0.12b
- * @revision $Id: jsroll.js 2.0.10b 2018-04-16 10:10:01Z $
+ * @version 2.1.1b
+ * @revision $Id: jsroll.js 2.1.1b 2018-04-16 10:10:01Z $
  */
 
 (function ( g, undefined ) {
