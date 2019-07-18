@@ -56,7 +56,7 @@
             if (typeof c !== 'string' && cls) return null;
 
             var result = []; c .split(' +').forEach(function (e, i, a) {
-                if (cls.match(re('(?:^|\\s)' + e + '(?!\\S)'))) result.push(e);
+                if (cls.match(re('/(?:^|\\s)' + e + '(?!\\S)/'))) result.push(e);
             });
             return result.length ? result : null;
         },
@@ -78,7 +78,7 @@
         del: function (c) {
             var h = this.instance;
             if (c && h) c.split(/\s+/).forEach(function (e, i, a) {
-                h.className = h.className.replace(re('(?:^|\\s)' + e + '(?!\\S)'), '').trim();
+                h.className = h.className.replace(re('/(?:^|\\s)' + e + '(?!\\S)/'), '').trim();
             });
             return this;
         },
@@ -100,7 +100,7 @@
         tgl: function (c) {
             if (this.instance) {
                 if (!this.has(c)) this.instance.className += ' ' + c;
-                else this.instance.className = this.instance.className.replace(re('(?:^|\\s)' + c + '(?!\\S)'), '').trim();
+                else this.instance.className = this.instance.className.replace(re('/(?:^|\\s)' + c + '(?!\\S)/'), '').trim();
             }
             return this;
         }
@@ -185,7 +185,7 @@
                 for (var i in a) if (! /\d+/.test(i)) this.instance.setAttribute(i,a[i]);
                 return this;
             } else if (typeof a === 'string' && typeof v === 'undefined') {
-                var mask = a.indexOf('*') != -1 ? re(a.split('*')[0], 'i') : null;
+                var mask = a.indexOf('*') != -1 ? re('/'+a.split('*')[0]+'/i') : null;
                 if (mask) {
                     var data = {};
                     obj2array(this.instance.attributes).forEach(function (e, i, a) {
@@ -1038,15 +1038,20 @@
         if ((element.getAttribute('required') !== null) && !element.value) res = false;
         else if ((element.getAttribute('required') === null) && !element.value) res = true;
         else if ((pattern = element.getAttribute('pattern')) === null) res = true;
-        else { if (!element.hasOwnProperty('testPattern')) {
-            try {
-                var p = /[?\/](.+)(\/([igum]*$))/.exec(pattern) || [];
-                element.regex = new RegExp(p[1]||pattern,p[3]||'');
+        else {
+            if (!element.hasOwnProperty('testPattern')) {
+                element.regex = re(pattern);
                 Object.defineProperty(element, 'testPattern', {
-                    get: function testPattern() { this.regex.lastIndex=0; return this.regex.test(this.value.trim()) }
+                    get: function testPattern() {
+                        if (typeof this.regex === 'object') {
+                            this.regex.lastIndex=0;
+                            return this.regex.test(this.value.trim())
+                        } else {
+                            return true
+                        }
+                    }
                 });
-            } catch(e) { element['testPattern'] = false; console.error(element,pattern,e) }
-        }
+            }
             res = element.testPattern;
         }
         // if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);

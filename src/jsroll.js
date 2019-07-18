@@ -100,14 +100,19 @@
      * Создание регулярного выражения из строки
      *
      * @argument { String } s - регулярное выражение
-     * @argument { String } f - flags
-     *      g — глобальный поиск (обрабатываются все совпадения с шаблоном поиска);
-     *      i — не различать строчные и заглавные буквы;
-     *      m — многострочный поиск.
-     *
      * @result { RegExp }
      */
-    var re = function (s, f) { return new RegExp(s, f || 'g') }; g.re = re;
+    var re = function (s) {
+        if (typeof s === 'object') return s;
+
+        try {
+            var p = /[?\/](.+)(\/([igum]*$))/.exec(s) || [];
+            return new RegExp(p[1]||s,p[3]||'');
+        } catch(e) {
+            console.error('jsroll::re('+s+')',e);
+            return undefined;
+        }
+    }; g.re = re;
 
     /**
      * @function str2json
@@ -642,8 +647,6 @@
             return x;
         };
 
-
-
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
@@ -663,7 +666,7 @@
             if (typeof x.before == 'function') x.before.call(x, opt, x);
 
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
-            for (var m in rs) x.setRequestHeader(m.trim(), rs[m].trim());
+            for (var m in rs) x.setRequestHeader(m, rs[m]);
             x.response_header = null;
             if (!navigator.onLine) {
                 x.fail.call(x, null, {status:10});
@@ -905,7 +908,7 @@
             if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
             // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
             return source.length ? new Function(_e,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+_e+"){p.push('"+
-                   source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("((^|"+tag[1]+")[^\t]*)'","g"),"$1\r").replace(re("\t=(.*?)"+tag[1],"g"),"',$1,'")
+                   source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("/((^|"+tag[1]+")[^\t]*)'/g"),"$1\r").replace(re("/\t=(.*?)"+tag[1]+"/g"),"',$1,'")
                    .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
             build = function( str, id ) {
@@ -956,10 +959,10 @@
 
                         result = pattern.call(g.tmpl, args[1]);
 
-                        if (typeof cb == 'function') self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl;
-                        else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) self.tmplContext.innerHTML = result;
+                        if (typeof cb == 'function') { self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl; }
+                        else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) { self.tmplContext.innerHTML = result; }
 
-                        if (self.tmplContext && pig && (after = pig.getAttribute('after'))) self.wait(after, args);
+                        if (self.tmplContext && pig && (after = pig.getAttribute('after'))) { self.wait(after, args); }
                         else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
                         return result;
                     };
@@ -970,10 +973,15 @@
 
         try {
             switch ( true ) {
-                case str.match(is_url) ? true: false: var id = str.replace(/(\.|\/|\-)/g, '');
+                case str.match(is_url) ? true: false: var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache[id]) return build(null, id);
                     var opt = opt || {};  opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    return g.xhr(Object.assign({url:str, async: (typeof cb == 'function'), done: function(e, hr) { self.response_header = hr; build(this.responseText, id); }}, opt));
+                    return g.xhr(Object.assign({
+                        url:str,
+                        async: (typeof cb === 'function'),
+                        done: function(e, hr) { self.response_header = hr; build(this.responseText, id); },
+                        fail: function(e, hr) { console.error(e); }
+                        }, opt));
                 case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
                 default: return build( str );
             }
