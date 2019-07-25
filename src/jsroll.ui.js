@@ -633,7 +633,7 @@
                 this.container =  this.container || ui.el(g.config.popup.container);
                 var  up = false, t = {
                     onTmplError:function () {
-                        g.msg.show({message:'Ошибка выполнения приложения!'});
+                        g.app.msg({message:'Ошибка выполнения приложения!'});
                         console.error(arguments);
                         up = true;
                     }
@@ -678,7 +678,7 @@
 
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         if (this.getResponseHeader('Action-Status')) {
-                            msg.show({message:this.getResponseHeader('Action-Status')});
+                            app.msg({message:this.getResponseHeader('Action-Status')});
                             return
                         }
 
@@ -713,7 +713,7 @@
                         }
                     } catch (e) {
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        msg.show({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
+                        app.msg({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
                         console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
                 },
@@ -1174,7 +1174,7 @@
         if (Object.keys(m).length) {
             if (g.spinner) g.spinner = false;
             m['caption'] = 'Неверно заполнена форма!';
-            if (typeof pushed === 'undefined' || !!pushed) msg.show({message: m});
+            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m});
             return false;
         }
 
