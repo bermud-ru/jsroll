@@ -678,7 +678,7 @@
 
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         if (this.getResponseHeader('Action-Status')) {
-                            app.msg({message:this.getResponseHeader('Action-Status')});
+                            g.app.msg({message:this.getResponseHeader('Action-Status')});
                             return
                         }
 
@@ -713,7 +713,7 @@
                         }
                     } catch (e) {
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        app.msg({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
+                        g.app.msg({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
                         console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
                 },
@@ -773,7 +773,7 @@
                             }
                         } else {
                             fail.call(res);
-                            app.msg(res);
+                            g.app.msg(res);
                         }
                         return
                     },
