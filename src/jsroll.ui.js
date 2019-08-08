@@ -1460,7 +1460,7 @@
         };
 
         if (typeof element.typeahead === 'undefined') {
-            if (!element.ui.attr('url')) { console.error('Not have attrib url', element); return }
+            if (!ui.wrap(element) || !element.ui.attr('url')) { console.error('Not have attrib url', element); return }
             element.typeahead = th;
             Object.defineProperty(element, '__key__', {
                 get: function() {
@@ -1651,8 +1651,13 @@
             // return false;
             return;
         });
+        return el;
+    } else if (element instanceof Array) {
+        for (var i in element) g.maskedigits(element[i], pattern, cleared);
+        return element;
     }
-    return el;
+    console.error('plugin maskedigits wrong parent element!');
+    return undefined;
     }; g.maskedigits = maskedigits;
 
 }( window, window.ui ));
