@@ -1054,9 +1054,7 @@
             }
             res = element.testPattern;
         }
-        // if (res && element.hasOwnProperty('validator') && typeof element.validator) res = element.validator.call(element, res);
-        // else if ((validator = element.getAttribute('validator')) !== null) res = func.call(element, validator, res);
-        if (element.getAttribute('validator') && (typeof (validator = element.getAttribute('validator')) === 'function')) res = validator.apply(element, [res]);
+        if (typeof (validator = element.getAttribute('validator') || element['validator']) === 'function') res = validator.apply(element, [res]);
         return res;
     };
 
@@ -1304,9 +1302,9 @@
                 return false;
             },
             xhr:function(){
-                var th = this, owner = this.owner, is_correct = isvalid(owner);
+                var th = this, owner = this.owner, is_correct = th.opt.ignore ? true : isvalid(owner);
 
-                if ((th.opt.validate && !is_correct) || (owner.__key__ !== 'null' && !is_correct)) { return this; }
+                if (!is_correct && owner.__key__ !== 'null') { return this; }
 
                 var key = owner.__key__, stored = th.cache.hasOwnProperty(key);
                 if (stored) {
@@ -1318,7 +1316,7 @@
                     }
                 } else {
                     var len = stored ? th.cache[key].length : 0;
-                    var no_skip = !((key == 'null' && th.opt.skip) || (th.opt.skip > key.length));
+                    var no_skip = !((key == 'null' && !!th.opt.skip) || (th.opt.skip > key.length));
                     var no_eq = (key !== owner.__value.trim().toLowerCase());
                     if (is_correct && no_skip && no_eq && !len) {
                         var __status = owner.status, params = {};
@@ -1472,7 +1470,7 @@
 
             element.__value = element.value;
             element.typeahead.opt = merge({
-                fn: null, wrapper:false, skip: 0, validate: false, rs:{},
+                fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
@@ -1489,7 +1487,6 @@
                 else { th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null)); }
                 return false;
             };
-
             element.typeahead.owner = inputer(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('search', th.onInput);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
