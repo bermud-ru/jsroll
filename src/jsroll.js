@@ -879,30 +879,32 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
-        var fn, self = Object.merge({
-                processing: false,
-                timer: null,
-                wait: function(after, args) {
-                    var item = this, self = this;
-                    if (item.processing) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return self; }
-                    else if (typeof after == 'function') { after.apply(item.tmplContext, args); }
-                    else if (after && (typeof (fn = func(after, item.tmplContext, args)) === 'function')) { fn.apply(item.tmplContext, args); }
-                    return self;
-                },
-                response_header: null,
-                __tmplContext: undefined,
-                get tmplContext() {
-                    if (this.__tmplContext) this.__tmplContext.owner = self;
-                    return this.__tmplContext;
-                },
-                set tmplContext(v) {
-                    this.__tmplContext = v;
-                },
-                onTmplError: function (type, id, str, args, e ) {
-                    console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
-                }
-            }, typeof this !== 'undefined' ? this : {});
+        var fn, self =  {
+            processing: false,
+            timer: null,
+            wait: function(after, args) {
+                var item = this, self = this;
+                if (item.processing) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return self; }
+                else if (typeof after == 'function') { after.apply(item.tmplContext, args); }
+                else if (after && (typeof (fn = func(after, item.tmplContext, args)) === 'function')) { fn.apply(item.tmplContext, args); }
+                return self;
+            },
+            response_header: null,
+            __tmplContext: undefined,
+            get tmplContext() {
+                if (this.__tmplContext) this.__tmplContext.owner = self;
+                return this.__tmplContext;
+            },
+            set tmplContext(v) {
+                this.__tmplContext = v;
+            },
+            onTmplError: function (type, id, str, args, e ) {
+                console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
+            }
+        };
+
         var args = arguments; args[1] = args[1] || {};
+
         var compile = function( str ) {
             var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
             if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
@@ -926,7 +928,7 @@
                                     data[nn] = i.value;
                                 }
                         });
-                        if (a = pig.getAttribute('arguments')) try {
+                        if ((a = pig.getAttribute('arguments'))) try {
                             data = Object.merge(JSON.parse(a) || {}, data);
                         } catch (e) {
                             return self.onTmplError('tmpl-arguments', id, str, args,a);
@@ -948,6 +950,7 @@
                     if (isId && g.tmpl.cache[id]) {
                         pattern = g.tmpl.cache[id];
                     } else {
+
                         pattern = compile(str);
                         if (isId) g.tmpl.cache[id] = pattern;
                     }
@@ -967,23 +970,27 @@
                         return result;
                     };
                     return awaiting(self);
-                } catch( e ) { return self.onTmplError('tmpl-build', id, str, args, e) }
+                } catch( e ) {
+                    return self.onTmplError('tmpl-build', id, str, args, e);
+                }
                 return result;
             };
 
         try {
             switch ( true ) {
-                case str.match(is_url) ? true: false: var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
+                case str.match(is_url) ? true : false : var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache[id]) return build(null, id);
                     var opt = opt || {};  opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     return g.xhr(Object.assign({
-                        url:str,
+                        url: str,
                         async: (typeof cb === 'function'),
                         done: function(e, hr) { self.response_header = hr; build(this.responseText, id); },
                         fail: function(e, hr) { console.error(e); }
                         }, opt));
-                case !/[^\w\-\.]/.test(str) : return build( g.document.getElementById( str ).innerHTML, str );
-                default: return build( str );
+                case !/[^#*\w\-\.]/.test(str) ? true : false :
+                    return build( g.document.getElementById( str.replace(/#/,'')).innerHTML, str );
+                default:
+                    return build( str );
             }
         } catch( e ) { return self.onTmplError('tmpl', id, str, args, e) }
     }; tmpl.cache = {}; g.tmpl = tmpl;
