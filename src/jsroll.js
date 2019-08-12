@@ -381,16 +381,23 @@
         try {
             var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
             switch ( true ) {
-                case /^\s*function.*[}|;]\s*$/igm.test(s) :
+                case /^\s*function.*[}|;]*$/igm.test(s) :
+                    var _e = '_e'+uuid().replace(/-/g,'');
+                    var fn = new Function('var '+_e+'='+s+'; return ' + _e + '.apply(this, arguments)');
+                    // if (typeof args !== 'undefined')  {
+                    //     return fn.call(self || this || g, args);
+                    // } else {
+                    return fn;
+                    // }
                     // var fn = new Function('return ' + s + '.apply(this, arguments)');
                     // if (typeof self !== 'undefined' && this != g)  {
                     //     return typeof fn === 'function' ? fn.call(self || this || g, args) : undefined;
                     // } else {
                     //     return fn;
                     // }
-                    return new Function('return ' + s + '.apply(this, arguments)');
+                    // return new Function('return ' + s + '.apply(this, arguments)');
                 default:
-                    return (function () { return eval(s) });
+                    return function () { return eval(s) };
             }
         } catch( e ) {
             return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
@@ -988,7 +995,7 @@
                         fail: function(e, hr) { console.error(e); }
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false :
-                    return build( g.document.getElementById( str.replace(/#/,'')).innerHTML, str );
+                    return build( g.document.getElementById( str.replace(/^#/,'')).innerHTML, str );
                 default:
                     return build( str );
             }
