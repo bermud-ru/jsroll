@@ -1413,7 +1413,7 @@
             onFocus:function(e){
                 var owner = this, th = this.typeahead, len = owner.value.length;
                 if (len) owner.setSelectionRange(len, len);
-                if (!len && th.opt.getEmpty) {
+                if ((!len && th.opt.getEmpty) || (len && this.status != 'success')) {
                     th.delayed();
                     th.activeItem(th.key = owner.__key__);
                 }
