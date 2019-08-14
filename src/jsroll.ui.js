@@ -1411,10 +1411,12 @@
                 return false;
             },
             onFocus:function(e){
-                var owner = this, th = this.typeahead;
-                if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
-                th.delayed();
-                th.activeItem(th.key = owner.__key__);
+                var owner = this, th = this.typeahead, len = owner.value.length;
+                if (len) owner.setSelectionRange(len, len);
+                if (!len && th.opt.getEmpty) {
+                    th.delayed();
+                    th.activeItem(th.key = owner.__key__);
+                }
                 return false;
             },
             onInput:function(e){
