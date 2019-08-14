@@ -1302,11 +1302,11 @@
                 return false;
             },
             xhr:function(){
-                var th = this, owner = this.owner, is_correct = th.opt.ignore ? true : isvalid(owner);
+                var th = this, owner = this.owner, key = owner.__key__, is_correct = th.opt.ignore ? true : isvalid(owner);
 
-                if (!is_correct && owner.__key__ !== 'null') { return this; }
+                if ((!is_correct && key !== 'null') || (!th.opt.getEmpty && key === 'null')) { return this; }
 
-                var key = owner.__key__, stored = th.cache.hasOwnProperty(key);
+                var stored = th.cache.hasOwnProperty(key);
                 if (stored) {
                     th.activeItem(key);
                     th.show(th.cache[key]);
@@ -1469,7 +1469,7 @@
             });
 
             element.__value = element.value;
-            element.typeahead.opt = merge({
+            element.typeahead.opt = merge({getEmpty:true,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
                 error: function (res, xhr) {
