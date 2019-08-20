@@ -799,10 +799,10 @@
      * @param args
      * @param model
      */
-    g.paginator = function(args, model) {
-        var self=this, pg = args.paginator;
+    g.paginator = function(args, model, limit) {
+        var self=this, pg = args.paginator, lm = limit ? parseInt(limit) : 10;
         if (pg) this.ui.el('.paginator', function (e) {
-            tmpl('paginator-box', {pages: Math.ceil(pg.count / 10), page: pg.page, model: model }, this);
+            tmpl('paginator-box', {pages: Math.ceil(pg.count / lm), page: pg.page, model: model }, this);
         });
         return pg;
     };
