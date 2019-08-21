@@ -657,9 +657,16 @@
         },
         fader: function (s, opt) { g.fader(s, opt); return this },
         download:function(owner, url, opt) {
-            var self = owner;
+            var self = owner, app = this;
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
                 done: function(e, x) {
+                    var res = x.hasOwnProperty('action-status') ? str2json(x['action-status'],{result:'ok'}) : {result:'ok'};
+                    if (res.result != 'ok') {
+                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
+                        console.error(res.message);
+                        return
+                    }
+
                     try {
                         var filename = g.uuid();
                         if (opt && opt.hasOwnProperty('filename')) {
@@ -675,13 +682,11 @@
                         var type = this.getResponseHeader('Content-Type');
                         var blob = g.bb(this.response, {type: type});
 
-
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        if (this.getResponseHeader('Action-Status')) {
-                            g.app.msg({message:this.getResponseHeader('Action-Status')});
-                            return
-                        }
-
+                        // if (this.getResponseHeader('Action-Status')) {
+                        //      g.app.msg({message:this.getResponseHeader('Action-Status')});
+                        // return
+                        // }
 
                         if (typeof g.navigator.msSaveBlob !== 'undefined') {
                             // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for
