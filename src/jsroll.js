@@ -612,6 +612,11 @@
             return x;
         };
 
+        x.cancel = function(fn) {
+            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
+            return x;
+        };
+
         x.process = function(opt) {
             g.addEventListener('offline', x.onerror);
             var proc = opt.process;
@@ -628,13 +633,14 @@
 
             x.timeout = opt.timeout;
             x.ontimeout = function (e) {
-                x.cancel({status:408});
+                x.halt({status:408});
                 return x;
             };
             return x;
         };
 
-        x.cancel = function(opt) {
+        x.halt = function(opt) {
+            x.cancel.call(x, opt, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             if (typeof x.after == 'function') x.after.call(x, opt);
             g.removeEventListener('offline', x.onerror);
             x.abort();
@@ -643,7 +649,7 @@
 
         x.onerror = function (e) {
             x.fail.call(x, e, {status:10});
-            x.cancel({status:500});
+            x.halt({status:500});
             return false;
         };
 
@@ -677,13 +683,13 @@
             x.response_header = null;
             if (!navigator.onLine) {
                 x.fail.call(x, null, {status:10});
-                x.cancel({status:10});
+                x.halt({status:10});
             } else {
                 x.process(opt).send(opt.data);
             }
         } catch (e) {
             x.fail.call(x, e, {status:0});
-            x.cancel({status:0});
+            x.halt({status:0});
             return x;
         }
         return x;

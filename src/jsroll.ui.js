@@ -617,10 +617,11 @@
             if (this.spinner_element.style.display == 'none') return false;
             return true;
         },
-        before: function () {
+        before: function (opt) {
             g.app.spinner = true;
         },
-        after: function () {
+        after: function (opt) {
+            if (opt && opt.hasOwnProperty('status') && parseInt(opt.status) == 408) g.app.msg({result:'warning', message:'Первышен интервал запроса!'});
             g.app.spinner = false;
         },
         list: g,
