@@ -713,7 +713,7 @@
                                 }
                             } else {
                                 //g.location = downloadUrl;
-                                g.open(downloadUrl);
+                                g.open(downloadUrl, '_self');
                             }
                             setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
                         }
