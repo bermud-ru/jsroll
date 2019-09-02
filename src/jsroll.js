@@ -377,7 +377,7 @@
      * @returns {*}
      */
     var func = function (str, self, args) {
-        if (typeof str !== 'string') return console.error('jsRoll.func(', str, self, args,') Source of context not defined!');
+        if (typeof str !== 'string') return console.error("func src is't a string type!\n", str);
         try {
             var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
             switch ( true ) {
@@ -401,14 +401,10 @@
                     //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
                     // } };
                     // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
-                    return function () { try { return eval(s); } catch (e) {
-                        return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
-                        }
-                    };
-                    // return function () { return eval(s) };
+                    return function () { var self = self, args = args;  return eval(s) };
             }
         } catch( e ) {
-            return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
+            return console.error( 'func ', e.message + "\n", str );
         }
     }; g.func = func;
 
