@@ -143,7 +143,7 @@
         return this;
     }; ui.prototype = {
         wrap:function(el, v){
-            if (el instanceof Element && !el.hasOwnProperty('ui')) {
+            if (el && !el.hasOwnProperty('ui')) {
                 el.ui = new ui(el); if (typeof v == 'string') g[v]=el;
             }
             return el;
@@ -163,7 +163,7 @@
         },
         els: function (s, fn, v) {
             if (typeof s === 'string') {
-                var r = [];
+                var r = this.wrap([]);
                 s.split(',').forEach((function (x) {
                     r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
@@ -218,12 +218,17 @@
             return this.instance;
         },
         src: function (e) {
-            var el = (e instanceof Event) ? e : this.instance;
-            return this.wrap(el.srcElement || el.target);
+            if (e instanceof Event) {
+                return this.wrap(e.target || e.srcElement);
+            }
+            return this.instance;
         },
         on: function (event, fn, opt) {
             var self = this;
-            event.split(',').forEach( function(e) { self.instance.addEventListener(e.trim(), fn, !!opt)} );
+            event.split(',').forEach( function(e) {
+                var a = self.instance instanceof Element ? [self.instance] : self.instance;
+                a.map( function (i) { i.addEventListener(e.trim(), fn, !!opt); });
+            });
             return this.instance;
         },
         dg: function (s, event, fn, opt) {
@@ -260,7 +265,7 @@
             return this.instance;
         },
         get active() {
-            return this.instance === g.document.activeElement;
+            return (this.instance instanceof Element && (this.instance === g.document.activeElement));
         },
         focus: function(s) {
             var el = null;
