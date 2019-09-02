@@ -397,7 +397,15 @@
                     // }
                     // return new Function('return ' + s + '.apply(this, arguments)');
                 default:
-                    return function () { return eval(s) };
+                    // var fn = function (self, args) { try { return eval(s); } catch (e) {
+                    //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
+                    // } };
+                    // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
+                    return function () { try { return eval(s); } catch (e) {
+                        return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
+                        }
+                    };
+                    // return function () { return eval(s) };
             }
         } catch( e ) {
             return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
