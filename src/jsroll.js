@@ -401,7 +401,7 @@
                     //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
                     // } };
                     // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
-                    return function () { var self = self, args = args;  return eval(s) };
+                    return function () { return eval(s); };
             }
         } catch( e ) {
             return console.error( 'func ', e.message + "\n", str );

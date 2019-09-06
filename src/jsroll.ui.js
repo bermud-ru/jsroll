@@ -162,8 +162,8 @@
             return el;
         },
         els: function (s, fn, v) {
+            var r = [];
             if (typeof s === 'string') {
-                var r = this.wrap([]);
                 s.split(',').forEach((function (x) {
                     r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
@@ -172,8 +172,8 @@
                     }));
                 }).bind(this));
                 if (typeof fn == 'string') g[fn]=r; else if (typeof v == 'string') g[v]=r;
-                return r;
-            } else return [];
+            }
+            return r;
         },
         attr: function (a, v) {
             if (a == undefined) {
