@@ -666,11 +666,11 @@
             var self = owner, app = this;
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
                 done: function(e, x) {
-                    var res = x.hasOwnProperty('action-status') ? str2json(x['action-status'],{result:'ok'}) : {result:'ok'};
+                    var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
                     if (res.result != 'ok') {
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        console.error(res.message);
-                        return
+                        g.app.msg(res);
+                        return false;
                     }
 
                     try {
