@@ -102,12 +102,12 @@
      * @argument { String } s - регулярное выражение
      * @result { RegExp }
      */
-    var re = function (s) {
+    var re = function (s, flags) {
         if (typeof s === 'object') return s;
 
         try {
             var p = /[?\/](.+)(\/([igum]*$))/.exec(s) || [];
-            return new RegExp(p[1]||s,p[3]||'');
+            return new RegExp(p[1]||s,p[3] || flags || '');
         } catch(e) {
             console.error('jsroll::re('+s+')',e);
             return undefined;
