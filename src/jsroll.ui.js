@@ -1590,7 +1590,7 @@
             if ( ['V','v',86].indexOf(key) > -1 && (e.ctrlKey || e.metaKey) ) {
                 this.dispatchEvent(new Event('paste'));
                 return false;
-            } else if (['Escape',27,'Enter',13,'R','r',82].indexOf(key) > -1) {
+            }  else if (['Escape',27,'Enter',13,'R','r',82].indexOf(key) > -1) {
                 return true;
             }
 
@@ -1641,7 +1641,14 @@
                     this.value = this.value.replace(sl, ts);
                     this.selectionStart = this.s1 ; this.selectionEnd = this.e1;
                     break;
-                default: this.insertDigit(dg, selected);
+                default:
+                    if ( selected && (e.ctrlKey || e.metaKey) ) {
+                        if (['C','c',67].indexOf(key) > -1) {
+                            this.dispatchEvent(new Event('copy'));
+                        }
+                        return false;
+                    }
+                    this.insertDigit(dg, selected);
             }
             e.preventDefault();
             e.stopPropagation();
@@ -1656,6 +1663,18 @@
             else this.value = '';
             input_validator(this);
             // return false;
+            return false;
+        }).ui.on('copy', function (e) {
+            if (g.clipboardData && g.clipboardData.setData) {
+                g.clipboardData.setData('Text', selected);
+            } else {
+                var clipboardData = (e.originalEvent || e).clipboardData;
+                if (clipboardData && clipboardData.getData) {
+                    clipboardData.setData('text/plain', selected);
+                }
+            }
+            e.stopPropagation();
+            e.preventDefault();
             return false;
         }).ui.on('paste',function(e) {
             var buff = '';
