@@ -77,9 +77,15 @@
          */
         del: function (c) {
             var h = this.instance;
-            if (c && h) c.split(/\s+/).forEach(function (e, i, a) {
-                h.className = h.className.replace(re('/(?:^|\\s)' + e + '(?!\\S)/'), '').trim();
-            });
+            if (c && h) {
+                if (typeof c === "string") {
+                    c.split(/\s+/).forEach(function (e, i, a) {
+                        h.className = h.className.replace(re('/(?:^|\\s)' + e + '(?!\\S)/'), '').replace(/\s+/, ' ').trim();
+                    });
+                } else if (typeof c === "object") {
+                    h.className = h.className.replace(c, '').replace(/\s+/, ' ').trim();
+                }
+            }
             return this;
         },
         /**
