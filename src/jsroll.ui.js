@@ -1584,93 +1584,109 @@
 
         el.init(true);
         el.ui.on('keydown', function (e) {
-            if (this.ui.attr('placeholder').length && !this.value) {
-                this.value = this.ui.attr('placeholder');
-                this.e1 = this.selectionEnd = this.selectionStart = this.s1 = 0;
-            } else {
-                this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
-            }
+            if (e.ctrlKey || e.metaKey) { return false; }
 
             var key = eventCode(e);
-            // Past from clipboard
-            if ( ['V','v',86].indexOf(key) > -1 && (e.ctrlKey || e.metaKey) ) {
-                this.dispatchEvent(new Event('paste'));
-                return false;
-            }  else if (['Escape',27,'Enter',13,'R','r',82].indexOf(key) > -1) {
-                return true;
-            }
-
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : key;
-            switch (key) {
-                case 8: case 'Backspace':
-                    if (selected) {
-                        var pos = this.value.indexOf(selected);
-                        this.value = this.value.substr(0,pos)+this.ui.attr('placeholder').substr(pos, selected.length)+
-                            this.value.substr(pos+selected.length, this.value.length);
-                        var shift = this.ui.attr('placeholder').substr(pos, selected.length).indexOf('_');
-                        if (shift > 0) pos += shift;
-                        this.selectionStart = this.e1 = this.selectionEnd = this.s1 = pos;
-                    } else {
-                        this.e1 = this.s1 = --this.selectionStart; --this.selectionEnd;
-                        while ((this.s1 >= 0) && !/\d/.test(this.value.charAt(this.s1))) { this.s1 = --this.selectionStart; --this.selectionEnd;}
-                        if (this.s1 >= 0 && /\d/.test(this.value.charAt(this.s1))) this.value = this.value.substr(0, this.s1) + '_' + this.value.substr((this.s1+1), this.value.length);
-                        else this.s1 = this.e1 + 1;
-                        this.selectionStart = this.selectionEnd = this.s1;
-                    }
-                    this.dispatchEvent(new Event('change'));
-                    break;
-                case 9: case 'Tab':
-                    var el = null; var way = e.shiftKey ? -1 : 1;
-                    var index = parseInt(this.ui.attr('tabindex')) + way;
-                    if (index > 0) while (el = ui.el('[tabindex="'+index+'"]'))
-                        if (el.ui.attr('disabled')) { index += way } else { el.ui.focus(); break; }
-                    if (index <= 1 && way < 0) return e.preventDefault();
-                    e.stopPropagation();
-                    return false;
-                    // return;
-                case 37: case 'ArrowLeft':
-                    this.s1 = --this.selectionStart; this.e1 = --this.selectionEnd;
-                    break;
-                case 39: case 'ArrowRight':
-                    this.s1 = ++this.selectionStart;
-                    break;
-                case 46: case 'Delete':
-                    var sl = this.value.slice(this.selectionStart),
-                        tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
-                    if (selected) {
-                        tt = (this.value.substr(this.selectionStart+selected.length, this.value.length).match(/\d+/g)||[]).join('');
-                        this.e1 = this.s1;
-                    } else {
-                        tt = (this.value.slice(this.selectionStart).match(/\d+/g)||[]).join('').slice(1);
-                    }
-                    for (var i in tt) ts = ts.replace('_', tt[i]);
-                    this.value = this.value.replace(sl, ts);
-                    this.selectionStart = this.s1 ; this.selectionEnd = this.e1;
-                    break;
-                default:
-                    if ( selected && (e.ctrlKey || e.metaKey) ) {
-                        if (['C','c',67].indexOf(key) > -1) {
-                            this.dispatchEvent(new Event('copy'));
+
+            if (/\d/.test(dg)) {
+                this.insertDigit(dg, selected);
+            } else {
+                if (this.ui.attr('placeholder').length && !this.value) {
+                    this.value = this.ui.attr('placeholder');
+                    this.e1 = this.selectionEnd = this.selectionStart = this.s1 = 0;
+                } else {
+                    this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
+                }
+                switch (key) {
+                    case 8:
+                    case 'Backspace':
+                        if (selected) {
+                            var pos = this.value.indexOf(selected);
+                            this.value = this.value.substr(0, pos) + this.ui.attr('placeholder').substr(pos, selected.length) +
+                                this.value.substr(pos + selected.length, this.value.length);
+                            var shift = this.ui.attr('placeholder').substr(pos, selected.length).indexOf('_');
+                            if (shift > 0) pos += shift;
+                            this.selectionStart = this.e1 = this.selectionEnd = this.s1 = pos;
+                        } else {
+                            this.e1 = this.s1 = --this.selectionStart;
+                            --this.selectionEnd;
+                            while ((this.s1 >= 0) && !/\d/.test(this.value.charAt(this.s1))) {
+                                this.s1 = --this.selectionStart;
+                                --this.selectionEnd;
+                            }
+                            if (this.s1 >= 0 && /\d/.test(this.value.charAt(this.s1))) this.value = this.value.substr(0, this.s1) + '_' + this.value.substr((this.s1 + 1), this.value.length);
+                            else this.s1 = this.e1 + 1;
+                            this.selectionStart = this.selectionEnd = this.s1;
                         }
+                        this.dispatchEvent(new Event('change'));
+                        break;
+                    // case 13:
+                    // case 'Enter':
+                    //     this.dispatchEvent(new Event('change'));
+                    //     return false;
+                    case 27:
+                    case 'Escape':
+                        this.dispatchEvent(new Event('blur'));
                         return false;
-                    }
-                    this.insertDigit(dg, selected);
+                    case 9:
+                    case 'Tab':
+                        var el = null;
+                        var way = e.shiftKey ? -1 : 1;
+                        var index = parseInt(this.ui.attr('tabindex')) + way;
+                        if (index > 0) while (el = ui.el('[tabindex="' + index + '"]'))
+                            if (el.ui.attr('disabled')) {
+                                index += way
+                            } else {
+                                el.ui.focus();
+                                break;
+                            }
+                        if (index <= 1 && way < 0) return e.preventDefault();
+                        break;
+                    case 37:
+                    case 'ArrowLeft':
+                        if (this.selectionStart > 0) {
+                            this.s1 = --this.selectionStart;
+                            this.e1 = --this.selectionEnd;
+                        }
+                        break;
+                    case 39:
+                    case 'ArrowRight':
+                        this.s1 = ++this.selectionStart;
+                        break;
+                    case 46:
+                    case 'Delete':
+                        var sl = this.value.slice(this.selectionStart),
+                            tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
+                        if (selected) {
+                            tt = (this.value.substr(this.selectionStart + selected.length, this.value.length).match(/\d+/g) || []).join('');
+                            this.e1 = this.s1;
+                        } else {
+                            tt = (this.value.slice(this.selectionStart).match(/\d+/g) || []).join('').slice(1);
+                        }
+                        for (var i in tt) ts = ts.replace('_', tt[i]);
+                        this.value = this.value.replace(sl, ts);
+                        this.selectionStart = this.s1;
+                        this.selectionEnd = this.e1;
+                        this.dispatchEvent(new Event('change'));
+                        break;
+                    default:
+                }
             }
             e.preventDefault();
             e.stopPropagation();
-            // return /\d/.test(dg);
             return false;
         }).ui.on('focus', function (e) {
             this.init(false);
-            // return false;
             return false;
         }).ui.on('blur',function(e) {
             if (this.value.match(/[\d]+/g)) this.value = !this.cleared ? this.value : this.value.replace(/\_/g, '');
             else this.value = '';
             input_validator(this);
-            // return false;
             return false;
         }).ui.on('copy', function (e) {
+            e.stopPropagation();
+            e.preventDefault();
             if (g.clipboardData && g.clipboardData.setData) {
                 g.clipboardData.setData('Text', selected);
             } else {
@@ -1679,10 +1695,10 @@
                     clipboardData.setData('text/plain', selected);
                 }
             }
-            e.stopPropagation();
-            e.preventDefault();
             return false;
         }).ui.on('paste',function(e) {
+            e.stopPropagation();
+            e.preventDefault();
             var buff = '';
             if (g.clipboardData && g.clipboardData.getData) { // IE
                 buff = g.clipboardData.getData('Text');
@@ -1691,11 +1707,11 @@
                 if (clipboardData && clipboardData.getData) {
                     buff = clipboardData.getData('text/plain');
                 }
-                e.stopPropagation();
-                e.preventDefault();
             }
-            var dgs = buff.match(/\d+/g) ? buff.match(/\d+/g).join('') : '';
-            for (var i in dgs) this.insertDigit(dgs[i], selected);
+            if (buff) {
+                var dgs = buff.match(/\d+/g) ? buff.match(/\d+/g).join('') : '';
+                for (var i in dgs) this.insertDigit(dgs[i], selected);
+            }
             return false;
         });
         return el;
