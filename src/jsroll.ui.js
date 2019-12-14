@@ -1621,10 +1621,10 @@
                         }
                         this.dispatchEvent(new Event('change'));
                         break;
-                    // case 13:
-                    // case 'Enter':
-                    //     this.dispatchEvent(new Event('change'));
-                    //     return false;
+                    case 13:
+                    case 'Enter':
+                        this.dispatchEvent(new Event('change'));
+                        return false;
                     case 27:
                     case 'Escape':
                         this.dispatchEvent(new Event('blur'));
