@@ -896,7 +896,12 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
+        var args = arguments; args[1] = args[1] || {};
         var fn, self =  {
+            str: str,
+            data: data,
+            cb: cb,
+            opt: opt,
             processing: false,
             timer: null,
             wait: function(after, args) {
@@ -919,8 +924,6 @@
                 console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
             }
         };
-
-        var args = arguments; args[1] = args[1] || {};
 
         var compile = function( str ) {
             var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
@@ -977,9 +980,9 @@
                     var awaiting = function (self) {
                         if (self.processing) { self.timer = setTimeout(function () { awaiting(self); }, 50); return; }
 
-                        result = pattern.call(g.tmpl, args[1]);
+                        result = pattern.call(self, args[1]);
 
-                        if (typeof cb == 'function') { self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl; }
+                        if (typeof cb == 'function') { self.tmplContext = cb.call(pattern || self, result) || g.tmpl; }
                         else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) { self.tmplContext.innerHTML = result; }
 
                         if (self.tmplContext && pig && (after = pig.getAttribute('after'))) { self.wait(after, args); }
