@@ -63,22 +63,27 @@
         505: 'HTTP Version Not Supported'
     };
 
-    var eventCode = function (e) {
-        if (g.InputEvent && (e instanceof InputEvent)) {
-            return e.data;
-        } else if (e instanceof Event) switch (true) {
-            case e.key !== undefined:
-                return e.key;
-            case e.keyIdentifier !== undefined:
-                return e.keyIdentifier;
-            case e.keyCode !== undefined:
-                return e.keyCode;
-            default:
-                return e.charCode;
+    /**
+     * @function eventCode
+     * Хелпер обработки кода нажатия на устройтвах ввода типа клавиатура.
+     *
+     * @argument { Event } e - событие
+     * @result { Integer | String }
+     */
+    g.eventCode = (g.InputEvent && (e instanceof InputEvent)) ?
+        function (e) { return e.data; } : function (e) {
+            if (e instanceof Event) switch (true) {
+                case e.key !== undefined:
+                    return e.key;
+                case e.keyIdentifier !== undefined:
+                    return e.keyIdentifier;
+                case e.keyCode !== undefined:
+                    return e.keyCode;
+                default:
+                    return e.charCode;
+            }
+            return undefined;
         };
-
-        return null;
-    }; g.eventCode = eventCode;
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
