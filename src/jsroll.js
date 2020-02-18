@@ -70,8 +70,8 @@
      * @argument { Event } e - событие
      * @result { Integer | String }
      */
-    g.eventCode = (g.InputEvent && (e instanceof InputEvent)) ?
-        function (e) { return e.data; } : function (e) {
+    g.eventCode = 'InputEvent' in g ? function (e) { return e instanceof InputEvent ? e.data : undefined; } :
+        function (e) {
             if (e instanceof Event) switch (true) {
                 case e.key !== undefined:
                     return e.key;
