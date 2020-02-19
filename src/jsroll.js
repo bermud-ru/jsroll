@@ -70,9 +70,10 @@
      * @argument { Event } e - событие
      * @result { Integer | String }
      */
-    g.eventCode = 'InputEvent' in g ? function (e) { return e instanceof InputEvent ? e.data : undefined; } :
-        function (e) {
-            if (e instanceof Event) switch (true) {
+    var eventCode = function (e) {
+            if (g.InputEvent && (e instanceof InputEvent)) {
+                return e.data;
+            } else if (e instanceof Event) switch (true) {
                 case e.key !== undefined:
                     return e.key;
                 case e.keyIdentifier !== undefined:
@@ -81,9 +82,9 @@
                     return e.keyCode;
                 default:
                     return e.charCode;
-            }
-            return undefined;
-        };
+            };
+            return null;
+        }; g.eventCode = eventCode;
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
@@ -649,10 +650,10 @@
         };
 
         x.halt = function(opt) {
+            x.abort();
+            g.removeEventListener('offline', x.onerror);
             x.cancel.call(x, opt, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             if (typeof x.after == 'function') x.after.call(x, opt);
-            g.removeEventListener('offline', x.onerror);
-            x.abort();
             return x;
         };
 

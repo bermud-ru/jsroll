@@ -308,6 +308,32 @@
     }; g.selection = selection;
 
     /**
+     * Helper copy2prn
+     * Подготавливает данные звёрнутые в шаблон к печати
+     *
+     * @param template
+     * @param data
+     */
+    var copy2prn = function (template, data) {
+        var print_layer = g.document.createElement('iframe');
+        print_layer.name = 'print_layer';
+        print_layer.src = 'join';
+        print_layer.style.display = 'none';
+        g.document.body.appendChild(print_layer);
+
+        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
+        frameDoc.document.open();
+        frameDoc.document.write(tmpl(template,data||{}));
+        frameDoc.document.close();
+
+        setTimeout(function () {
+            g.frames['print_layer'].focus();
+            g.frames['print_layer'].print();
+            g.document.body.removeChild(print_layer);
+        }, 0);
+    }; g.copy2prn = copy2prn;
+
+    /**
      * Fader Helper
      *
      * @param s
@@ -756,21 +782,24 @@
             var size = file.size, filename = file.name;
             var sliceSize = opt.sliceSize||1024;
             var start = opt.start||0, end;
-            var data, piece;
+            var data, piece, xhr;
 
             var loop = function () {
                 end = start + sliceSize;
-                if (size - end < 0) end = size;
+                data = new FormData();
+                if (size - end < 0) {
+                    end = size;
+                    if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
+                }
 
                 piece = slice(file, start, end);
-                data = new FormData();
                 data.append('filename', filename);
                 data.append('size', size);
                 data.append('start', start);
                 data.append('end', end);
                 data.append('file', piece);
 
-                if (stop.call(this)) g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
+                if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
                     url: url,
                     data: data,
                     done: function (e, x) {
