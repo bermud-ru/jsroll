@@ -317,7 +317,7 @@
     var copy2prn = function (template, data) {
         var print_layer = g.document.createElement('iframe');
         print_layer.name = 'print_layer';
-        print_layer.src = 'join';
+        print_layer.src = 'printing';
         print_layer.style.display = 'none';
         g.document.body.appendChild(print_layer);
 
