@@ -771,6 +771,7 @@
             var done = opt.done; delete opt['done'];
             var fail = opt.fail; delete opt['fail'];
             var stop = opt.stop; delete opt['stop'];
+            var dir = opt.dir || null; delete opt['dir'];
 
             if (!file) return console.warn('File not found!');
 
@@ -793,6 +794,7 @@
                 }
 
                 piece = slice(file, start, end);
+                data.append('dir', dir);
                 data.append('filename', filename);
                 data.append('size', size);
                 data.append('start', start);
