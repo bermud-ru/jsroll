@@ -1051,12 +1051,12 @@
      * @param owner
      * @param v
      */
-    var setValueFromObject = function(el, v, required) {
+    var setValueFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
             el.value = null;
             if (!(this instanceof HTMLElement)) el.required = !!required;
-            if (typeof v === 'object' && v && v.hasOwnProperty(el.name)) {
-                el.value = v[el.name];
+            if (typeof v === 'object' && v && v.hasOwnProperty(alias || el.name)) {
+                el.value = v[alias || el.name];
             } else {
                 el.value = typeof v === 'undefined' ? null : v;
             }
@@ -1368,7 +1368,7 @@
                     var no_eq = (key !== owner.__value.trim().toLowerCase());
                     if (is_correct && no_skip && no_eq && !len) {
                         var __status = owner.status, params = {};
-                        params[owner.name] = owner.value;
+                        if (th.opt.alias) params[th.opt.alias] = owner.value; else params[owner.name] = owner.value;
                         owner.status = 'spinner';
                         th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
                             rs: th.opt.rs,
@@ -1382,7 +1382,13 @@
                                 }
                                 switch (res.result) {
                                     case 'ok': case 'success':
-                                        th.cache[key] = res.data||[];
+                                        th.cache[key] = (res.data||[]).map(function (v) {
+                                            if (th.opt.alias) {
+                                                v[owner.name] = v[th.opt.alias]; delete v[th.opt.alias]; return v;
+                                            } else {
+                                                return v;
+                                            }
+                                        });
                                         th.activeItem(key);
                                         th.show(th.cache[key]);
                                         break;
@@ -1519,7 +1525,7 @@
             });
 
             element.__value = element.value;
-            element.typeahead.opt = merge({getEmpty:true,
+            element.typeahead.opt = merge({alias:null, getEmpty:true,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
                 error: function (res, xhr) {
