@@ -1213,7 +1213,7 @@
 
         for (var i = 0; i < this.elements.length; i++) {
             if (!m.hasOwnProperty(this.elements[i].name) && !input_validator(this.elements[i])) {
-                m[this.elements[i].name] = this.elements[i].value || 'Поле с неверными данными или пустым значения!';
+                m[this.elements[i].name] = this.elements[i].message || 'Поле с неверными данными или пустым значения!';
             }
         }
 
