@@ -668,7 +668,7 @@
             var self = this;
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (self.wnd.fade) {
-                this.container =  this.container || ui.el(g.config.popup.container);
+                this.container =  this.container || ui.el('[role="workspace"]');
                 var  up = false, t = {
                     onTmplError:function () {
                         g.app.msg({message:'Ошибка выполнения приложения!'});
@@ -1326,12 +1326,13 @@
 
                 if (owner.pannel) {
                     if (data.length) {
-                        var n = ui.dom(tmpl(th.opt.tmpl, {data: data, field: owner.name}));
-                        owner.pannel.innerHTML = n ? n.innerHTML : null;
+                        tmpl(th.opt.tmpl, {data: data, field: owner.name}, function (cnt) {
+                            var n = ui.dom(cnt);
+                            owner.pannel.innerHTML = n ? n.innerHTML : null;
+                        });
                     }
                 } else {
-                    var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
-                    if (panel) {
+                    tmpl(this.opt.tmpl, {data: data, field: owner.name}, function (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
                         owner.parentElement.css.add(th.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
@@ -1339,12 +1340,8 @@
                             owner.value = this.innerHTML;
                             owner.setValue(th.cache[th.key][th.index = parseInt(this.value)]);
                             owner.ui.focus();
-                            return false
                         });
-
-                    } else {
-                        th.opt.warn(owner.name+'.typeahead panel not defined!');
-                    }
+                    });
                 }
                 th.activeItem(th.key = owner.__key__);
                 return false;

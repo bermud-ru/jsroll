@@ -988,7 +988,7 @@
 
                         result = pattern.call(self, args[1]);
 
-                        if (typeof cb == 'function') { self.tmplContext = cb.call(pattern || self, result) || g.tmpl; }
+                        if (typeof cb == 'function') { self.tmplContext = cb.call(self, result) || g.tmpl; }
                         else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) { self.tmplContext.innerHTML = result; }
 
                         if (self.tmplContext && pig && (after = pig.getAttribute('after'))) { self.wait(after, args); }
