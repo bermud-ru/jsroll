@@ -1115,12 +1115,16 @@
      */
     var input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
-            var res = isvalid(element);
+            var res = isvalid(element) && (element.hasOwnProperty('bindingElement') ? isvalid(element.bindingElement) : true);
             if (element.type != 'hidden') {
-                inputer(ui.wrap(element));
-                if (res === false) { element.status = 'error' }
-                else if ( res === null || res === undefined) { element.status = 'warning' }
-                else { if (element.value.trim().length) element.status = 'success'; else element.status = 'none'; }
+                inputer( element );
+                if (res === false) {
+                    element.status = 'error'
+                } else if (res === null || res === undefined) {
+                    element.status = 'warning'
+                } else {
+                    if (element.value && element.value.length) { element.status = 'success'; } else  { element.status = 'none'; }
+                }
             }
             return res;
         }
@@ -1213,7 +1217,8 @@
 
         for (var i = 0; i < this.elements.length; i++) {
             if (!m.hasOwnProperty(this.elements[i].name) && !input_validator(this.elements[i])) {
-                m[this.elements[i].name] = this.elements[i].message || 'Поле с неверными данными или пустым значения!';
+                if (!this.elements[i].hasOwnProperty('message') || (this.elements[i].message !== false))
+                    m[this.elements[i].name] = this.elements[i].message || 'Поле с неверными данными или пустым значения!';
             }
         }
 
