@@ -697,6 +697,8 @@
         download:function(owner, url, opt) {
             var self = owner, app = this;
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
+                before: opt && opt.before || null,
+                after: opt && opt.after || null,
                 done: function(e, x) {
                     var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
                     if (res.result != 'ok') {
@@ -708,14 +710,16 @@
                     try {
                         var filename = g.uuid();
                         if (opt && opt.hasOwnProperty('filename')) {
-                            filename = opt['filename'];
+                            filename = decodeURIComponent(opt['filename']);
                         } else {
                             var disposition = this.getResponseHeader('Content-Disposition');
                             if (disposition && disposition.indexOf('attachment') !== -1) {
                                 var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                                 var matches = filenameRegex.exec(disposition);
-                                if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                                console.log(matches[1]);
+                                if (matches != null && matches[1]) filename = decodeURIComponent(matches[1].replace(/['"]/g, ''));
                             }
+
                         }
                         var type = this.getResponseHeader('Content-Type');
                         var blob = g.bb(this.response, {type: type});
@@ -733,7 +737,6 @@
                             g.navigator.msSaveBlob(blob, filename);
                         } else {
                             var downloadUrl = g.URL.createObjectURL(blob);
-
                             if (filename) {
                                 // use HTML5 a[download] attribute to specify filename
                                 var a = document.createElement('a');
@@ -760,7 +763,7 @@
                         console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
                 },
-                fail: function (e) {
+                fail: opt && opt.fail || function (e) {
                     if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                     console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
@@ -1225,7 +1228,7 @@
         if (Object.keys(m).length) {
             if (g.spinner) g.spinner = false;
             m['caption'] = 'Неверно заполнена форма!';
-            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m});
+            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m}); else return m;
             return false;
         }
 
