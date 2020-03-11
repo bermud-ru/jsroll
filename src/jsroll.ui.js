@@ -716,7 +716,6 @@
                             if (disposition && disposition.indexOf('attachment') !== -1) {
                                 var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                                 var matches = filenameRegex.exec(disposition);
-                                console.log(matches[1]);
                                 if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                             }
 
