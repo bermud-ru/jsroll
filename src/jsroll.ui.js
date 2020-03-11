@@ -710,14 +710,14 @@
                     try {
                         var filename = g.uuid();
                         if (opt && opt.hasOwnProperty('filename')) {
-                            filename = decodeURIComponent(quoter(opt['filename'],  quoter.SLASHES_QOUTAS | quoter.CODE_QOUTAS));
+                            filename = decodeURIComponent(quoter(opt['filename'],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                         } else {
                             var disposition = this.getResponseHeader('Content-Disposition');
                             if (disposition && disposition.indexOf('attachment') !== -1) {
                                 var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                                 var matches = filenameRegex.exec(disposition);
                                 console.log(matches[1]);
-                                if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS | quoter.CODE_QOUTAS));
+                                if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                             }
 
                         }
