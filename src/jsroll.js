@@ -95,6 +95,98 @@
             g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
         }
     }
+    /**
+     * IndexedDBInterface
+     * @param opt
+     * @constructor
+     */
+    g.IndexedDBInterface = function(opt) {
+        var self = this;
+        try {
+            if (typeof opt === 'object') self.merge(opt);
+
+            self.instance = g.indexedDB.open(self.name, self.ver);
+            // Create schema
+            self.instance.onupgradeneeded = function(e) {
+                return self.upgrade(e.target.result);
+            };
+            // on reload, instance up!
+            self.instance.onsuccess = function(e) {
+                return self.success(e.target.result);
+            };
+            self.instance.onblocked = function (e) {
+                return self.blocked(e);
+            };
+            // on Error
+            self.instance.onerror = function (e) {
+                return self.fail(e);
+            }
+        } catch (e) {
+            self.fail(e);
+        }
+    }; g.IndexedDBInterface.prototype = {
+        name: null,
+        ver: 1,
+        populate: false,
+        CREATE: function(e){
+            // app.db = e.target.result;
+            // if (app.DBhasToPopulate)
+            //     elibri.populateDatabase(); // Загрузить с узла данные
+            // else
+            //     elibri.readBooks();  // Читать локальные данные
+        },
+        POST: function(opt){
+        },
+        PUT: function (opt) {
+        },
+        GET: function (opt) {
+        },
+        DELETE: function () {
+            var self = this;
+            self.instance = null; // Дропнули всё
+            self.populate = true; // Пересоздали хранилище
+            var DBinstance = g.indexedDB.deleteDatabase(self.name, self.ver);
+            DBinstance.onsuccess = function () {
+                console.log('Deleted '+self.name+' database successfully');
+            };
+            DBinstance.onerror = function () {
+                console.error('Couldn\'t delete '+self.name+' database');
+            };
+            DBinstance.onblocked = function () {
+                console.warn('Couldn\'t delete '+self.name+'database due to the operation being blocked');
+            };
+        },
+        abort: null,
+        success: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            return self;
+        },
+        fail: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            return self;
+        },
+        blocked:function (db) {
+            var self = this;
+            self.db = db || self.db;
+            return self;
+        },
+        upgrade: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            if (self.db.objectStoreNames.contains(self.name)) {
+                self.db.deleteObjectStore(self.name); // Удалили хранилище
+            }
+            self.db.createObjectStore(self.name);
+            self.populate = true; // Пересоздали хранилище
+            // Пересоздаём все дочерние сторажы
+            if (self.heirs) self.heirs.map(function (v, i, a) {
+                v.CREATE(db);
+            });
+            return self;
+        }
+    };
 
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
@@ -283,7 +375,7 @@
 
     /**
      * Object extension
-     * @function inherit (...)
+     * @function __inherit__ (...)
      * @argument { Object | Function (Class) } родитель
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Статческое наследование свойств родительского объекта
@@ -320,7 +412,7 @@
 
     /**
      * Object extension
-     * @function parent (...)
+     * @function __parent__ (...)
      * @argument { Object } родитель
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
@@ -328,24 +420,27 @@
     Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = this, parent = arguments[0];
+            var self = this, owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
                     var fn = arguments[1];
-                    // fn.prototype = Object.merge(fn.prototype, parent);
                     self = new fn;
-                    self.__proto__ = Object.merge(self.__proto__, parent);
-                    self.__proto__.constructor = fn;
+                    if (self.__proto__) {
+                        self.__proto__ = Object.merge(self.__proto__, owner);
+                        self.__proto__.constructor = fn;
+                    } else  {
+                        self.prototype = Object.merge(fn.prototype, owner);
+                    }
                     break;
                 case 'object':
                     self = Object.merge(arguments[1]);
                 case 'undefined':
                 default:
-                    self.__proto__ = parent;
+                    if (self.__proto__) self.__proto__ = owner; else self.prototype = owner;
             }
-            self['__parent__'] = parent;
-            if (parent.hasOwnProperty('__childs__')) parent.__childs__.push(self);
-            else parent.__childs__ = [self];
+            self['owner'] = owner;
+            if (owner.hasOwnProperty('heirs')) owner.heirs.push(self);
+            else owner.heirs = [self];
 
             return self;
         },
