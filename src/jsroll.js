@@ -108,11 +108,11 @@
             self.instance = g.indexedDB.open(self.name, self.ver);
             // Create schema
             self.instance.onupgradeneeded = function(e) {
-                return self.upgrade(e.target.result);
+                return self.build(e.target.result);
             };
             // on reload, instance up!
             self.instance.onsuccess = function(e) {
-                return self.success(e.target.result);
+                return self.success(self.db = e.target.result);
             };
             self.instance.onblocked = function (e) {
                 return self.blocked(e);
@@ -128,62 +128,53 @@
         name: null,
         ver: 1,
         populate: false,
-        CREATE: function(e){
-            // app.db = e.target.result;
-            // if (app.DBhasToPopulate)
-            //     elibri.populateDatabase(); // Загрузить с узла данные
-            // else
-            //     elibri.readBooks();  // Читать локальные данные
-        },
-        POST: function(opt){
-        },
-        PUT: function (opt) {
-        },
-        GET: function (opt) {
-        },
-        DELETE: function () {
+        schema: null,
+        destroy: function () {
             var self = this;
             self.instance = null; // Дропнули всё
             self.populate = true; // Пересоздали хранилище
-            var DBinstance = g.indexedDB.deleteDatabase(self.name, self.ver);
-            DBinstance.onsuccess = function () {
-                console.log('Deleted '+self.name+' database successfully');
-            };
-            DBinstance.onerror = function () {
-                console.error('Couldn\'t delete '+self.name+' database');
-            };
-            DBinstance.onblocked = function () {
-                console.warn('Couldn\'t delete '+self.name+'database due to the operation being blocked');
-            };
+            var instance = g.indexedDB.deleteDatabase(self.name, self.ver);
+            instance.onsuccess = self.success;
+            instance.onerror = self.fail;
+            instance.onblocked = self.blocked;
         },
-        abort: null,
-        success: function (db) {
+        success: function (e) {
+            console.log(this.name+' database successfully');
+            return this;
+        },
+        fail: function (e) {
+            console.error('Fail '+this.name+' database ', e.message);
+            return this;
+        },
+        blocked:function (e) {
+            console.warn('Couldn\'t operate '+self.name+'database due to the operation being blocked');
+            return this;
+        },
+        upgrade: function (e) {
+            console.log(this.name+' database successfully created');
+            return this;
+        },
+        build: function (db) {
             var self = this;
             self.db = db || self.db;
-            return self;
-        },
-        fail: function (db) {
-            var self = this;
-            self.db = db || self.db;
-            return self;
-        },
-        blocked:function (db) {
-            var self = this;
-            self.db = db || self.db;
-            return self;
-        },
-        upgrade: function (db) {
-            var self = this;
-            self.db = db || self.db;
-            if (self.db.objectStoreNames.contains(self.name)) {
-                self.db.deleteObjectStore(self.name); // Удалили хранилище
+            try {
+                if (self.db.objectStoreNames.contains(self.name)) {
+                    self.db.deleteObjectStore(self.name); // Удалили хранилище
+                }
+                self.db.createObjectStore(self.name);
+                self.populate = true; // Пересоздали хранилище
+                // Пересоздаём все дочерние сторажы
+                if (self.heirs) self.heirs.map(function (v, i, a) { v.schema(db); });
+                self.upgrade();
+            } catch (e) {
+                self.fail(e);
             }
-            self.db.createObjectStore(self.name);
-            self.populate = true; // Пересоздали хранилище
-            // Пересоздаём все дочерние сторажы
-            if (self.heirs) self.heirs.map(function (v, i, a) {
-                v.CREATE(db);
-            });
+            return self;
+        },
+        close: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            try { self.db.close(); } catch (e) { self.fail(e); }
             return self;
         }
     };
