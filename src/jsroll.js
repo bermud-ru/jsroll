@@ -105,7 +105,7 @@
         try {
             if (typeof opt === 'object') self.merge(opt);
 
-            self.instance = g.indexedDB.open(self.name, self.ver);
+            self.instance = g.indexedDB.open(self.name, self.vertion);
             // Create schema
             self.instance.onupgradeneeded = function(e) {
                 return self.build(e.target.result);
@@ -126,14 +126,14 @@
         }
     }; g.IndexedDBInterface.prototype = {
         name: null,
-        ver: 1,
+        vertion: 1,
         populate: false,
         schema: null,
         destroy: function () {
             var self = this;
             self.instance = null; // Дропнули всё
             self.populate = true; // Пересоздали хранилище
-            var instance = g.indexedDB.deleteDatabase(self.name, self.ver);
+            var instance = g.indexedDB.deleteDatabase(self.name, self.vertion);
             instance.onsuccess = self.success;
             instance.onerror = self.fail;
             instance.onblocked = self.blocked;
