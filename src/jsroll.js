@@ -102,16 +102,30 @@
      */
     g.IndexedDBInterface = function(opt) {
         var self = this;
+
         try {
+            Object.defineProperty(self, 'active', {
+                __proto__: null,
+                __active__: false,
+                set: function active(a) {
+                    this.__active__ = !!a;
+                },
+                get: function active() {
+                    return this.__active__;
+                }
+            });
+
             if (typeof opt === 'object') self.merge(opt);
 
             self.instance = g.indexedDB.open(self.name, self.vertion);
             // Create schema
             self.instance.onupgradeneeded = function(e) {
+                self.active = true;
                 return self.build(e.target.result);
             };
             // on reload, instance up!
             self.instance.onsuccess = function(e) {
+                self.active = true;
                 return self.success(self.db = e.target.result);
             };
             self.instance.onblocked = function (e) {
@@ -172,7 +186,7 @@
             return self;
         },
         close: function (db) {
-            var self = this;
+            var self = this; self.active = false;
             self.db = db || self.db;
             try { self.db.close(); } catch (e) { self.fail(e); }
             return self;
