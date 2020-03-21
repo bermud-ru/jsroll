@@ -66,7 +66,10 @@
          * @returns {css}
          */
         add: function (c) {
-            if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
+            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, self = this;
+            a.forEach(function (v,i,a) {
+                if (self.instance && !self.has(v)) self.instance.className += ' ' + v;
+            });
             return this;
         },
         /**
@@ -77,14 +80,13 @@
          */
         del: function (c) {
             var h = this.instance;
-            if (c && h) {
-                if (typeof c === "string") {
-                    c.split(/\s+/).forEach(function (e, i, a) {
-                        h.className = h.className.replace(re('/(?:^|\\s)' + e + '(?!\\S)/'), '').replace(/\s+/, ' ').trim();
-                    });
-                } else if (typeof c === "object") {
-                    h.className = h.className.replace(c, '').replace(/\s+/, ' ').trim();
-                }
+            if (typeof c === 'string' || c instanceof Array) {
+                var a = typeof c === 'string' ? c.split(/(\s+|,)/) : c;
+                a.forEach(function (v, i, a) {
+                    h.className = h.className.replace(re('/(?:^|\\s)' + v + '(?!\\S)/'), '').replace(/\s+/, ' ').trim();
+                });
+            } else if (typeof c === 'object') {
+                h.className = h.className.replace(c, '').replace(/\s+/, ' ').trim();
             }
             return this;
         },
@@ -169,8 +171,9 @@
         },
         els: function (s, fn, v) {
             var r = [];
-            if (typeof s === 'string') {
-                s.split(',').forEach((function (x) {
+            if (typeof s === 'string'|| s instanceof Array) {
+                var c = typeof s === 'string' ? s.split(/,/) : s;
+                c.forEach((function (x) {
                     r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                         if (typeof fn == 'function') fn.call(e, i, a);
@@ -317,7 +320,7 @@
     var copy2prn = function (template, data) {
         var print_layer = g.document.createElement('iframe');
         print_layer.name = 'print_layer';
-        print_layer.src = 'printing';
+        print_layer.src = 'printer';
         print_layer.style.display = 'none';
         g.document.body.appendChild(print_layer);
 
@@ -330,7 +333,7 @@
             g.frames['print_layer'].focus();
             g.frames['print_layer'].print();
             g.document.body.removeChild(print_layer);
-        }, 0);
+        }, 1);
     }; g.copy2prn = copy2prn;
 
     /**
@@ -371,8 +374,8 @@
             };
 
         if (typeof s === 'string') { res = g.ui.els(s); res.forEach(function (v,i,a) { init(v) }); }
-        else if (s instanceof HTMLElement) res = init(s);
-        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v) }); }
+        else if (s instanceof HTMLElement) { res = init(s); }
+        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v); }); }
         return res
     }; g.fader = fader;
 

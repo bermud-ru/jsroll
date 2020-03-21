@@ -638,32 +638,6 @@
     }; g.router = router('/');
 
     /**
-     * @class chain
-     * Хелпер Обработчик цепочки асинхронных объектов поддерживающих интерфейс done, fail
-     *
-     * @function done
-     * @function fail
-     */
-    function chain(){
-        var c = {
-            tuple: [], cache: [],
-            donned:function(fn){ return false },
-            failed:function(fn){ return false },
-            pool:function (fn, arg) {
-                this.chain.cache.push(this);
-                if (this.chain.tuple.length == this.chain.cache.length) this.chain.donned.apply(this.chain, this.chain.cache);
-            },
-            done: function(fn){ this.donned = fn },
-            fail: function(fn){ this.failed = fn }
-        };
-        c.tuple = obj2array(arguments).map(function(fn){
-            fn.onload =  function(){ c.pool.apply(fn, arguments) };
-            fn.chain = c; return fn;
-        });
-        return c;
-    }; g.chain = chain;
-
-    /**
      * @function js
      * Динамическая загрузка javascript
      *
@@ -923,6 +897,15 @@
                         return f.__MODEL__;
                     }
                 });
+
+                f.is_valid = function() {
+                    if (!f.validator || (typeof f.validator === 'function' && f.validator.call(f))) {
+                        f.setAttribute('valid', 1);
+                        return true;
+                    }
+                    f.setAttribute('valid', 0);
+                    return false;
+                };
 
                 f.prepare = function(validator) {
                     var data = [];
