@@ -520,15 +520,17 @@
                     callback: null,
                     event: function (e) { var key = g.eventCode(e); if ((key == 27 || key == 'Escape') && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
                     show: function (s, model, cb) {
+                        this.callback = typeof cb === 'function' ? cb : this.callback;
                         if (s && !wnd.css.has('show')) {
-                            tmpl(s, (model ? model : {}), wnd);
+                            try {tmpl(s, (model ? model : {}), wnd);} catch (e) {
+                               console.error(e.message);
+                               return  this.hide();
+                            }
                             wnd.css.add('show');
                             g.addEventListener('keydown', wnd.modal.event);
                             this.visible = true;
-                            if (typeof cb === 'function') {
-                                this.callback = cb;
-                                this.callback();
-                            }
+                            if (this.callback) this.callback();
+
                         }
                         if (this.kicker instanceof HTMLElement) wnd.kicker = this.kicker
                         return this;
@@ -543,7 +545,7 @@
                         this.visible = false;
                         this.callback = cb || this.callback;
                         if (typeof this.callback  === 'function') {
-                            this.callback();
+                            this.callback(this);
                         }
 
                         if (wnd.kicker) wnd.kicker.ui.focus();

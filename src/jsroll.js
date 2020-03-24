@@ -120,13 +120,13 @@
             self.instance = g.indexedDB.open(self.name, self.vertion);
             // Create schema
             self.instance.onupgradeneeded = function(e) {
-                self.active = true;
+                self.active = false;
                 return self.build(e.target.result);
             };
             // on reload, instance up!
             self.instance.onsuccess = function(e) {
-                self.active = true;
-                return self.success(self.db = e.target.result);
+                self.success(self.db = e.target.result);
+                return self.active = true;
             };
             self.instance.onblocked = function (e) {
                 return self.blocked(e);
@@ -141,7 +141,6 @@
     }; g.IndexedDBInterface.prototype = {
         name: null,
         vertion: 1,
-        populate: false,
         schema: null,
         destroy: function () {
             var self = this;
@@ -153,19 +152,19 @@
             instance.onblocked = self.blocked;
         },
         success: function (e) {
-            console.log(this.name+' database successfully');
+            console.log(this.name+' database ver '+this.vertion+' successfully');
             return this;
         },
         fail: function (e) {
-            console.error('Fail '+this.name+' database ', e.message);
+            console.error('Fail '+this.name+' database ver '+this.vertion, e.message);
             return this;
         },
         blocked:function (e) {
-            console.warn('Couldn\'t operate '+self.name+'database due to the operation being blocked');
+            console.warn('Couldn\'t operate '+self.name+'database ver '+this.vertion+' due to the operation being blocked');
             return this;
         },
         upgrade: function (e) {
-            console.log(this.name+' database successfully created');
+            console.log(this.name+' DDLs database ver '+this.vertion+' successfully inits!');
             return this;
         },
         build: function (db) {
@@ -176,14 +175,14 @@
                     self.db.deleteObjectStore(self.name); // Удалили хранилище
                 }
                 self.db.createObjectStore(self.name);
-                self.populate = true; // Пересоздали хранилище
                 // Пересоздаём все дочерние сторажы
                 if (self.heirs) self.heirs.map(function (v, i, a) { v.schema(db); });
                 self.upgrade();
+                return true;
             } catch (e) {
                 self.fail(e);
+                return false;
             }
-            return self;
         },
         close: function (db) {
             var self = this; self.active = false;
@@ -374,43 +373,6 @@
                 }
             });
             return o;
-        },
-        enumerable: false
-    });
-
-    /**
-     * Object extension
-     * @function __inherit__ (...)
-     * @argument { Object | Function (Class) } родитель
-     * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
-     * Статческое наследование свойств родительского объекта
-     */
-    Object.defineProperty(Object.prototype, '__inherit__', {
-        value: function() {
-            if (!arguments.length) return {};
-            var self = arguments[0], extension = arguments[1];
-            switch (typeof self) {
-                case 'function':
-                    var fn = self;
-                    if (typeof extension === 'object') fn.prototype = Object.merge(fn.prototype, extension);
-                    else if (typeof extension === 'function') fn.prototype = Object.merge(fn.prototype, extension.prototype);
-                    self = new fn;
-                    self.__proto__.constructor = fn;
-                    if (typeof extension === 'function') self.merge(extension);
-                    break;
-                case 'object':
-                    if (typeof extension === 'object') self.__proto__ = Object.merge(self.__proto__, extension);
-                    else if (typeof extension === 'function') {
-                        self.__proto__ = Object.merge(self.__proto__, extension.prototype);
-                        self.__proto__.constructor = extension;
-                        self.merge(extension);
-                    }
-                    break;
-                default:
-                    return null;
-            }
-
-            return self;
         },
         enumerable: false
     });
@@ -863,7 +825,6 @@
                                         el.value = Number(value);
                                         break;
                                     case 'color':
-                                    case 'date':
                                     case 'date':
                                     case 'datetime-local':
                                     case 'email':
