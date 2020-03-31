@@ -89,12 +89,17 @@
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
-        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || null; //g.shimIndexedDB || null;
-        if (g.indexedDB) {
-            g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction;
-            g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
-        }
+        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || g.shimIndexedDB || null;
     }
+
+    if (!('IDBTransaction' in g)) {
+        g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction || null;
+    }
+
+    if (!('IDBKeyRange' in g)) {
+        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange|| null;
+    }
+
     /**
      * IndexedDBInterface
      * @param opt
@@ -106,27 +111,23 @@
         try {
             Object.defineProperty(self, 'active', {
                 __proto__: null,
-                __active__: false,
-                set: function active(a) {
-                    this.__active__ = !!a;
-                },
                 get: function active() {
-                    return this.__active__;
+                    return self.instance ? self.instance.readyState == 'done' : false;
                 }
             });
 
             if (typeof opt === 'object') self.merge(opt);
 
             self.instance = g.indexedDB.open(self.name, self.vertion);
+
             // Create schema
             self.instance.onupgradeneeded = function(e) {
-                self.active = false;
                 return self.build(e.target.result);
             };
             // on reload, instance up!
             self.instance.onsuccess = function(e) {
-                self.success(self.db = e.target.result);
-                return self.active = true;
+                self.db = e.target.result;
+                return self.success(self.db);
             };
             self.instance.onblocked = function (e) {
                 return self.blocked(e);
@@ -139,6 +140,7 @@
             self.fail(e);
         }
     }; g.IndexedDBInterface.prototype = {
+        db: null,
         name: null,
         vertion: 1,
         schema: null,
@@ -185,7 +187,7 @@
             }
         },
         close: function (db) {
-            var self = this; self.active = false;
+            var self = this;
             self.db = db || self.db;
             try { self.db.close(); } catch (e) { self.fail(e); }
             return self;
@@ -387,7 +389,8 @@
     Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = this, owner = arguments[0];
+            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
                     var fn = arguments[1];
