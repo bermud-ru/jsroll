@@ -66,7 +66,10 @@
          * @returns {css}
          */
         add: function (c) {
-            if (this.instance && !this.has(c)) this.instance.className += ' ' + c;
+            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, self = this;
+            a.forEach(function (v,i,a) {
+                if (self.instance && !self.has(v)) self.instance.className += ' ' + v;
+            });
             return this;
         },
         /**
@@ -77,14 +80,13 @@
          */
         del: function (c) {
             var h = this.instance;
-            if (c && h) {
-                if (typeof c === "string") {
-                    c.split(/\s+/).forEach(function (e, i, a) {
-                        h.className = h.className.replace(re('/(?:^|\\s)' + e + '(?!\\S)/'), '').replace(/\s+/, ' ').trim();
-                    });
-                } else if (typeof c === "object") {
-                    h.className = h.className.replace(c, '').replace(/\s+/, ' ').trim();
-                }
+            if (typeof c === 'string' || c instanceof Array) {
+                var a = typeof c === 'string' ? c.split(/(\s+|,)/) : c;
+                a.forEach(function (v, i, a) {
+                    h.className = h.className.replace(re('/(?:^|\\s)' + v + '(?!\\S)/'), '').replace(/\s+/, ' ').trim();
+                });
+            } else if (typeof c === 'object') {
+                h.className = h.className.replace(c, '').replace(/\s+/, ' ').trim();
             }
             return this;
         },
@@ -169,8 +171,9 @@
         },
         els: function (s, fn, v) {
             var r = [];
-            if (typeof s === 'string') {
-                s.split(',').forEach((function (x) {
+            if (typeof s === 'string'|| s instanceof Array) {
+                var c = typeof s === 'string' ? s.split(/,/) : s;
+                c.forEach((function (x) {
                     r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
                         if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
                         if (typeof fn == 'function') fn.call(e, i, a);
@@ -308,6 +311,32 @@
     }; g.selection = selection;
 
     /**
+     * Helper copy2prn
+     * Подготавливает данные звёрнутые в шаблон к печати
+     *
+     * @param template
+     * @param data
+     */
+    var copy2prn = function (template, data) {
+        var print_layer = g.document.createElement('iframe');
+        print_layer.name = 'print_layer';
+        print_layer.src = 'printer';
+        print_layer.style.display = 'none';
+        g.document.body.appendChild(print_layer);
+
+        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
+        frameDoc.document.open();
+        frameDoc.document.write(tmpl(template,data||{}));
+        frameDoc.document.close();
+
+        setTimeout(function () {
+            g.frames['print_layer'].focus();
+            g.frames['print_layer'].print();
+            g.document.body.removeChild(print_layer);
+        }, 1);
+    }; g.copy2prn = copy2prn;
+
+    /**
      * Fader Helper
      *
      * @param s
@@ -345,8 +374,8 @@
             };
 
         if (typeof s === 'string') { res = g.ui.els(s); res.forEach(function (v,i,a) { init(v) }); }
-        else if (s instanceof HTMLElement) res = init(s);
-        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v) }); }
+        else if (s instanceof HTMLElement) { res = init(s); }
+        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v); }); }
         return res
     }; g.fader = fader;
 
@@ -491,15 +520,17 @@
                     callback: null,
                     event: function (e) { var key = g.eventCode(e); if ((key == 27 || key == 'Escape') && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
                     show: function (s, model, cb) {
+                        this.callback = typeof cb === 'function' ? cb : this.callback;
                         if (s && !wnd.css.has('show')) {
-                            tmpl(s, (model ? model : {}), wnd);
+                            try {tmpl(s, (model ? model : {}), wnd);} catch (e) {
+                               console.error(e.message);
+                               return  this.hide();
+                            }
                             wnd.css.add('show');
                             g.addEventListener('keydown', wnd.modal.event);
                             this.visible = true;
-                            if (typeof cb === 'function') {
-                                this.callback = cb;
-                                this.callback();
-                            }
+                            if (this.callback) this.callback();
+
                         }
                         if (this.kicker instanceof HTMLElement) wnd.kicker = this.kicker
                         return this;
@@ -514,7 +545,7 @@
                         this.visible = false;
                         this.callback = cb || this.callback;
                         if (typeof this.callback  === 'function') {
-                            this.callback();
+                            this.callback(this);
                         }
 
                         if (wnd.kicker) wnd.kicker.ui.focus();
@@ -642,7 +673,7 @@
             var self = this;
             this.wnd = this.wnd || ui.el(g.config.popup.wnd);
             if (self.wnd.fade) {
-                this.container =  this.container || ui.el(g.config.popup.container);
+                this.container =  this.container || ui.el('[role="workspace"]');
                 var  up = false, t = {
                     onTmplError:function () {
                         g.app.msg({message:'Ошибка выполнения приложения!'});
@@ -671,6 +702,8 @@
         download:function(owner, url, opt) {
             var self = owner, app = this;
             return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
+                before: opt && opt.before || null,
+                after: opt && opt.after || null,
                 done: function(e, x) {
                     var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
                     if (res.result != 'ok') {
@@ -682,14 +715,15 @@
                     try {
                         var filename = g.uuid();
                         if (opt && opt.hasOwnProperty('filename')) {
-                            filename = opt['filename'];
+                            filename = decodeURIComponent(quoter(opt['filename'],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                         } else {
                             var disposition = this.getResponseHeader('Content-Disposition');
                             if (disposition && disposition.indexOf('attachment') !== -1) {
                                 var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
                                 var matches = filenameRegex.exec(disposition);
-                                if (matches != null && matches[1]) filename = matches[1].replace(/['"]/g, '');
+                                if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                             }
+
                         }
                         var type = this.getResponseHeader('Content-Type');
                         var blob = g.bb(this.response, {type: type});
@@ -707,7 +741,6 @@
                             g.navigator.msSaveBlob(blob, filename);
                         } else {
                             var downloadUrl = g.URL.createObjectURL(blob);
-
                             if (filename) {
                                 // use HTML5 a[download] attribute to specify filename
                                 var a = document.createElement('a');
@@ -734,7 +767,7 @@
                         console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
                 },
-                fail: function (e) {
+                fail: opt && opt.fail || function (e) {
                     if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                     console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
@@ -745,6 +778,7 @@
             var done = opt.done; delete opt['done'];
             var fail = opt.fail; delete opt['fail'];
             var stop = opt.stop; delete opt['stop'];
+            var dir = opt.dir || null; delete opt['dir'];
 
             if (!file) return console.warn('File not found!');
 
@@ -756,21 +790,25 @@
             var size = file.size, filename = file.name;
             var sliceSize = opt.sliceSize||1024;
             var start = opt.start||0, end;
-            var data, piece;
+            var data, piece, xhr;
 
             var loop = function () {
                 end = start + sliceSize;
-                if (size - end < 0) end = size;
+                data = new FormData();
+                if (size - end < 0) {
+                    end = size;
+                    if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
+                }
 
                 piece = slice(file, start, end);
-                data = new FormData();
+                data.append('dir', dir);
                 data.append('filename', filename);
                 data.append('size', size);
                 data.append('start', start);
                 data.append('end', end);
                 data.append('file', piece);
 
-                if (stop.call(this)) g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
+                if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
                     url: url,
                     data: data,
                     done: function (e, x) {
@@ -1020,12 +1058,12 @@
      * @param owner
      * @param v
      */
-    var setValueFromObject = function(el, v, required) {
+    var setValueFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
             el.value = null;
             if (!(this instanceof HTMLElement)) el.required = !!required;
-            if (typeof v === 'object' && v && v.hasOwnProperty(el.name)) {
-                el.value = v[el.name];
+            if (typeof v === 'object' && v && v.hasOwnProperty(alias || el.name)) {
+                el.value = v[alias || el.name];
             } else {
                 el.value = typeof v === 'undefined' ? null : v;
             }
@@ -1084,12 +1122,16 @@
      */
     var input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
-            var res = isvalid(element);
+            var res = isvalid(element) && (element.hasOwnProperty('bindingElement') ? isvalid(element.bindingElement) : true);
             if (element.type != 'hidden') {
-                inputer(ui.wrap(element));
-                if (res === false) { element.status = 'error' }
-                else if ( res === null || res === undefined) { element.status = 'warning' }
-                else { if (element.value.trim().length) element.status = 'success'; else element.status = 'none'; }
+                inputer( element );
+                if (res === false) {
+                    element.status = 'error'
+                } else if (res === null || res === undefined) {
+                    element.status = 'warning'
+                } else {
+                    if (element.value && element.value.length) { element.status = 'success'; } else  { element.status = 'none'; }
+                }
             }
             return res;
         }
@@ -1182,14 +1224,15 @@
 
         for (var i = 0; i < this.elements.length; i++) {
             if (!m.hasOwnProperty(this.elements[i].name) && !input_validator(this.elements[i])) {
-                m[this.elements[i].name] = this.elements[i].value || 'Поле с неверными данными или пустым значения!';
+                if (!this.elements[i].hasOwnProperty('message') || (this.elements[i].message !== false))
+                    m[this.elements[i].name] = this.elements[i].message || 'Поле с неверными данными или пустым значения!';
             }
         }
 
         if (Object.keys(m).length) {
             if (g.spinner) g.spinner = false;
             m['caption'] = 'Неверно заполнена форма!';
-            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m});
+            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m}); else return m;
             return false;
         }
 
@@ -1295,12 +1338,13 @@
 
                 if (owner.pannel) {
                     if (data.length) {
-                        var n = ui.dom(tmpl(th.opt.tmpl, {data: data, field: owner.name}));
-                        owner.pannel.innerHTML = n ? n.innerHTML : null;
+                        tmpl(th.opt.tmpl, {data: data, field: owner.name}, function (cnt) {
+                            var n = ui.dom(cnt);
+                            owner.pannel.innerHTML = n ? n.innerHTML : null;
+                        });
                     }
                 } else {
-                    var panel = tmpl(this.opt.tmpl, {data: data, field: owner.name});
-                    if (panel) {
+                    tmpl(this.opt.tmpl, {data: data, field: owner.name}, function (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
                         owner.parentElement.css.add(th.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
@@ -1308,12 +1352,8 @@
                             owner.value = this.innerHTML;
                             owner.setValue(th.cache[th.key][th.index = parseInt(this.value)]);
                             owner.ui.focus();
-                            return false
                         });
-
-                    } else {
-                        th.opt.warn(owner.name+'.typeahead panel not defined!');
-                    }
+                    });
                 }
                 th.activeItem(th.key = owner.__key__);
                 return false;
@@ -1337,7 +1377,7 @@
                     var no_eq = (key !== owner.__value.trim().toLowerCase());
                     if (is_correct && no_skip && no_eq && !len) {
                         var __status = owner.status, params = {};
-                        params[owner.name] = owner.value;
+                        if (th.opt.alias) params[th.opt.alias] = owner.value; else params[owner.name] = owner.value;
                         owner.status = 'spinner';
                         th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
                             rs: th.opt.rs,
@@ -1351,7 +1391,13 @@
                                 }
                                 switch (res.result) {
                                     case 'ok': case 'success':
-                                        th.cache[key] = res.data||[];
+                                        th.cache[key] = (res.data||[]).map(function (v) {
+                                            if (th.opt.alias) {
+                                                v[owner.name] = v[th.opt.alias]; delete v[th.opt.alias]; return v;
+                                            } else {
+                                                return v;
+                                            }
+                                        });
                                         th.activeItem(key);
                                         th.show(th.cache[key]);
                                         break;
@@ -1488,7 +1534,7 @@
             });
 
             element.__value = element.value;
-            element.typeahead.opt = merge({getEmpty:true,
+            element.typeahead.opt = merge({alias:null, getEmpty:true,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
                 error: function (res, xhr) {

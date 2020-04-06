@@ -63,32 +63,136 @@
         505: 'HTTP Version Not Supported'
     };
 
+    /**
+     * @function eventCode
+     * Хелпер обработки кода нажатия на устройтвах ввода типа клавиатура.
+     *
+     * @argument { Event } e - событие
+     * @result { Integer | String }
+     */
     var eventCode = function (e) {
-        if (g.InputEvent && (e instanceof InputEvent)) {
-            return e.data;
-        } else if (e instanceof Event) switch (true) {
-            case e.key !== undefined:
-                return e.key;
-            case e.keyIdentifier !== undefined:
-                return e.keyIdentifier;
-            case e.keyCode !== undefined:
-                return e.keyCode;
-            default:
-                return e.charCode;
-        };
-
-        return null;
-    }; g.eventCode = eventCode;
+            if (g.InputEvent && (e instanceof InputEvent)) {
+                return e.data;
+            } else if (e instanceof Event) switch (true) {
+                case e.key !== undefined:
+                    return e.key;
+                case e.keyIdentifier !== undefined:
+                    return e.keyIdentifier;
+                case e.keyCode !== undefined:
+                    return e.keyCode;
+                default:
+                    return e.charCode;
+            };
+            return null;
+        }; g.eventCode = eventCode;
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
-        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || null; //g.shimIndexedDB || null;
-        if (g.indexedDB) {
-            g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction;
-            g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange;
-        }
+        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || g.shimIndexedDB || null;
     }
+
+    if (!('IDBTransaction' in g)) {
+        g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction || null;
+    }
+
+    if (!('IDBKeyRange' in g)) {
+        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange|| null;
+    }
+
+    /**
+     * IndexedDBInterface
+     * @param opt
+     * @constructor
+     */
+    g.IndexedDBInterface = function(opt) {
+        var self = this;
+
+        try {
+            Object.defineProperty(self, 'active', {
+                __proto__: null,
+                get: function active() {
+                    return self.instance ? self.instance.readyState == 'done' : false;
+                }
+            });
+
+            if (typeof opt === 'object') self.merge(opt);
+
+            self.instance = g.indexedDB.open(self.name, self.vertion);
+
+            // Create schema
+            self.instance.onupgradeneeded = function(e) {
+                return self.build(e.target.result);
+            };
+            // on reload, instance up!
+            self.instance.onsuccess = function(e) {
+                self.db = e.target.result;
+                return self.success(self.db);
+            };
+            self.instance.onblocked = function (e) {
+                return self.blocked(e);
+            };
+            // on Error
+            self.instance.onerror = function (e) {
+                return self.fail(e);
+            }
+        } catch (e) {
+            self.fail(e);
+        }
+    }; g.IndexedDBInterface.prototype = {
+        db: null,
+        name: null,
+        vertion: 1,
+        schema: null,
+        destroy: function () {
+            var self = this;
+            self.instance = null; // Дропнули всё
+            self.populate = true; // Пересоздали хранилище
+            var instance = g.indexedDB.deleteDatabase(self.name, self.vertion);
+            instance.onsuccess = self.success;
+            instance.onerror = self.fail;
+            instance.onblocked = self.blocked;
+        },
+        success: function (e) {
+            console.log(this.name+' database ver '+this.vertion+' successfully');
+            return this;
+        },
+        fail: function (e) {
+            console.error('Fail '+this.name+' database ver '+this.vertion, e.message);
+            return this;
+        },
+        blocked:function (e) {
+            console.warn('Couldn\'t operate '+self.name+'database ver '+this.vertion+' due to the operation being blocked');
+            return this;
+        },
+        upgrade: function (e) {
+            console.log(this.name+' DDLs database ver '+this.vertion+' successfully inits!');
+            return this;
+        },
+        build: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            try {
+                if (self.db.objectStoreNames.contains(self.name)) {
+                    self.db.deleteObjectStore(self.name); // Удалили хранилище
+                }
+                self.db.createObjectStore(self.name);
+                // Пересоздаём все дочерние сторажы
+                if (self.heirs) self.heirs.map(function (v, i, a) { v.schema(db); });
+                self.upgrade();
+                return true;
+            } catch (e) {
+                self.fail(e);
+                return false;
+            }
+        },
+        close: function (db) {
+            var self = this;
+            self.db = db || self.db;
+            try { self.db.close(); } catch (e) { self.fail(e); }
+            return self;
+        }
+    };
 
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
@@ -277,44 +381,7 @@
 
     /**
      * Object extension
-     * @function inherit (...)
-     * @argument { Object | Function (Class) } родитель
-     * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
-     * Статческое наследование свойств родительского объекта
-     */
-    Object.defineProperty(Object.prototype, '__inherit__', {
-        value: function() {
-            if (!arguments.length) return {};
-            var self = arguments[0], extension = arguments[1];
-            switch (typeof self) {
-                case 'function':
-                    var fn = self;
-                    if (typeof extension === 'object') fn.prototype = Object.merge(fn.prototype, extension);
-                    else if (typeof extension === 'function') fn.prototype = Object.merge(fn.prototype, extension.prototype);
-                    self = new fn;
-                    self.__proto__.constructor = fn;
-                    if (typeof extension === 'function') self.merge(extension);
-                    break;
-                case 'object':
-                    if (typeof extension === 'object') self.__proto__ = Object.merge(self.__proto__, extension);
-                    else if (typeof extension === 'function') {
-                        self.__proto__ = Object.merge(self.__proto__, extension.prototype);
-                        self.__proto__.constructor = extension;
-                        self.merge(extension);
-                    }
-                    break;
-                default:
-                    return null;
-            }
-
-            return self;
-        },
-        enumerable: false
-    });
-
-    /**
-     * Object extension
-     * @function parent (...)
+     * @function __parent__ (...)
      * @argument { Object } родитель
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
@@ -322,24 +389,28 @@
     Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = this, parent = arguments[0];
+            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
                     var fn = arguments[1];
-                    // fn.prototype = Object.merge(fn.prototype, parent);
                     self = new fn;
-                    self.__proto__ = Object.merge(self.__proto__, parent);
-                    self.__proto__.constructor = fn;
+                    if (self.__proto__) {
+                        self.__proto__ = Object.merge(self.__proto__, owner);
+                        self.__proto__.constructor = fn;
+                    } else  {
+                        self.prototype = Object.merge(fn.prototype, owner);
+                    }
                     break;
                 case 'object':
                     self = Object.merge(arguments[1]);
                 case 'undefined':
                 default:
-                    self.__proto__ = parent;
+                    if (self.__proto__) self.__proto__ = owner; else self.prototype = owner;
             }
-            self['__parent__'] = parent;
-            if (parent.hasOwnProperty('__childs__')) parent.__childs__.push(self);
-            else parent.__childs__ = [self];
+            self['owner'] = owner;
+            if (owner.hasOwnProperty('heirs')) owner.heirs.push(self);
+            else owner.heirs = [self];
 
             return self;
         },
@@ -532,32 +603,6 @@
     }; g.router = router('/');
 
     /**
-     * @class chain
-     * Хелпер Обработчик цепочки асинхронных объектов поддерживающих интерфейс done, fail
-     *
-     * @function done
-     * @function fail
-     */
-    function chain(){
-        var c = {
-            tuple: [], cache: [],
-            donned:function(fn){ return false },
-            failed:function(fn){ return false },
-            pool:function (fn, arg) {
-                this.chain.cache.push(this);
-                if (this.chain.tuple.length == this.chain.cache.length) this.chain.donned.apply(this.chain, this.chain.cache);
-            },
-            done: function(fn){ this.donned = fn },
-            fail: function(fn){ this.failed = fn }
-        };
-        c.tuple = obj2array(arguments).map(function(fn){
-            fn.onload =  function(){ c.pool.apply(fn, arguments) };
-            fn.chain = c; return fn;
-        });
-        return c;
-    }; g.chain = chain;
-
-    /**
      * @function js
      * Динамическая загрузка javascript
      *
@@ -644,10 +689,10 @@
         };
 
         x.halt = function(opt) {
+            x.abort();
+            g.removeEventListener('offline', x.onerror);
             x.cancel.call(x, opt, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
             if (typeof x.after == 'function') x.after.call(x, opt);
-            g.removeEventListener('offline', x.onerror);
-            x.abort();
             return x;
         };
 
@@ -784,7 +829,6 @@
                                         break;
                                     case 'color':
                                     case 'date':
-                                    case 'date':
                                     case 'datetime-local':
                                     case 'email':
                                     case 'month':
@@ -817,6 +861,15 @@
                         return f.__MODEL__;
                     }
                 });
+
+                f.is_valid = function() {
+                    if (!f.validator || (typeof f.validator === 'function' && f.validator.call(f))) {
+                        f.setAttribute('valid', 1);
+                        return true;
+                    }
+                    f.setAttribute('valid', 0);
+                    return false;
+                };
 
                 f.prepare = function(validator) {
                     var data = [];
@@ -896,7 +949,12 @@
      * @result { String }
      */
     var tmpl = function tmpl( str, data, cb, opt ) {
+        var args = arguments; args[1] = args[1] || {};
         var fn, self =  {
+            str: str,
+            data: data,
+            cb: cb,
+            opt: opt,
             processing: false,
             timer: null,
             wait: function(after, args) {
@@ -919,8 +977,6 @@
                 console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
             }
         };
-
-        var args = arguments; args[1] = args[1] || {};
 
         var compile = function( str ) {
             var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
@@ -977,9 +1033,9 @@
                     var awaiting = function (self) {
                         if (self.processing) { self.timer = setTimeout(function () { awaiting(self); }, 50); return; }
 
-                        result = pattern.call(g.tmpl, args[1]);
+                        result = pattern.call(self, args[1]);
 
-                        if (typeof cb == 'function') { self.tmplContext = cb.call(pattern || g.tmpl, result) || g.tmpl; }
+                        if (typeof cb == 'function') { self.tmplContext = cb.call(self, result) || g.tmpl; }
                         else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) { self.tmplContext.innerHTML = result; }
 
                         if (self.tmplContext && pig && (after = pig.getAttribute('after'))) { self.wait(after, args); }
