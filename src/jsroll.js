@@ -366,7 +366,19 @@
         update: function (table, params, filter, done, fail) {
             var keys = [], where = [];
 
-            if (typeof filter === 'object') {
+            if (typeof filter === 'string' && /:([^\s$]*)/.test(filter)) {
+                if (!Object.keys(params).length) throw 'webSQL::update params not exist!';
+                while (m = /:([^\s$]*)/g.exec(filter)) {
+                    if (params.hasOwnProperty(m[1])) {
+                        filter = filter.replace(m[0], '?');
+                        if (keys.indexOf(m[1]) < 0) keys.push(m[1]);
+                        where.push(QueryParam(params[m[1]]));
+                    } else {
+                        throw 'webSQL::update param (' + m[1] + ') not exist!';
+                    }
+                }
+                keys.forEach(function (v,i,a) { delete params[v]; })
+            } else if (typeof filter === 'object') {
                 if (filter instanceof Array) {
                     filter.forEach(function (v, i, a) {
                         keys.push(v);
@@ -385,10 +397,11 @@
 
             if (keys.length) {
                 query += ' WHERE ' + (keys.map(paramStatment).join(' AND '));
-                values = values.concat(where);
+            } else if (typeof filter === 'string') {
+                query += ' WHERE ' + filter;
             }
 
-            return this.stmt(query, values, done, fail);
+            return this.stmt(query, values.concat(where), done, fail);
         }
     }; webSQL.BULK = 1; webSQL.UPSERT = 2; webSQL.DEFAULT = 0;
     g.webSQL = webSQL;
