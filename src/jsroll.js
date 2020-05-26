@@ -4,16 +4,16 @@
  *
  * Классы RIA / SPA javascritp framework
  * @author Андрей Новиков <andrey@novikov.be>
- * @data 16/04/2018
+ * @data 26/05/2020
  * @status beta
- * @version 2.1.1b
- * @revision $Id: jsroll.js 2.1.1b 2018-04-16 10:10:01Z $
+ * @version 2.1.2b
+ * @revision $Id: jsroll.js 2.1.2b 2020-05-16 10:10:01Z $
  */
 
 (function ( g, undefined ) {
     'suspected';
     'use strict';
-    var version = '2.1.1b';
+    var version = '2.1.2b';
 
     g.HTTP_RESPONSE_CODE = {
           0: 'Request runtime error',
@@ -257,7 +257,7 @@
 
     /**
      * @webSQL
-     * 
+     *
      * @param db
      * @param opt
      */
