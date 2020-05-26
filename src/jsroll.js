@@ -194,6 +194,205 @@
         }
     };
 
+    /**
+     * Constant            Code    Situation
+     * UNKNOWN_ERR          0        The transaction failed for reasons unrelated to the database itself and not covered by any other error code.
+     * DATABASE_ERR         1        The statement failed for database reasons not covered by any other error code.
+     * VERSION_ERR          2        The operation failed because the actual database version was not what it should be. For example, a statement found that the actual database version no longer matched the expected version of the Database or DatabaseSync object, or the Database.changeVersion() or DatabaseSync.changeVersion() methods were passed a version that doesn't match the actual database version.
+     * TOO_LARGE_ERR        3        The statement failed because the data returned from the database was too large. The SQL "LIMIT" modifier might be useful to reduce the size of the result set.
+     * QUOTA_ERR            4        The statement failed because there was not enough remaining storage space, or the storage quota was reached and the user declined to give more space to the database.
+     * SYNTAX_ERR           5        The statement failed because of a syntax error, or the number of arguments did not match the number of ? placeholders in the statement, or the statement tried to use a statement that is not allowed, such as BEGIN, COMMIT, or ROLLBACK, or the statement tried to use a verb that could modify the database but the transaction was read-only.
+     * CONSTRAINT_ERR       6        An INSERT, UPDATE, or REPLACE statement failed due to a constraint failure. For example, because a row was being inserted and the value given for the primary key column duplicated the value of an existing row.
+     * TIMEOUT_ERR          7        A lock for the transaction could not be obtained in a reasonable time.
+     */
+
+    /**
+     *  Database openDatabase(in DOMString name, in DOMString version, in DOMString displayName, in unsigned long estimatedSize, in optional DatabaseCallback creationCallback);
+     *
+     * database_name - Имя базы данных;
+     * database_version - Версия базы данных. Может быть изменена  функцией changeVersion;
+     * database_displayname - Отображаемое имя базы;
+     * database_size - Размер базы данных в байтах.
+     * creationCallback - при создании функциия
+     */
+
+    /**
+     * @QueryParam
+     * Helper for webSQl
+     * @param v
+     * @param o
+     * @returns {string|any}
+     * @constructor
+     */
+    var QueryParam = function (v, o) {
+        var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
+
+        if (typeof v === 'object') {
+            return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
+        } else if (typeof v === 'undefined' || v === null) {
+            return 'NULL';
+        }
+
+        return Number(v) == String(v) ? Number(v) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
+    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1;
+    g.QueryParam = QueryParam;
+
+    /**
+     * Helper for webSQl
+     * @param v
+     * @param i
+     * @param a
+     * @returns {string|any}
+     */
+    var paramsNative = function (v, i, a) { return QueryParam(v); };
+
+    /**
+     * Helper for webSQl
+     * @param v
+     * @param i
+     * @param a
+     * @returns {string}
+     */
+    var paramStatment = function (v, i, a) { return v + ' = ?'; };
+
+    /**
+     * @webSQL
+     * 
+     * @param db
+     * @param opt
+     */
+    var webSQL = function (db, opt) {
+        if (typeof db !== 'object') throw "webSQL object not exist!";
+        var self = this;
+        if (typeof opt === 'object') self.merge(opt);
+        this.db = db;
+    };
+    webSQL.prototype = {
+        get info() {
+            this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'", [],
+                function (tx, rs) {
+                    var table, tablesNumber = rs.rows.length;
+                    console.log('webSQL DB info:');
+                    for (var i = 0; i < tablesNumber; i++) {
+                        table = rs.rows.item(i);
+                        console.log((i + 1) + '. type: ' + table.type + ', name: ' + table.name);
+                    }
+                }
+            );
+        },
+        get version() {
+            return this.db.version;
+        },
+        runnig: false,
+        proc: function (tx, cb) {
+            this.runnig = tx;
+            if (typeof cb === 'function') return cb.call(this, tx);
+        },
+        fail: function (tx, error, cb) {
+            if (typeof cb === 'function') cb.call(this, tx, error); else console.error('webSQL [' + error.code + '] ' + error.message);
+            return this.runnig = false;
+
+        },
+        done: function (tx, result, cb) {
+            if (typeof cb === 'function') cb.call(this, tx, result); else console.warn('webSQL result handler ', result);
+            return this.runnig = false;
+        },
+        transaction: function (proc, fail) {
+            var self = this;
+            //  db.readTransaction(function (tx) {
+            return self.db.transaction(
+                function (tx) {
+                    return self.proc(tx, proc);
+                },
+                function (error) {
+                    return self.fail(self.running, error, fail);
+                });
+        },
+        executeSql: function (tx, sql, data, done, fail) {
+            var self = this;
+            return tx.executeSql(
+                sql, data,
+                function (tx, result) {
+                    return self.done(tx, result, done);
+                },
+                function (tx, error) {
+                    return self.fail(tx, error, fail);
+                });
+        },
+        stmt: function (sql, data, done, fail, bulk) {
+            var self = this;
+            return this.transaction(
+                function (tx) {
+                    return (!!bulk ? data : [data]).forEach(function (v, i, a) {
+                        return self.executeSql(tx, sql, v, done, fail)
+                    });
+                },
+                fail
+            );
+        },
+        filter: function (query, params, done, fail) {
+            var data = [], m = false;
+            if (/:([^\s$]*)/.test(query)) {
+                if (!Object.keys(params).length) throw 'webSQL::filter params not exist!';
+                while (m = /:([^\s$]*)/g.exec(query)) {
+                    if (params.hasOwnProperty(m[1])) {
+                        query = query.replace(m[0], '?');
+                        data.push(QueryParam(params[m[1]]));
+// 						query = query.replace(m[0], QueryParam(params[m[1]], QueryParam.QOUTED));
+                    } else {
+                        throw 'webSQL::filter param (' + m[1] + ') not exist!';
+                    }
+                }
+            } else {
+                if (typeof params === 'object') data = params instanceof Array ? params.map(paramsNative) : Object.values(params).map(paramsNative);
+            }
+
+            return this.stmt(query, data, done, fail);
+        },
+        insert: function (table, params, done, fail, option) {
+            var opt = typeof option === 'undefined' ? webSQL.DEFAULT : Number(option);
+            // FOR UPSERT!!!
+            // set option webSQL.UPSERT and
+            // CREATE UNIQUE INDEX idx_something ON table (..., ...)
+            // INSERT OR IGNORE INTO
+            var fields = opt & webSQL.BULK ? Object.keys(params[0]) : Object.keys(params);
+            var values = opt & webSQL.BULK ? params.map(function (v, i, a) {
+                return Object.values(v).map(paramsNative);
+            }) : Object.values(params).map(paramsNative);
+            var query = (opt & webSQL.UPSERT ? 'INSERT OR REPLACE INTO ' : 'INSERT INTO ') + table + ' (' + (fields.join(',')) + ') VALUES (' + (Array(fields.length).fill('?').join(',')) + ')';
+
+            return this.stmt(query, values, done, fail, opt & webSQL.BULK);
+        },
+        update: function (table, params, filter, done, fail) {
+            var keys = [], where = [];
+
+            if (typeof filter === 'object') {
+                if (filter instanceof Array) {
+                    filter.forEach(function (v, i, a) {
+                        keys.push(v);
+                        where.push(QueryParam(params[v]));
+                        delete params[v];
+                    });
+                } else {
+                    keys = Object.keys(filter);
+                    where = Object.values(filter).map(paramsNative);
+                }
+            }
+
+            var fields = Object.keys(params);
+            var values = Object.values(params).map(paramsNative);
+            var query = 'UPDATE ' + table + ' SET ' + (fields.map(paramStatment).join(','));
+
+            if (keys.length) {
+                query += ' WHERE ' + (keys.map(paramStatment).join(' AND '));
+                values = values.concat(where);
+            }
+
+            return this.stmt(query, values, done, fail);
+        }
+    }; webSQL.BULK = 1; webSQL.UPSERT = 2; webSQL.DEFAULT = 0;
+    g.webSQL = webSQL;
+
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
 
