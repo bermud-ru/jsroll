@@ -269,7 +269,7 @@
     };
     webSQL.prototype = {
         get info() {
-            this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'", [],
+            return this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'", [],
                 function (tx, rs) {
                     var table, tablesNumber = rs.rows.length;
                     console.log('webSQL DB info:');
@@ -284,22 +284,24 @@
             return this.db.version;
         },
         runnig: false,
-        proc: function (tx, cb) {
+        proc: function (tx, callback) {
             this.runnig = tx;
-            if (typeof cb === 'function') return cb.call(this, tx);
+            if (typeof callback === 'function') return callback.call(this, tx);
+            return tx;
         },
-        fail: function (tx, error, cb) {
-            if (typeof cb === 'function') cb.call(this, tx, error); else console.error('webSQL [' + error.code + '] ' + error.message);
+        fail: function (tx, error, callback, sql, index, query) {
+            if (typeof callback === 'function') callback.call(this, tx, error, sql, index, query);
+            else console.error('webSQL query ['+sql+'] error(' + error.code + '): ' + error.message);
             return this.runnig = false;
-
         },
-        done: function (tx, result, cb) {
-            if (typeof cb === 'function') cb.call(this, tx, result); else console.warn('webSQL result handler ', result);
+        done: function (tx, result, callback, sql, index, query) {
+            if (typeof callback === 'function') callback.call(this, tx, result, sql, index, query);
+            else console.warn('webSQL query ['+sql+'] resultSet: ', result);
             return this.runnig = false;
         },
         transaction: function (proc, fail) {
             var self = this;
-            //  db.readTransaction(function (tx) {
+            //  self.db.readTransaction(function (tx) {
             return self.db.transaction(
                 function (tx) {
                     return self.proc(tx, proc);
@@ -308,16 +310,21 @@
                     return self.fail(self.running, error, fail);
                 });
         },
-        executeSql: function (tx, sql, data, done, fail) {
-            var self = this;
-            return tx.executeSql(
-                sql, data,
-                function (tx, result) {
-                    return self.done(tx, result, done);
-                },
-                function (tx, error) {
-                    return self.fail(tx, error, fail);
+        executeSql: function(tx, query, data, done, fail) {
+            var self = this, multiQuery = typeof query !== 'string' ;
+            try {
+                return (multiQuery ? query : [query]).forEach( function(sql, i, a) {
+                    return tx.executeSql( sql, (multiQuery ? data[i] : data),
+                        function(tx, result) {
+                            return self.done(tx, result, done, sql, i, a);
+                        },
+                        function(tx, error) {
+                            return self.fail(tx, error, fail, sql, i, a);
+                        });
                 });
+            } catch(e) {
+                return self.fail(tx, e, fail);
+            }
         },
         stmt: function (sql, data, done, fail, bulk) {
             var self = this;
