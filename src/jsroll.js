@@ -345,9 +345,9 @@
         },
         filter: function (query, params, done, fail) {
             var data = [], m = false;
-            if (/:([^\s$]*)/.test(query)) {
+            if (/:([^\s$]*)/m.test(query)) {
                 if (!Object.keys(params).length) throw 'webSQL::filter params not exist!';
-                while (m = /:([^\s$]*)/g.exec(query)) {
+                while (m = /:([^\s$]*)/gm.exec(query)) {
                     if (params.hasOwnProperty(m[1])) {
                         query = query.replace(m[0], '?');
                         data.push(QueryParam(params[m[1]]));
