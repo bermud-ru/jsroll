@@ -269,13 +269,19 @@
     };
     webSQL.prototype = {
         get info() {
-            return this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'", [],
-                function (tx, rs) {
+            return this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'",[],
+                function(tx, rs) {
                     var table, tablesNumber = rs.rows.length;
                     console.log('webSQL DB info:');
                     for (var i = 0; i < tablesNumber; i++) {
                         table = rs.rows.item(i);
-                        console.log((i + 1) + '. type: ' + table.type + ', name: ' + table.name);
+                        if ( table.type == 'table') {
+                            tx.executeSql( 'SELECT sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
+                                console.info('- table: ' + table.name + ', DDL: ' + r.rows[0].sql);
+                            });
+                        } else {
+                            console.info('- type: ' + table.type +', name: ' + table.name);
+                        }
                     }
                 }
             );
