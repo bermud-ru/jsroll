@@ -15,8 +15,7 @@
     'use strict';
 
     /**
-     *  class css - Helper for Cascading Style Sheets properties of HTMLelements
-     *
+     * @class css - Helper for Cascading Style Sheets properties of HTMLelements
      * @param instance
      * @returns {css}
      */
@@ -25,8 +24,7 @@
         return this;
     }; css.prototype = {
         /**
-         * css.el setup instance of HTMLelements
-         *
+         * @function el setup instance of HTMLelements
          * @param i
          * @returns {css}
          */
@@ -35,8 +33,7 @@
             return this;
         },
         /**
-         * css.style - setup value of Cascading Style Sheets properties of HTMLelement
-         *
+         * @function  style - setup value of Cascading Style Sheets properties of HTMLelement
          * @param k
          * @param v
          * @returns {css}
@@ -46,8 +43,7 @@
             return this;
         },
         /**
-         * css.has return [" <clssname>", ...] | null is exist Cascading Style Sheets class in HTMLelement
-         *
+         * @function has return [" <clssname>", ...] | null is exist Cascading Style Sheets class in HTMLelement
          * @param c
          * @returns {Array|{index: number, input: string}}
          */
@@ -61,7 +57,18 @@
             return result.length ? result : null;
         },
         /**
-         * css.add - Add Cascading Style Sheets class to HTMLelement
+         * @function replace Repalace mephod Cascading Style Sheets class name
+         * @param r regexp|substr
+         * @param n newSubStr|function
+         * @param f flags
+         * @returns {css}
+         */
+        replace: function (r, n, f) {
+            this.instance.className = this.instance.className.replace(r, n, f);
+            return this;
+        },
+        /**
+         * @function add - Add Cascading Style Sheets class to HTMLelement
          * @param c
          * @returns {css}
          */
@@ -73,8 +80,7 @@
             return this;
         },
         /**
-         * css.del - Delete Cascading Style Sheets class from HTMLelement
-         *
+         * @function del - Delete Cascading Style Sheets class from HTMLelement
          * @param c
          * @returns {css}
          */
@@ -91,17 +97,7 @@
             return this;
         },
         /**
-         * css.rpl - Replace Cascading Style Sheets class in HTMLelement
-         * @param t
-         * @param c
-         */
-        rpl: function (t,c) {
-            var h = this.instance;
-            if (t && c && h) h.className = h.className.replace(t,c);
-        },
-        /**
-         * css.tgl - Toggle Cascading Style Sheets class of HTMLelement
-         *
+         * @function tgl - Toggle Cascading Style Sheets class of HTMLelement
          * @param c
          * @returns {css}
          */
@@ -113,6 +109,32 @@
             return this;
         }
     }; g.css = new css(g);
+
+    /**
+     * TODO: Fix selected (not work in FF)
+     */
+    Object.defineProperty(g, 'selected', {
+        get: function selected() {
+            return g.getSelection ? g.getSelection().toString() : g.document.selection.createRange().text;
+            // return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
+            //     g.document.selection.createRange().text; // IE, используем объект selection
+        }
+    });
+
+    /**
+     * Fix native mephod selection
+     */
+    function selection() {
+        if (g.getSelection) {
+            if (g.getSelection().empty) {  // Chrome
+                g.getSelection().empty();
+            } else if (g.getSelection().removeAllRanges) {  // Firefox
+                g.getSelection().removeAllRanges();
+            }
+        } else if (g.document.selection) {  // IE?
+            g.document.selection.empty();
+        }
+    }; g.selection = selection;
 
     /**
      * CustomEvent
@@ -138,8 +160,7 @@
         };
 
     /**
-     * class ui - HTML elements Extention
-     *
+     * @class ui - HTML elements Extention
      * @param instance
      * @returns {*}
      */
@@ -285,33 +306,7 @@
     }; g.ui = new ui(document);
 
     /**
-     * TODO: Fix not work in FF
-     */
-    Object.defineProperty(g, 'selected', {
-        get: function selected() {
-            return  g.getSelection ? g.getSelection().toString() : g.document.selection.createRange().text;
-            // return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
-            //     g.document.selection.createRange().text; // IE, используем объект selection
-        }
-    });
-
-    /**
-     * Fix
-     */
-    function selection() {
-        if (g.getSelection) {
-            if (g.getSelection().empty) {  // Chrome
-                g.getSelection().empty();
-            } else if (g.getSelection().removeAllRanges) {  // Firefox
-                g.getSelection().removeAllRanges();
-            }
-        } else if (g.document.selection) {  // IE?
-            g.document.selection.empty();
-        }
-    }; g.selection = selection;
-
-    /**
-     * Helper copy2prn
+     * @Helper copy2prn
      * Подготавливает данные звёрнутые в шаблон к печати
      *
      * @param template
@@ -337,8 +332,7 @@
     }; g.copy2prn = copy2prn;
 
     /**
-     * Fader Helper
-     *
+     * @Helper Fader
      * @param s
      * @param opt
      * @returns {boolean}
@@ -379,17 +373,9 @@
         return res
     }; g.fader = fader;
 
-}( window ));
-
-(function ( g, ui, undefined ) {
-    'suspected';
-    'use strict';
-
-    if ( typeof ui === 'undefined' ) return false;
-
     /**
-     * Helper group
-     *
+     * @Helper group
+     * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
      * @param els
      * @param opt
      */
@@ -400,7 +386,7 @@
             url: g.location.href,
             before: function (e) { g.spinner = true; },
             after: function (e) { g.spinner = false; }
-            }, opt);
+        }, opt);
         this.wrongs = [];
         this.elements = typeof els === 'string' ? ui.els(els) : els;
         this.length = this.elements.length || 0;
@@ -495,6 +481,14 @@
             return this;
         }
     }; g.group = group;
+
+}( window ));
+
+(function ( g, ui, undefined ) {
+    'suspected';
+    'use strict';
+
+    if ( typeof ui === 'undefined' ) return false;
 
     g.config = {
         app: {container:'[role="workspace"]'},
