@@ -23,3 +23,5 @@ cat ./jsroll.ui.min.js >> ../build/jsroll.min.js
 rm ./jsroll.min.js
 rm ./jsroll.ui.min.js
 #./../git add .
+# Subresource Integrity
+cat ../build/jsroll.min.js | openssl dgst -sha384 -binary | openssl base64 -A > jsroll.min.sha384
