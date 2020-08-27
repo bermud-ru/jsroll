@@ -343,7 +343,7 @@
                 fail
             );
         },
-        row: function (o, fields) {
+        grinder: function (o, fields) {
             var res = {};
             if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) { res[v] = o.hasOwnProperty(v) ? o[v] : null; });
             return res;
