@@ -343,6 +343,11 @@
                 fail
             );
         },
+        fields: function (params, fields) {
+            var res = {};
+            if (fields instanceof Array) fields.map(function (v) { res[v] = params.hasOwnProperty(v) ? params[v] : null; });
+            return res;
+        },
         filter: function (query, params, done, fail) {
             var data = [], m = false;
             if (/:([^\s$]*)/m.test(query)) {
