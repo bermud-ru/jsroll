@@ -343,9 +343,9 @@
                 fail
             );
         },
-        fields: function (params, fields) {
+        row: function (o, fields) {
             var res = {};
-            if (fields instanceof Array) fields.map(function (v) { res[v] = params.hasOwnProperty(v) ? params[v] : null; });
+            if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) { res[v] = o.hasOwnProperty(v) ? o[v] : null; });
             return res;
         },
         filter: function (query, params, done, fail) {
