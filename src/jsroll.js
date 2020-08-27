@@ -1276,16 +1276,18 @@
 
         try {
             switch ( true ) {
-                case str.match(is_url) ? true : false : var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
+                case str.match(is_url) ? true : false:
+                    var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache[id]) return build(null, id);
-                    var opt = opt || {};  opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    var opt = opt || {};
+                    opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     return g.xhr(Object.assign({
                         url: str,
                         async: (typeof cb === 'function'),
                         done: function(e, hr) { self.response_header = hr; build(this.responseText, id); },
                         fail: function(e, hr) { console.error(e); }
                         }, opt));
-                case !/[^#*\w\-\.]/.test(str) ? true : false :
+                case !/[^#*\w\-\.]/.test(str) ? true : false:
                     return build( g.document.getElementById( str.replace(/^#/,'')).innerHTML, str );
                 default:
                     return build( str );
