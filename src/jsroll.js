@@ -226,15 +226,17 @@
      */
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
-
-        if (typeof v === 'object') {
+        if (typeof v === 'undefined' || v === null) {
+            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? 'NULL' : null;
+        } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
-        } else if (typeof v === 'undefined' || v === null) {
-            return 'NULL';
+        }  else if (typeof v === 'string' && v === '') {
+            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? '' : null;
         }
 
-        return Number(v) == String(v) ? Number(v) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
-    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1;
+        return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED && typeof v === 'string' ? String(v) : Number(v))
+            : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
+    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4;
     g.QueryParam = QueryParam;
 
     /**
@@ -244,7 +246,7 @@
      * @param a
      * @returns {string|any}
      */
-    var paramsNative = function (v, i, a) { return QueryParam(v); };
+    var paramsNative = function (v, i, a) { return QueryParam(v, QueryParam.STRNULL | QueryParam.INTQOUTED); };
 
     /**
      * Helper for webSQl
@@ -268,16 +270,17 @@
         this.db = db;
     };
     webSQL.prototype = {
+        opt: QueryParam.STRNULL | QueryParam.INTQOUTED,
         get info() {
-            return this.stmt("SELECT * FROM sqlite_master WHERE type='table' and name not like '__Webkit%'",[],
+            return this.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
                 function(tx, rs) {
                     var table, tablesNumber = rs.rows.length;
                     console.log('webSQL DB info:');
                     for (var i = 0; i < tablesNumber; i++) {
                         table = rs.rows.item(i);
                         if ( table.type == 'table') {
-                            tx.executeSql( 'SELECT sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
-                                console.info('- table: ' + table.name + ', DDL: ' + r.rows[0].sql);
+                            tx.executeSql( 'SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
+                                console.info('- table: ' + r.rows[0].name + ', DDL: ' + r.rows[0].sql);
                             });
                         } else {
                             console.info('- type: ' + table.type +', name: ' + table.name);
@@ -333,19 +336,21 @@
             }
         },
         stmt: function (sql, data, done, fail, bulk) {
-            var self = this;
+            var self = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
             return this.transaction(
                 function (tx) {
-                    return (!!bulk ? data : [data]).forEach(function (v, i, a) {
+                    return (d).forEach(function (v, i, a) {
                         return self.executeSql(tx, sql, v, done, fail)
                     });
                 },
                 fail
             );
         },
-        grinder: function (o, fields) {
-            var res = {};
-            if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) { res[v] = o.hasOwnProperty(v) ? o[v] : null; });
+        grinder: function (o, fields, no_uppend) {
+            var res = {}, self = this;
+            if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) {
+                if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], self.opt) : null;
+            });
             return res;
         },
         filter: function (query, params, done, fail) {
@@ -377,7 +382,7 @@
             var values = opt & webSQL.BULK ? params.map(function (v, i, a) {
                 return Object.values(v).map(paramsNative);
             }) : Object.values(params).map(paramsNative);
-            var query = (opt & webSQL.UPSERT ? 'INSERT OR REPLACE INTO ' : 'INSERT INTO ') + table + ' (' + (fields.join(',')) + ') VALUES (' + (Array(fields.length).fill('?').join(',')) + ')';
+            var query = (opt & webSQL.UPSERT ? 'INSERT OR REPLACE INTO ' : 'INSERT INTO ') + table + ' (' + (fields.join(',')) + ') VALUES (' + (Array(fields.length).fill('?').join(',')) + ');';
 
             return this.stmt(query, values, done, fail, opt & webSQL.BULK);
         },
@@ -390,7 +395,7 @@
                     if (params.hasOwnProperty(m[1])) {
                         filter = filter.replace(m[0], '?');
                         if (keys.indexOf(m[1]) < 0) keys.push(m[1]);
-                        where.push(QueryParam(params[m[1]]));
+                        where.push(QueryParam(params[m[1]], this.opt));
                     } else {
                         throw 'webSQL::update param (' + m[1] + ') not exist!';
                     }
@@ -400,7 +405,7 @@
                 if (filter instanceof Array) {
                     filter.forEach(function (v, i, a) {
                         keys.push(v);
-                        where.push(QueryParam(params[v]));
+                        where.push(QueryParam(params[v], this.opt));
                         delete params[v];
                     });
                 } else {
@@ -1080,7 +1085,7 @@
                             type = (el.getAttribute('type') || 'text').toLowerCase();
                             if (type === 'button') { continue; }
                             var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
-                            var n = ['text', 'textarea'].indexOf(type) >-1 ? el.value : InputHTMLElementValue(el);
+                            var n = ['text', 'textarea'].indexOf(type) >-1 ? String(el.value) : InputHTMLElementValue(el);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
