@@ -353,24 +353,22 @@
             });
             return res;
         },
-        filter: function (query, params, done, fail) {
-            var data = [], m = false;
-            if (/:([^\s$]*)/m.test(query)) {
+        filtration: function(query, params) {
+            var self = this, m = false;
+            if (/:([^\s$%\),]*)/m.test(query)) {
                 if (!Object.keys(params).length) throw 'webSQL::filter params not exist!';
-                while (m = /:([^\s$]*)/gm.exec(query)) {
+                while (m = /:([^\s$%\),]*)/gm.exec(query)) {
                     if (params.hasOwnProperty(m[1])) {
-                        query = query.replace(m[0], '?');
-                        data.push(QueryParam(params[m[1]]));
-// 						query = query.replace(m[0], QueryParam(params[m[1]], QueryParam.QOUTED));
+                        query = query.replace(m[0], QueryParam(params[m[1]], self.opt));
                     } else {
                         throw 'webSQL::filter param (' + m[1] + ') not exist!';
                     }
                 }
-            } else {
-                if (typeof params === 'object') data = params instanceof Array ? params.map(paramsNative) : Object.values(params).map(paramsNative);
-            }
-
-            return this.stmt(query, data, done, fail);
+             }
+            return query;
+        },
+        filter: function (query, params, done, fail) {
+            return this.stmt(this.filtration(query, params), [], done, fail);
         },
         insert: function (table, params, done, fail, option) {
             var opt = typeof option === 'undefined' ? webSQL.DEFAULT : Number(option);
@@ -387,25 +385,27 @@
             return this.stmt(query, values, done, fail, opt & webSQL.BULK);
         },
         update: function (table, params, filter, done, fail) {
-            var keys = [], where = [];
-
-            if (typeof filter === 'string' && /:([^\s$]*)/.test(filter)) {
-                if (!Object.keys(params).length) throw 'webSQL::update params not exist!';
-                while (m = /:([^\s$]*)/g.exec(filter)) {
-                    if (params.hasOwnProperty(m[1])) {
-                        filter = filter.replace(m[0], '?');
-                        if (keys.indexOf(m[1]) < 0) keys.push(m[1]);
-                        where.push(QueryParam(params[m[1]], this.opt));
-                    } else {
-                        throw 'webSQL::update param (' + m[1] + ') not exist!';
-                    }
-                }
-                keys.forEach(function (v,i,a) { delete params[v]; })
+            var keys = [], where = [], self = this;
+            // if (typeof filter === 'string' && /:([^\s$%\),]*)/.test(filter)) {
+            //     if (!Object.keys(params).length) throw 'webSQL::update params not exist!';
+            //     while (m = /:([^\s$%\),]*)/mg.exec(filter)) {
+            //         if (params.hasOwnProperty(m[1])) {
+            //             filter = filter.replace(m[0], '?');
+            //             if (keys.indexOf(m[1]) < 0) keys.push(m[1]);
+            //             where.push(QueryParam(params[m[1]], self.opt));
+            //         } else {
+            //             throw 'webSQL::update param (' + m[1] + ') not exist!';
+            //         }
+            //     }
+            //     keys.forEach(function (v,i,a) { delete params[v]; })
+            // }
+            if (typeof filter === 'string') {
+                filter = this.filtration(filter, params);
             } else if (typeof filter === 'object') {
                 if (filter instanceof Array) {
                     filter.forEach(function (v, i, a) {
                         keys.push(v);
-                        where.push(QueryParam(params[v], this.opt));
+                        where.push(QueryParam(params[v], self.opt));
                         delete params[v];
                     });
                 } else {
