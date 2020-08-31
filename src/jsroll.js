@@ -335,12 +335,13 @@
                 return self.fail(tx, e, fail);
             }
         },
-        stmt: function (sql, data, done, fail, bulk) {
+        stmt: function (query, data, done, fail, bulk) {
             var self = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
             return this.transaction(
                 function (tx) {
+                    tx.query = query;
                     return (d).forEach(function (v, i, a) {
-                        return self.executeSql(tx, sql, v, done, fail)
+                        return self.executeSql(tx, query, v, done, fail)
                     });
                 },
                 fail
