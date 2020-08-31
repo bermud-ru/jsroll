@@ -471,6 +471,19 @@
     var obj2array = function (a) { return typeof a === 'object' ? Array.prototype.slice.call(a) : []; }; g.obj2array = obj2array;
 
     /**
+     * function kv2array
+     *
+     * @param o Object
+     * @param glue String
+     * @returns { Array }
+     */
+    var kv2array = function (o, glue) {
+        return o && typeof o === 'object' ? Object.keys(o).map(function (v,i,a) {
+            return v + ( glue ? glue : ' ' ) + o[v];
+        }) : [];
+    }; g.kv2array = kv2array;
+
+    /**
      * @function coalesce
      * Return first not empty in the function arguments
      *
