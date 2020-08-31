@@ -339,10 +339,16 @@
             var self = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
             return this.transaction(
                 function (tx) {
-                    tx.query = query;
-                    return (d).forEach(function (v, i, a) {
-                        return self.executeSql(tx, query, v, done, fail)
-                    });
+                    var i = 0, count = d.length, ResultSet = [];
+                    var next = function (tx, rs) {
+                        if (i < count) {
+                            if (typeof rs !== 'undefined' ) ResultSet[i] = rs;
+                            self.executeSql(tx, query,  d[i++], next, fail)
+                        } else {
+                            return done.call(self, tx, count > 1 ? ResultSet : rs);
+                        }
+                    };
+                    return next(tx);
                 },
                 fail
             );
