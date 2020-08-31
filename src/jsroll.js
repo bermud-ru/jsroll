@@ -644,8 +644,8 @@
                     if (self.__proto__) self.__proto__ = owner; else self.prototype = owner;
             }
             self['owner'] = owner;
-            if (owner.hasOwnProperty('heirs')) owner.heirs.push(self);
-            else owner.heirs = [self];
+            if (owner.hasOwnProperty('heirs')) { owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : Object.keys(owner.heirs).length] = self }
+            else { owner.heirs = {}; owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : 0] = self }
 
             return self;
         },
