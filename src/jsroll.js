@@ -308,6 +308,7 @@
             else console.warn('webSQL query ['+sql+'] resultSet: ', result);
             return this.runnig = false;
         },
+        cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
         transaction: function (proc, fail) {
             var self = this;
             //  self.db.readTransaction(function (tx) {
@@ -372,6 +373,7 @@
                     }
                 }
              }
+            if (!/limit/im.test(query) && !/count\(/im.test(query)) console.warn('NOT LIMITED! '+query);
             return query;
         },
         filter: function (query, params, done, fail) {
@@ -435,6 +437,37 @@
         }
     }; webSQL.BULK = 1; webSQL.UPSERT = 2; webSQL.DEFAULT = 0;
     g.webSQL = webSQL;
+
+    /**
+     * @function dbf
+     * webSQL wraper for common Interface
+     *
+     * @param db { webSQL }
+     * @param opt { Object }
+     * @returns {{cancel: (function(): boolean), filter: (function(*=, *=, *=): instansce), fail: fail, opt: {}, done: done, db: *}|void}
+     */
+    var dbf = function (db, opt) {
+        if (!db) return console.warn('webSQL ' + opt.naeme + ' not exit!');
+        return {
+            opt: {},
+            db: db,
+            cancel: function () { return false; },
+            done: function(tx, rs) {
+                if (typeof this.opt.done === 'function') this.opt.done.call(this, tx, rs);
+                if (typeof this.opt.after === 'function') return this.opt.after.call(this,tx, rs);
+            },
+            fail: function(tx, er) {
+                if (typeof this.opt.fail === 'function') this.opt.fail.call(this, tx, er);
+                if (typeof this.opt.after === 'function') return this.opt.after.call(this,tx, er);
+            },
+            filter: function(query, params, opt) {
+                if (typeof opt === 'object') this.opt.merge(opt);
+                if (typeof opt.before === 'function') opt.before.call(this);
+                this.db.filter(query, params, this.done.bind(this), this.fail.bind(this));
+                return this;
+            }
+        }
+    }; g.dbf = dbf;
 
     g.URL = g.URL || g.webkitURL;
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;

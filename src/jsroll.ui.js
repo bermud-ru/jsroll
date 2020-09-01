@@ -1373,7 +1373,24 @@
                         var __status = owner.status, params = {};
                         if (th.opt.alias) params[th.opt.alias] = owner.value; else params[owner.name] = owner.value;
                         owner.status = 'spinner';
-                        th.__xhr = xhr({url: location.update(owner.ui.attr('url'), params),
+                        th.__xhr = th.opt.dbf ?
+                            th.opt.dbf.filter(th.opt.query, params, {
+                                before: function () { owner.status = 'spinner'; },
+                                after: function () { owner.status = __status; },
+                                done: function (tx, rs) {
+                                    th.cache[key] = g.obj2array(rs.rows).map(function (v) {
+                                        if (th.opt.alias) {
+                                            v[owner.name] = v[th.opt.alias]; delete v[th.opt.alias]; return v;
+                                        } else {
+                                            return v;
+                                        }
+                                    });
+                                    th.activeItem(key);
+                                    th.show(th.cache[key]);
+                                    return false;
+                                },
+                                fail: function (tx,er) { owner.status = 'error'; th.opt.error(er.message, this); return false }
+                            }) : xhr({url: location.update(owner.ui.attr('url'), params),
                             rs: th.opt.rs,
                             before: function () { owner.status = 'spinner'; },
                             after: function () { owner.status = __status; },
@@ -1517,7 +1534,7 @@
         };
 
         if (typeof element.typeahead === 'undefined') {
-            if (!ui.wrap(element) || !element.ui.attr('url')) { console.error('Not have attrib url', element); return }
+            if (!ui.wrap(element)) { console.error('Not have attrib url', element); return }
             element.typeahead = th;
             Object.defineProperty(element, '__key__', {
                 get: function() {
@@ -1528,7 +1545,7 @@
             });
 
             element.__value = element.value;
-            element.typeahead.opt = merge({alias:null, getEmpty:true,
+            element.typeahead.opt = merge({alias:null, getEmpty:true, query: null, dbf: null,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
                 error: function (res, xhr) {
