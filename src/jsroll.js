@@ -227,7 +227,7 @@
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
         if (typeof v === 'undefined' || v === null) {
-            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? 'NULL' : null;
+            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? 'NULL' : opt & QueryParam.NULLSTR ? '' : null;
         } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
         }  else if (typeof v === 'string' && v === '') {
@@ -236,7 +236,7 @@
 
         return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED && typeof v === 'string' ? String(v) : Number(v))
             : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
-    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4;
+    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4; QueryParam.NULLSTR = 8;
     g.QueryParam = QueryParam;
 
     /**
@@ -271,6 +271,14 @@
     };
     webSQL.prototype = {
         opt: QueryParam.STRNULL | QueryParam.INTQOUTED,
+        changeVersion: function(currentVer, newVer, callback){
+            try {
+                return this.db.changeVersion(currentVer, newVer, callback);
+            } catch (e) {
+                this.fail(null, e);
+            }
+            return false;
+        },
         get info() {
             return this.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
                 function(tx, rs) {
@@ -508,7 +516,7 @@
      * @param a
      * @returns {Array}
      */
-    var obj2array = function (a) { return typeof a === 'object' ? Array.prototype.slice.call(a) : []; }; g.obj2array = obj2array;
+    var obj2array = function (a) { return (a && typeof a === 'object') ? Array.prototype.slice.call(a) : []; }; g.obj2array = obj2array;
 
     /**
      * function kv2array
@@ -813,7 +821,7 @@
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
         if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
-        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
+        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(QueryParam(kv[i],QueryParam.NULLSTR));
         var res = []; for (var a in p) res.push(a+'='+p[a]);
         if (res.length) return ((!u.length && !h.length) ? url : (u.length?u[0]:h[0])) + '?' + res.join('&') + (h.length ? h[1] : '');
         return url;
