@@ -1001,7 +1001,7 @@
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
-        var opt = Object.assign({method:'GET',timeout:10000}, params);
+        var opt = Object.assign({method:'GET',timeout:10000,cache:false}, params);
         x.method = opt.method.toUpperCase();
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
