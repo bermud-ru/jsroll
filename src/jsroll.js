@@ -787,7 +787,7 @@
     var decoder = function(search, re) {
         var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
-            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(m[2]);
+            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(QueryParam(m[2]));
         } catch(e) { return null }
         return p;
     }; g.location.decoder = decoder;
@@ -802,7 +802,7 @@
      */
     var encoder = function(params, divider) {
         if (typeof params === 'object') return Object.keys(params).map(function(e,i,a) {
-            return encodeURIComponent(e) + '=' + encodeURIComponent(params[e])
+            return encodeURIComponent(e) + '=' + encodeURIComponent(QueryParam(params[e],QueryParam.NULLSTR))
         }).join(divider || '&');
         return undefined;
     }; g.location.encoder = encoder;
@@ -821,7 +821,7 @@
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
         if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
-        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(QueryParam(kv[i],QueryParam.NULLSTR));
+        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
         var res = []; for (var a in p) res.push(a+'='+p[a]);
         if (res.length) return ((!u.length && !h.length) ? url : (u.length?u[0]:h[0])) + '?' + res.join('&') + (h.length ? h[1] : '');
         return url;
