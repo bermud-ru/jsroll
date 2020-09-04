@@ -887,29 +887,18 @@
                 },
                 set params(v) {
                     var params = {}, self = this; self.__valid = true;
-                    if (typeof v === 'object') params = v; else if (typeof v === 'string') params = location.decoder(v);
-                    if (params.hasOwnProperty('page')) this.index = params['page'];
+                    if (v && typeof v === 'object') params = v; else if (typeof v === 'string') params = g.location.decoder(v);
+                    if (params.hasOwnProperty('page')) this.index = parseInt(params['page']);
                     this.el.forEach(function (e,i,a) {
-                        if (params.hasOwnProperty(e.name)) e.value = params[e.name];
-                        else e.value = '';
+                        setValueInputHTMLElement(e, params.hasOwnProperty(e.name) ? params[e.name] : null);
                         self.__valid &= input_validator(e);
                     });
                 },
                 get params() {
                     var params = {}, self = this;
                     this.el.forEach(function (e,i,a) {
-                        // -- if (e.value) switch (e.tagName) {
-                            // case 'INPUT': params[e.name] = e.value; input_validator(e);
-                            //     break;
-                            // case 'SELECT': if (e.value != 0) params[e.name] = e.value;
-                            //     break;
-                        // -- }
                         var v = InputHTMLElementValue(e);
-                        if (v !== null) {
-                            params[e.name] = v;
-                            input_validator(e);
-                        }
-
+                        if (v) { params[e.name] = v;  input_validator(e); }
                     });
                     return params;
                 },
@@ -924,23 +913,23 @@
                     var p = this.params;
                     p['page'] = this.index||0;
                     if (typeof url === 'string') {
-                        var u = location.decoder(url);
-                        for (var i in this.el) { if (Object.keys(u).indexOf(this.el[i].name) >-1) u[this.el[i].name] = InputHTMLElementValue(this.el[i],''); }
+                        var u = g.location.decoder(url);
+                        this.el.forEach(function (e) { if (u.hasOwnProperty(e.name)) u[e.name] = ''; });
                         return g.location.update(url, Object.assign(u,p));
                     } else if (typeof url === 'object') {
-                        for (var i in this.el) { if (Object.keys(url).indexOf(this.el[i].name) >-1) {
-                            url[this.el[i].name] = InputHTMLElementValue(this.el[i],null);
-                            if (url[this.el[i].name] === null) delete url[this.el[i].name];
-                        } }
-                        return Object.assign(url,p);
+                        for (var i in this.el) {
+                            url[this.el[i].name] = InputHTMLElementValue(this.el[i]);
+                            if (url.hasOwnProperty(this.el[i].name) && !url[this.el[i].name]) delete url[this.el[i].name];
+                        }
+                        return Object.assign(url, p);
                     }
-                    return '?' + location.encoder(p);
+                    return '?' + g.location.encoder(p);
                 },
                 get uri() {
                     var p = this.params;
                     p['page'] = this.index||0;
-                    if (typeof this.transformer === 'function') return location.encoder(this.transformer(p));
-                    return location.encoder(p);
+                    if (typeof this.transformer === 'function') return g.location.encoder(this.transformer(p));
+                    return g.location.encoder(p);
                 },
                 callback: function (res) {
                    var result = true, msg = Object.keys(res.message||{});
@@ -980,9 +969,12 @@
     var crud = function (route, methods, opt) {
         if (!route) return undefined;
 
-        var rt =  route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
+        var rt = route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
         var rest = function (self, method, data) {
-            var raw = []; if (typeof data == 'object') {for (var i in data) raw.push(i+'='+ encodeURIComponent(data[i])); data = raw.join('&') }
+            var raw = []; if (data && typeof data == 'object') {
+                for (var i in data) { raw.push(i+'='+ encodeURIComponent(g.QueryParam(data[i],QueryParam.NULLSTR))); }
+                data = raw.join('&')
+            }
             return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
         };
 

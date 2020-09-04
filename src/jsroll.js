@@ -227,15 +227,13 @@
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
         if (typeof v === 'undefined' || v === null) {
-            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? 'NULL' : opt & QueryParam.NULLSTR ? '' : null;
+            return opt & QueryParam.NULLSTR ? 'NULL' : (opt & QueryParam.QOUTED ? null : '');
         } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
-        }  else if (typeof v === 'string' && v === '') {
-            return opt & QueryParam.QOUTED && !(opt & QueryParam.STRNULL) ? '' : null;
+        } else if (typeof v === 'string' &&  v === '') {
+            return (opt & QueryParam.NULLSTR) ? "" : ((opt & QueryParam.STRNULL) ?  '' : "");
         }
-
-        return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED && typeof v === 'string' ? String(v) : Number(v))
-            : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
+        return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED ? String(v) : Number(v)) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
     };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4; QueryParam.NULLSTR = 8;
     g.QueryParam = QueryParam;
 
@@ -381,7 +379,6 @@
                     }
                 }
              }
-            if (!/limit/im.test(query) && !/count\(/im.test(query)) console.warn('NOT LIMITED! '+query);
             return query;
         },
         filter: function (query, params, done, fail) {
@@ -786,8 +783,10 @@
      */
     var decoder = function(search, re) {
         var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m;
-        try { while (m = re.exec((search || g.location.search)))
-            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = QueryParam(decodeURIComponent(m[2]), QueryParam.STRNULL);
+        try {
+            while (m = re.exec((search || g.location.search))) {
+                if (m[1] && m[2]) p[decodeURIComponent(m[1])] = QueryParam(decodeURIComponent(m[2]), QueryParam.STRNULL);
+            }
         } catch(e) { return null }
         return p;
     }; g.location.decoder = decoder;
@@ -801,10 +800,11 @@
      * @result { String }
      */
     var encoder = function(params, divider) {
-        if (typeof params === 'object') return Object.keys(params).map(function(e,i,a) {
+        if (params && typeof params === 'object')
+            return String(Object.keys(params).map(function(e,i,a) {
             return encodeURIComponent(e) + '=' + encodeURIComponent(QueryParam(params[e], QueryParam.NULLSTR))
-        }).join(divider || '&');
-        return undefined;
+        }).join(divider || '&'));
+        return params;
     }; g.location.encoder = encoder;
 
     /**
@@ -820,10 +820,14 @@
         var u = [], h = [], url = g.location.search, kv = params || {};
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
-        if (url.indexOf('#') > -1) h = url.split('#'); if (url.indexOf('?') > -1) u = url.split('?');
-        for (var i in kv) p[decodeURIComponent(i)] = decodeURIComponent(kv[i]);
-        var res = []; for (var a in p) res.push(a+'='+p[a]);
-        if (res.length) return ((!u.length && !h.length) ? url : (u.length?u[0]:h[0])) + '?' + res.join('&') + (h.length ? h[1] : '');
+        for (var i in kv) { p[decodeURIComponent(i)] = QueryParam(decodeURIComponent(kv[i]), QueryParam.STRNULL); }
+        var res = []; for (var a in p) { res.push(a + '=' + QueryParam(p[a],QueryParam.NULLSTR)); }
+        if (res.length) {
+            var prefix = url+'?', sufix = '';
+            if (url.indexOf('?') > -1) { h = url.split('?'); if (h.length > 1) prefix = h[0] + '?'; }
+            if (url.indexOf('#') > -1) { u = url.split('#'); if (u.length > 1) sufix = '#'+u[1]; }
+            return prefix + res.join('&') + sufix;
+        }
         return url;
     }; g.location.update = update;
 
@@ -1048,7 +1052,8 @@
      * @returns {*}
      */
     var InputHTMLElementSerialize = function (el) {
-        if (el instanceof HTMLElement) return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(el.value) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
+        if (el instanceof HTMLElement)
+            return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(QueryParam(el.value, QueryParam.NULLSTR)) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
         return null;
     }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
 
@@ -1060,17 +1065,46 @@
      * @param def
      * @returns {*}
      */
-    var InputHTMLElementValue = function(el, def) {
-        var n = undefined, type;
+    var InputHTMLElementValue = function(el) {
+        var n = null;
         if (el instanceof HTMLElement) {
-            type = (el.getAttribute('type') || 'text').toLowerCase();
-            n = el.value ? (Number(el.value) == el.value && (type =='number' || !/^0{1,}\d{1,}$/.test(el.value)) ? Number(el.value) : String(el.value)) : (typeof def !== 'undefined' ? def: null);
-            if (['checkbox', 'radio'].indexOf(type) > -1) {
-                n = el.checked ? (el.value.indexOf('on') == -1 ? n : 1) : (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
+            switch ((el.getAttribute('type') || 'text').toLowerCase()) {
+                case 'checkbox': case'radio':
+                    n = el.checked ? ((el.value.indexOf('on') == -1 ? n : 1)) :
+                        (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
+                    break;
+                case 'text':
+                default:
+                    n = QueryParam(el.value, QueryParam.NULLSTR);
             }
         }
         return n;
     }; g.InputHTMLElementValue = InputHTMLElementValue;
+
+    /**
+     * @function setValueInputHTMLElement
+     *
+     * @param el
+     * @param value
+     */
+    var setValueInputHTMLElement = function(el, value) {
+        switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
+            case 'checkbox': case 'radio':
+                el.checked = el.value === 'on' ? !!value : String(el.value) == String(value);
+                break;
+            case 'number':
+                el.value = Number(value);
+                break;
+            case 'text': case 'textarea':
+                el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
+                break;
+            case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
+            case 'color': case 'range': case 'search':
+            case 'email': case 'tel': case 'url':
+            default: el.value = String(value);
+        }
+    }; g.setValueInputHTMLElement = setValueInputHTMLElement;
+
 
     /**
      * @property form
@@ -1111,7 +1145,7 @@
                                 switch ( type ) {
                                     case 'text':
                                     case 'textarea':
-                                        el.value = decodeURIComponent(value);
+                                        el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
                                         break;
                                     case 'checkbox': case 'radio':
                                         if (is_array) {
@@ -1444,7 +1478,6 @@
         } catch ( e ) {
             return undefined;
         }
-
     }; g.dom = dom();
 
 }(window));
