@@ -568,8 +568,20 @@
         // ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
         return this;
     }; app.prototype = {
-        online: function(e) { console.log('app::online'); },
-        offline: function(e) { console.log('app::offline'); },
+        online: function(e) {
+            console.log('app::online');
+            g.onbeforeunload = undefined;
+        },
+        offline: function(e) {
+            console.warn('app::offline');
+            g.onbeforeunload = function (event) {
+                if (navigator.onLine) return undefined;
+                var message = "Возможна потеря несохранённых данных.";
+                if (typeof event === "undefined") {	event = window.Event; }
+                if (event) { event.returnValue = message; }
+                return message;
+            }
+        },
         bootstrap: function(rt) {
             this.route.set(rt).chk(rt).lsn();
             return this;
