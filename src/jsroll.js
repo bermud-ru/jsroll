@@ -787,7 +787,7 @@
     var decoder = function(search, re) {
         var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m;
         try { while (m = re.exec((search || g.location.search)))
-            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = decodeURIComponent(QueryParam(m[2]));
+            if (m[1] && m[2]) p[decodeURIComponent(m[1])] = QueryParam(decodeURIComponent(m[2]), QueryParam.STRNULL);
         } catch(e) { return null }
         return p;
     }; g.location.decoder = decoder;
@@ -802,7 +802,7 @@
      */
     var encoder = function(params, divider) {
         if (typeof params === 'object') return Object.keys(params).map(function(e,i,a) {
-            return encodeURIComponent(e) + '=' + encodeURIComponent(QueryParam(params[e],QueryParam.NULLSTR))
+            return encodeURIComponent(e) + '=' + encodeURIComponent(QueryParam(params[e], QueryParam.NULLSTR))
         }).join(divider || '&');
         return undefined;
     }; g.location.encoder = encoder;
