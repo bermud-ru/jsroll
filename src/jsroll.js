@@ -67,7 +67,7 @@
      * @function eventCode
      * Хелпер обработки кода нажатия на устройтвах ввода типа клавиатура.
      *
-     * @argument { Event } e - событие
+     * @argument Event e - событие
      * @result { Integer | String }
      */
     var eventCode = function (e) {
@@ -102,7 +102,7 @@
 
     /**
      * IndexedDBInterface
-     * @param opt
+     * @param Object opt
      * @constructor
      */
     g.IndexedDBInterface = function(opt) {
@@ -219,8 +219,8 @@
     /**
      * @QueryParam
      * Helper for webSQl
-     * @param v
-     * @param o
+     * @param any v
+     * @param Integer o
      * @returns {string|any}
      * @constructor
      */
@@ -400,19 +400,6 @@
         },
         update: function (table, params, filter, done, fail) {
             var keys = [], where = [], self = this;
-            // if (typeof filter === 'string' && /:([^\s$%\),]*)/.test(filter)) {
-            //     if (!Object.keys(params).length) throw 'webSQL::update params not exist!';
-            //     while (m = /:([^\s$%\),]*)/mg.exec(filter)) {
-            //         if (params.hasOwnProperty(m[1])) {
-            //             filter = filter.replace(m[0], '?');
-            //             if (keys.indexOf(m[1]) < 0) keys.push(m[1]);
-            //             where.push(QueryParam(params[m[1]], self.opt));
-            //         } else {
-            //             throw 'webSQL::update param (' + m[1] + ') not exist!';
-            //         }
-            //     }
-            //     keys.forEach(function (v,i,a) { delete params[v]; })
-            // }
             if (typeof filter === 'string') {
                 filter = this.filtration(filter, params);
             } else if (typeof filter === 'object') {
@@ -447,8 +434,8 @@
      * @function dbf
      * webSQL wraper for common Interface
      *
-     * @param db { webSQL }
-     * @param opt { Object }
+     * @param webSQL db
+     * @param Object opt
      * @returns {{cancel: (function(): boolean), filter: (function(*=, *=, *=): instansce), fail: fail, opt: {}, done: done, db: *}|void}
      */
     var dbf = function (db, opt) {
@@ -518,8 +505,8 @@
     /**
      * function kv2array
      *
-     * @param o Object
-     * @param glue String
+     * @param Object o
+     * @param String glue
      * @returns { Array }
      */
     var kv2array = function (o, glue) {
@@ -543,7 +530,8 @@
      * @function quoter
      * Заменяет одинарные и двойные кавычки на Html коды и возрващает строку
      *
-     * @param v
+     * @param any v
+     * @param Integer opt
      * @returns {string}
      */
     var quoter = function(v, opt) {
@@ -572,8 +560,8 @@
     /**
      * @function bitfields
      *
-     * @param status
-     * @param d
+     * @param Array status
+     * @param Integer d
      * @returns {Array}
      */
     var bitfields = function (status, d) {
@@ -599,7 +587,7 @@
      * @function crc32
      * Cyclic redundancy check, CRC32
      *
-     * @param str
+     * @param string str
      * @returns {number}
      */
     var crc32 = function(str) {
@@ -714,19 +702,19 @@
      * @function bb (BlobBuilder)
      * Генерация Blob объекта
      *
-     * @param data содержимое файла
-     * @param params параметры формирвания контейнера Blob mime-type etc
+     * @param Object blobParts содержимое файла
+     * @param Object option параметры формирвания контейнера Blob mime-type etc
      * @returns {*}
      */
-    var bb = function(data, params) {
-    	var opt = Object.assign({type:'application/x-www-form-urlencoded'}, params);
+    var bb = function(blobParts, option) {
+    	var opt = Object.assign({type:'application/x-www-form-urlencoded'}, option);
         var BlobBuilder = ('MozBlobBuilder' in g ? g.MozBlobBuilder : ('WebKitBlobBuilder' in g ? g.WebKitBlobBuilder : g.BlobBuilder));
         if (BlobBuilder) {
         	var bb = new BlobBuilder();
-			bb.append(data);
+			bb.append(blobParts);
 		 	return bb.getBlob(opt.type);
 		}
-        return new Blob([data], opt);
+        return new Blob([blobParts], opt);
     }; g.bb = bb;
     
     /**
