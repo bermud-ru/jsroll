@@ -1373,8 +1373,8 @@
                     var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache.hasOwnProperty(id)) return build(null, id);
                     var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    self.cached = true;//opt.cached;
-                    if ( self.cached && (t=g.localStorage.getItem(id))) { return build(decodeURIComponent(), id); }
+                    self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
+                    if (self.cached && (t=g.localStorage.getItem(id))) { return build(decodeURIComponent(), id); }
                     return g.xhr(Object.assign({
                         url: str,
                         async: (typeof cb === 'function'),
