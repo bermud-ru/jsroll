@@ -1269,6 +1269,7 @@
     var tmpl = function tmpl( str, data, cb, opt ) {
         var args = arguments; args[1] = args[1] || {};
         var fn, self =  {
+            cached: false,
             str: str,
             data: data,
             cb: cb,
@@ -1342,7 +1343,7 @@
                         pattern = g.tmpl.cache[id];
                     } else {
                         pattern = compile(str);
-                        if (isId) { g.tmpl.cache[id] = pattern; }
+                        if (isId) { g.tmpl.cache[id] = pattern; if (self.cached) g.localStorage.setItem(id, encodeURIComponent(str)); }
                     }
 
                     if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон'); }
@@ -1371,7 +1372,9 @@
                 case str.match(is_url) ? true : false:
                     var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
                     if (g.tmpl.cache.hasOwnProperty(id)) return build(null, id);
-                    var opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    self.cached = true;//opt.cached;
+                    if ( self.cached && (t=g.localStorage.getItem(id))) { return build(decodeURIComponent(), id); }
                     return g.xhr(Object.assign({
                         url: str,
                         async: (typeof cb === 'function'),
@@ -1380,8 +1383,10 @@
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false:
                     if (g.tmpl.cache.hasOwnProperty(str)) return build(null, str);
-                    var tmp = g.document.getElementById(str.replace(/^#/,''));
+                    var tmp = g.document.getElementById(str.replace(/^#/,'')), t;
                     if (!tmp) return console.error('Template '+str+' not exist!');
+                    self.cached = !!tmp.getAttribute('cached');
+                    if (self.cached && (t=g.localStorage.getItem(str))) return build(decodeURIComponent(t), str);
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str );
