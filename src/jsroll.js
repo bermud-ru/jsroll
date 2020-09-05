@@ -1338,12 +1338,11 @@
                         }
                     }
 
-                    if (isId && g.tmpl.cache[id]) {
+                    if (isId && g.tmpl.cache.hasOwnProperty(id)) {
                         pattern = g.tmpl.cache[id];
                     } else {
-
                         pattern = compile(str);
-                        if (isId) g.tmpl.cache[id] = pattern;
+                        if (isId) { g.tmpl.cache[id] = pattern; }
                     }
 
                     if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон'); }
@@ -1371,9 +1370,8 @@
             switch ( true ) {
                 case str.match(is_url) ? true : false:
                     var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
-                    if (g.tmpl.cache[id]) return build(null, id);
-                    var opt = opt || {};
-                    opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    if (g.tmpl.cache.hasOwnProperty(id)) return build(null, id);
+                    var opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     return g.xhr(Object.assign({
                         url: str,
                         async: (typeof cb === 'function'),
@@ -1381,7 +1379,10 @@
                         fail: function(e, hr) { console.error(e); }
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false:
-                    return build( g.document.getElementById( str.replace(/^#/,'')).innerHTML, str );
+                    if (g.tmpl.cache.hasOwnProperty(str)) return build(null, str);
+                    var tmp = g.document.getElementById(str.replace(/^#/,''));
+                    if (!tmp) return console.error('Template '+str+' not exist!');
+                    return build( tmp.innerHTML, str );
                 default:
                     return build( str );
             }
