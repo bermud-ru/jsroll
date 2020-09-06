@@ -1223,7 +1223,7 @@
                                 } :
                                 function(e, hr) {
                                     f.response_header = hr||{};
-                                    var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+                                    f.response = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
 
                                     if (f.response.result == 'error' ) {
                                         if (typeof f.fail == 'function') f.fail.call(f, f.response, hr, args);
