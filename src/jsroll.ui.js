@@ -463,11 +463,7 @@
                     } :
                     function(hr) {
                         self.response_header = hr;
-                        try {
-                            var res = JSON.parse(this.responseText);
-                        } catch (e) {
-                            res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
-                        }
+                        var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
 
                         if (res.result == 'error' ) {
                             if (typeof self.fail == 'function') self.fail.call(f, res, args);
@@ -818,11 +814,7 @@
                     url: url,
                     data: data,
                     done: function (e, x) {
-                        try {
-                            var res = JSON.parse(this.responseText);
-                        } catch (e) {
-                            res = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
-                        }
+                        var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
 
                         if (res.result == 'ok') {
                             if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
@@ -1399,11 +1391,7 @@
                             before: function () { owner.status = 'spinner'; },
                             after: function () { owner.status = __status; },
                             done: function (e) {
-                                try {
-                                    var res = JSON.parse(this.responseText);
-                                } catch (e) {
-                                    res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-                                }
+                                var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
                                 switch (res.result) {
                                     case 'ok': case 'success':
                                         th.cache[key] = (res.data||[]).map(function (v) {

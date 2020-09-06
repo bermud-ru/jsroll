@@ -1029,8 +1029,9 @@
             x.halt({status:0});
             return x;
         }
+
         return x;
-    }; g.xhr = xhr;
+    };  g.xhr = xhr;
 
     /**
      * @function InputHTMLElementSerialize
@@ -1222,11 +1223,7 @@
                                 } :
                                 function(e, hr) {
                                     f.response_header = hr||{};
-                                    try {
-                                        f.response = JSON.parse(this.responseText);
-                                    } catch (e) {
-                                        f.response = {result:'error', message: this.status + ': '+ g.HTTP_RESPONSE_CODE[this.status]};
-                                    }
+                                    var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
 
                                     if (f.response.result == 'error' ) {
                                         if (typeof f.fail == 'function') f.fail.call(f, f.response, hr, args);
