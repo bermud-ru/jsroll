@@ -1371,9 +1371,8 @@
                     if (g.tmpl.cache.hasOwnProperty(id)) return build(null, id);
                     var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
-                    if (self.cached && (t=g.localStorage.getItem(id))) { return build(decodeURIComponent(), id); }
-                    return g.xhr(Object.assign({
-                        url: str,
+                    if (self.cached && (t = g.localStorage.getItem(id))) { return build(decodeURIComponent(t), id); }
+                    return g.xhr(Object.assign({ url: str,
                         async: (typeof cb === 'function'),
                         done: function(e, hr) { self.response_header = hr; build(this.responseText, id); },
                         fail: function(e, hr) { console.error(e); }
@@ -1386,7 +1385,7 @@
                     if (self.cached && (t=g.localStorage.getItem(str))) return build(decodeURIComponent(t), str);
                     return build( tmp.innerHTML, str );
                 default:
-                    return build( str );
+                    return build( str , 'tmp-' + crc32(str) );
             }
         } catch( e ) { return self.onTmplError('tmpl', id, str, args, e) }
     }; tmpl.cache = {}; g.tmpl = tmpl;
