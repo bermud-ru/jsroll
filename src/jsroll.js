@@ -1368,7 +1368,7 @@
             switch ( true ) {
                 case str.match(is_url) ? true : false:
                     var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
-                    if (g.tmpl.cache.hasOwnProperty(id)) return build(null, id);
+                    if (g.tmpl.cache.hasOwnProperty(id)) { return build(null, id); }
                     var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
                     if (self.cached && (t = g.localStorage.getItem(id))) { return build(decodeURIComponent(t), id); }
@@ -1378,11 +1378,11 @@
                         fail: function(e, hr) { console.error(e); }
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false:
-                    if (g.tmpl.cache.hasOwnProperty(str)) return build(null, str);
+                    if (g.tmpl.cache.hasOwnProperty(str)) { return build(null, str); }
                     var tmp = g.document.getElementById(str.replace(/^#/,'')), t;
-                    if (!tmp) return console.error('Template '+str+' not exist!');
+                    if (!tmp) { return console.error('Template '+str+' not exist!'); }
                     self.cached = !!tmp.getAttribute('cached');
-                    if (self.cached && (t=g.localStorage.getItem(str))) return build(decodeURIComponent(t), str);
+                    if (self.cached && (t=g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str , 'tmp-' + crc32(str) );
