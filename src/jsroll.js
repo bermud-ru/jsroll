@@ -716,6 +716,47 @@
 		}
         return new Blob([blobParts], opt);
     }; g.bb = bb;
+
+    /**
+     * @function dwnBlob
+     *
+     * @param { blobParts } src
+     * @param { String } filename
+     * @param { String } type
+     * @returns {boolean}
+     */
+    var dwnBlob = function (src, filename, type) {
+        var blob = g.bb(src, type);
+
+        if (typeof g.navigator.msSaveBlob !== 'undefined') {
+            // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for
+            // which they were created. These URLs will no longer resolve as the data backing the
+            // URL has been freed."
+            g.navigator.msSaveBlob(blob, filename);
+        } else {
+            var downloadUrl = g.URL.createObjectURL(blob);
+            if (filename) {
+                // use HTML5 a[download] attribute to specify filename
+                var a = g.document.createElement('a');
+                // safari doesn't support this yet
+                if (typeof a.download === 'undefined') {
+                    //g.location = downloadUrl;
+                    g.open(downloadUrl);
+                } else {
+                    a.href = downloadUrl;
+                    a.download = filename;
+                    g.document.body.appendChild(a);
+                    a.click();
+                    setTimeout(function () { g.document.body.removeChild(a); }, 100); // cleanup
+                }
+            } else {
+                //g.location = downloadUrl;
+                g.open(downloadUrl, '_self');
+            }
+            setTimeout(function () { g.URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
+        }
+        return false;
+    }; g.dwnBlob = dwnBlob;
     
     /**
      * @function func

@@ -725,44 +725,14 @@
                                 var matches = filenameRegex.exec(disposition);
                                 if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
                             }
-
                         }
-                        var type = this.getResponseHeader('Content-Type');
-                        var blob = g.bb(this.response, {type: type});
 
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         // if (this.getResponseHeader('Action-Status')) {
                         //      g.app.msg({message:this.getResponseHeader('Action-Status')});
                         // return
                         // }
-
-                        if (typeof g.navigator.msSaveBlob !== 'undefined') {
-                            // IE workaround for "HTML7007: One or more blob URLs were revoked by closing the blob for
-                            // which they were created. These URLs will no longer resolve as the data backing the
-                            // URL has been freed."
-                            g.navigator.msSaveBlob(blob, filename);
-                        } else {
-                            var downloadUrl = g.URL.createObjectURL(blob);
-                            if (filename) {
-                                // use HTML5 a[download] attribute to specify filename
-                                var a = document.createElement('a');
-                                // safari doesn't support this yet
-                                if (typeof a.download === 'undefined') {
-                                    //g.location = downloadUrl;
-                                    g.open(downloadUrl);
-                                } else {
-                                    a.href = downloadUrl;
-                                    a.download = filename;
-                                    document.body.appendChild(a);
-                                    a.click();
-                                    setTimeout(function () { document.body.removeChild(a); }, 100); // cleanup
-                                }
-                            } else {
-                                //g.location = downloadUrl;
-                                g.open(downloadUrl, '_self');
-                            }
-                            setTimeout(function () { URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
-                        }
+                        return g.dwnBlob(this.response, filename, this.getResponseHeader('Content-Type'));
                     } catch (e) {
                         if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
                         g.app.msg({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
