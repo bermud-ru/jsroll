@@ -240,14 +240,14 @@
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
         if (typeof v === 'undefined' || v === null) {
-            return opt & QueryParam.NULLSTR ? 'NULL' : (opt & QueryParam.QOUTED | QueryParam.STRNULL ? null : '');
+            return !(opt & QueryParam.NULLSTR) && opt & QueryParam.QOUTED |  QueryParam.STRNULL ? (opt & QueryParam.NULLSQL ? 'NULL' : null) : '';
         } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
-        } else if (typeof v === 'object' && v === '') {
-            return (opt & QueryParam.NULLSTR) ? "" : ((opt & QueryParam.STRNULL) ? null : "");
+        } else if (typeof v === 'string' && v === '') {
+            return (opt & QueryParam.NULLSTR) ? '' : ((opt & QueryParam.STRNULL) ? (opt & QueryParam.NULLSQL ? 'NULL' : null) : '');
         }
-        return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED ? String(v) : Number(v)) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
-    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4; QueryParam.NULLSTR = 8;
+        return /\d+/.test(v) && Number(v) == String(v) ? (opt & QueryParam.INTQOUTED ? String(v) : Number(v)) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
+    };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4; QueryParam.NULLSTR = 8; QueryParam.NULLSQL = 16;
     g.QueryParam = QueryParam;
 
     /**
@@ -1142,7 +1142,11 @@
                     n = el.checked ? ((el.value.indexOf('on') == -1 ? n : 1)) :
                         (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
                     break;
-                case 'text':
+                // case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
+                // case 'color': case 'range': case 'search':
+                // case 'email': case 'tel': case 'url'
+                //
+                // case 'text': case 'textarea': case 'hidden':
                 default:
                     n = QueryParam(el.value, QueryParam.NULLSTR);
             }
@@ -1195,7 +1199,6 @@
                                 field = null; index = null; el = f.elements[i];
                                 type = (el.getAttribute('type') || 'text').toLowerCase();
                                 if (type === 'button') { continue; }
-
                                 if ( is_array = /\[.*\]$/.test(el.name) ) {
                                     field = el.name.replace(/\[.*\]$/,'');
                                     if ( !d.hasOwnProperty(field) ) { continue; }
@@ -1250,7 +1253,7 @@
                             type = (el.getAttribute('type') || 'text').toLowerCase();
                             if (type === 'button') { continue; }
                             var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
-                            var n = ['text', 'textarea'].indexOf(type) >-1 ? String(el.value) : InputHTMLElementValue(el);
+                            var n = InputHTMLElementValue(el);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
@@ -1258,6 +1261,7 @@
                                 f.__MODEL__[field].push(n);
                             }
                         }
+
                         return f.__MODEL__;
                     }
                 });
