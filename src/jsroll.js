@@ -699,6 +699,21 @@
     });
 
     /**
+     * String extension
+     * hash of string
+     * @returns { integer } 32bit integer
+     */
+    Object.defineProperty(String.prototype, 'hash', {
+        value: function() {
+            var hash = 0, chr;
+            for (var i = 0; i < this.length; i++) {
+                chr = this.charCodeAt(i); hash = ((hash << 5) - hash) + chr; hash |= 0;
+            }
+            return hash;
+        }
+    });
+
+    /**
      * @function bb (BlobBuilder)
      * Генерация Blob объекта
      *
@@ -1408,7 +1423,7 @@
         try {
             switch ( true ) {
                 case str.match(is_url) ? true : false:
-                    var id = str.split(/\//).pop();//str.replace(/(\.|\/|\-)/g, '');
+                    var id = 'uri' + str.hash;
                     if (g.tmpl.cache.hasOwnProperty(id)) { return build(null, id); }
                     var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
@@ -1426,7 +1441,7 @@
                     if (self.cached && (t=g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
                     return build( tmp.innerHTML, str );
                 default:
-                    return build( str , 'tmp-' + crc32(str) );
+                    return build( str );
             }
         } catch( e ) { return self.onTmplError('tmpl', id, str, args, e) }
     }; tmpl.cache = {}; g.tmpl = tmpl;
