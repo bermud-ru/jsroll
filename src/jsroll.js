@@ -1421,29 +1421,29 @@
             };
 
         try {
+            var t;
             switch ( true ) {
                 case str.match(is_url) ? true : false:
                     var id = 'uri' + str.hash();
                     if (g.tmpl.cache.hasOwnProperty(id)) { return build(null, id); }
-                    var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    var opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
                     if (self.cached && (t = g.localStorage.getItem(id))) { return build(decodeURIComponent(t), id); }
-                    return g.xhr(Object.assign({ url: str,
-                        async: (typeof cb === 'function'),
-                        done: function(e, hr) { self.response_header = hr; build(this.responseText, id); },
-                        fail: function(e, hr) { console.error(e); }
+                    return g.xhr(Object.assign({ url: str, async: (typeof cb === 'function'),
+                        done: function(e, hr) { self.response_header = hr; return build(this.responseText, id); },
+                        fail: function(e, hr) { return self.onTmplError('tmpl-xhr', id, str, args, e); }
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false:
                     if (g.tmpl.cache.hasOwnProperty(str)) { return build(null, str); }
-                    var tmp = g.document.getElementById(str.replace(/^#/,'')), t;
-                    if (!tmp) { return console.error('Template '+str+' not exist!'); }
+                    var tmp = g.document.getElementById(str.replace(/^#/,''));
+                    if (!tmp) { return self.onTmplError('tmpl-byId '+str+' not exist!'); }
                     self.cached = !!tmp.getAttribute('cached');
-                    if (self.cached && (t=g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
+                    if (self.cached && (t = g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str );
             }
-        } catch( e ) { return self.onTmplError('tmpl', id, str, args, e) }
+        } catch ( e ) { return self.onTmplError('tmpl', id, str, args, e) }
     }; tmpl.cache = {}; g.tmpl = tmpl;
 
     /**
