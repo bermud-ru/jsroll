@@ -118,7 +118,7 @@
 
             if (typeof opt === 'object') self.merge(opt);
 
-            self.instance = g.indexedDB.open(self.name, self.vertion);
+            self.instance = g.indexedDB.open(self.name, self.version);
 
             // Create schema
             self.instance.onupgradeneeded = function(e) {
@@ -142,32 +142,45 @@
     }; g.IndexedDBInterface.prototype = {
         db: null,
         name: null,
-        vertion: 1,
+        version: 1,
         schema: null,
         destroy: function () {
             var self = this;
             self.instance = null; // Дропнули всё
             self.populate = true; // Пересоздали хранилище
-            var instance = g.indexedDB.deleteDatabase(self.name, self.vertion);
+            var instance = g.indexedDB.deleteDatabase(self.name, self.version);
             instance.onsuccess = self.success;
             instance.onerror = self.fail;
             instance.onblocked = self.blocked;
         },
         success: function (e) {
-            console.log(this.name+' database ver '+this.vertion+' successfully');
+            console.log(this.name+' database ver '+this.version+' successfully');
             return this;
         },
         fail: function (e) {
-            console.error('Fail '+this.name+' database ver '+this.vertion, e.message);
+            console.error('Fail '+this.name+' database ver '+this.version, e.message);
             return this;
         },
         blocked:function (e) {
-            console.warn('Couldn\'t operate '+self.name+'database ver '+this.vertion+' due to the operation being blocked');
+            console.warn('Couldn\'t operate '+self.name+'database ver '+this.version+' due to the operation being blocked');
             return this;
         },
         upgrade: function (e) {
-            console.log(this.name+' DDLs database ver '+this.vertion+' successfully inits!');
+            console.log(this.name+' DDLs database ver '+this.version+' successfully inits!');
             return this;
+        },
+        data2row: function (data, flag) {
+            if (data && typeof data === 'object') {
+                var p = function (o) {
+                    var res = {}; for (var i in o) {
+                        res[i] = QueryParam(o[i], typeof flag === 'undefined' ? QueryParam.STRNULL : flag);
+                    }
+                    return res;
+                };
+                if (data instanceof Array) { return data.map(function (v) { return p(v); }); }
+                return p(data);
+            }
+            return data;
         },
         build: function (db) {
             var self = this;
@@ -227,11 +240,11 @@
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
         if (typeof v === 'undefined' || v === null) {
-            return opt & QueryParam.NULLSTR ? 'NULL' : (opt & QueryParam.QOUTED ? null : '');
+            return opt & QueryParam.NULLSTR ? 'NULL' : (opt & QueryParam.QOUTED | QueryParam.STRNULL ? null : '');
         } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
-        } else if (typeof v === 'string' &&  v === '') {
-            return (opt & QueryParam.NULLSTR) ? "" : ((opt & QueryParam.STRNULL) ?  '' : "");
+        } else if (typeof v === 'object' && v === '') {
+            return (opt & QueryParam.NULLSTR) ? "" : ((opt & QueryParam.STRNULL) ? null : "");
         }
         return Number(v) == String(v) ? (opt & QueryParam.INTQOUTED ? String(v) : Number(v)) : (opt & QueryParam.QOUTED ? "'" + v + "'" : String(v));
     };  QueryParam.NATIVE = 0; QueryParam.QOUTED = 1; QueryParam.STRNULL = 2; QueryParam.INTQOUTED = 4; QueryParam.NULLSTR = 8;
@@ -690,8 +703,19 @@
                     if (self.__proto__) self.__proto__ = owner; else self.prototype = owner;
             }
             self['owner'] = owner;
-            if (owner.hasOwnProperty('heirs')) { owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : Object.keys(owner.heirs).length] = self }
-            else { owner.heirs = {}; owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : 0] = self }
+            if (owner.hasOwnProperty('heirs')) {
+                if (owner.heirs instanceof Array) {
+                    owner.heirs.push(self);
+                } else {
+                    owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : Object.keys(owner.heirs).length] = self
+                }
+            } else {
+                if (self.hasOwnProperty('childIndex')) {
+                    owner.heirs = {}; owner.heirs[self.childIndex] = self;
+                } else {
+                    owner.heirs = []; owner.heirs.push(self)
+                }
+            }
 
             return self;
         },
@@ -1140,7 +1164,7 @@
             case 'number':
                 el.value = Number(value);
                 break;
-            case 'text': case 'textarea':
+            case 'text': case 'textarea': case 'hidden':
                 el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
                 break;
             case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
@@ -1188,6 +1212,7 @@
                                 }
 
                                 switch ( type ) {
+                                    case 'hidden':
                                     case 'text':
                                     case 'textarea':
                                         el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
