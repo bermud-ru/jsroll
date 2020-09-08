@@ -1423,7 +1423,7 @@
         try {
             switch ( true ) {
                 case str.match(is_url) ? true : false:
-                    var id = 'uri' + str.hash;
+                    var id = 'uri' + str.hash();
                     if (g.tmpl.cache.hasOwnProperty(id)) { return build(null, id); }
                     var t, opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
