@@ -1146,7 +1146,7 @@
                 //
                 // case 'text': case 'textarea': case 'hidden':
                 default:
-                    n = String(encodeURIComponent(el.value));
+                    n = String(el.value);
             }
         }
         return n;
@@ -1213,10 +1213,8 @@
                                 }
 
                                 switch ( type ) {
-                                    case 'hidden':
-                                    case 'text':
-                                    case 'textarea':
-                                        el.value = String(encodeURIComponent(value));
+                                    case 'hidden': case 'text': case 'textarea':
+                                        el.value = String(value);
                                         break;
                                     case 'checkbox': case 'radio':
                                         if (is_array) {
@@ -1226,19 +1224,11 @@
                                         }
                                         break;
                                     case 'number':
-                                        el.value = QueryParam(encodeURIComponent(value), QueryParam.NULLSTR);
+                                        el.value = QueryParam(value, QueryParam.NULLSTR);
                                         break;
-                                    case 'color':
-                                    case 'date':
-                                    case 'datetime-local':
-                                    case 'email':
-                                    case 'month':
-                                    case 'range':
-                                    case 'search':
-                                    case 'tel':
-                                    case 'time':
-                                    case 'url':
-                                    case 'week':
+                                    case 'color': case 'date': case 'datetime-local': case 'email':
+                                    case 'month': case 'range': case 'search': case 'tel':
+                                    case 'time': case 'url': case 'week':
                                     default: el.value = String(value);
                                 }
                             }
