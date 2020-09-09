@@ -1137,13 +1137,16 @@
                     n = el.checked ? ((el.value.indexOf('on') == -1 ? n : 1)) :
                         (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
                     break;
+                case 'number':
+                    n = QueryParam(el.value, QueryParam.NULLSTR);
+                    break;
                 // case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
                 // case 'color': case 'range': case 'search':
                 // case 'email': case 'tel': case 'url'
                 //
                 // case 'text': case 'textarea': case 'hidden':
                 default:
-                    n = QueryParam(el.value, QueryParam.NULLSTR);
+                    n = String(decodeURIComponent(value));
             }
         }
         return n;
@@ -1161,10 +1164,10 @@
                 el.checked = el.value === 'on' ? !!value : String(el.value) == String(value);
                 break;
             case 'number':
-                el.value = Number(value);
+                el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
                 break;
             case 'text': case 'textarea': case 'hidden':
-                el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
+                el.value = String(decodeURIComponent(value));
                 break;
             case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
             case 'color': case 'range': case 'search':
@@ -1213,7 +1216,7 @@
                                     case 'hidden':
                                     case 'text':
                                     case 'textarea':
-                                        el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
+                                        el.value = String(encodeURIComponent(value));
                                         break;
                                     case 'checkbox': case 'radio':
                                         if (is_array) {
@@ -1223,7 +1226,7 @@
                                         }
                                         break;
                                     case 'number':
-                                        el.value = Number(value);
+                                        el.value = QueryParam(encodeURIComponent(value), QueryParam.NULLSTR);
                                         break;
                                     case 'color':
                                     case 'date':
