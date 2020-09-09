@@ -1146,7 +1146,7 @@
                 //
                 // case 'text': case 'textarea': case 'hidden':
                 default:
-                    n = String(decodeURIComponent(value));
+                    n = String(encodeURIComponent(e.value));
             }
         }
         return n;
