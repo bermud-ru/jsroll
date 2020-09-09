@@ -1375,7 +1375,8 @@
                 this.__tmplContext = v;
             },
             onTmplError: function (type, id, str, args, e ) {
-                console.error('tmpl type=['+type+']', [id, str], args,  e.message + "\n"); return;
+                var msg = e && typeof е === 'object' ? e.message : String(e);
+                return console.error('tmpl type=['+type+']', [id, str], args,  msg + "\n");
             }
         };
 
