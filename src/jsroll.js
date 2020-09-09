@@ -1098,12 +1098,7 @@
             x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
             for (var m in rs) x.setRequestHeader(m, rs[m]);
             x.response_header = null;
-            if (!navigator.onLine) {
-                x.fail.call(x, null, {status:10});
-                x.halt({status:10});
-            } else {
-                x.process(opt).send(opt.data);
-            }
+            x.process(opt).send(opt.data);
         } catch (e) {
             x.fail.call(x, e, {status:0});
             x.halt({status:0});
