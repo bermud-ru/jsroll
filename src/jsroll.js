@@ -1164,12 +1164,10 @@
                 el.value = Number(value);
                 break;
             case 'text': case 'textarea': case 'hidden':
-                el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
-                break;
             case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
             case 'color': case 'range': case 'search':
             case 'email': case 'tel': case 'url':
-            default: el.value = String(value);
+            default: el.value = QueryParam(value, QueryParam.NULLSTR);
         }
     }; g.setValueInputHTMLElement = setValueInputHTMLElement;
 
@@ -1210,11 +1208,6 @@
                                 }
 
                                 switch ( type ) {
-                                    case 'hidden':
-                                    case 'text':
-                                    case 'textarea':
-                                        el.value = QueryParam(decodeURIComponent(value), QueryParam.NULLSTR);
-                                        break;
                                     case 'checkbox': case 'radio':
                                         if (is_array) {
                                             el.checked = el.value === 'on' ? !!value : str2json(value, []).indexOf(el.value) !== -1;
@@ -1225,18 +1218,10 @@
                                     case 'number':
                                         el.value = Number(value);
                                         break;
-                                    case 'color':
-                                    case 'date':
-                                    case 'datetime-local':
-                                    case 'email':
-                                    case 'month':
-                                    case 'range':
-                                    case 'search':
-                                    case 'tel':
-                                    case 'time':
-                                    case 'url':
-                                    case 'week':
-                                    default: el.value = String(value);
+                                    case 'color': case 'date': case 'datetime-local': case 'email': case 'month':
+                                    case 'range': case 'search': case 'tel': case 'time': case 'url': case 'week':
+                                    case 'hidden': case 'text': case 'textarea':
+                                    default: el.value = QueryParam(value, QueryParam.NULLSTR);
                                 }
                             }
                         }
