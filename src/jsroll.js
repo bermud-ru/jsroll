@@ -1112,12 +1112,12 @@
      * @function InputHTMLElementSerialize
      * Сериализация элемента
      *
-     * @param el
+     * @param HTMLElement el
      * @returns {*}
      */
     var InputHTMLElementSerialize = function (el) {
         if (el instanceof HTMLElement)
-            return el.name + '=' + (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) < 0 ? encodeURIComponent(QueryParam(el.value, QueryParam.NULLSTR)) : (el.checked ? (el.value.indexOf('on') == -1 ? el.value : 1) : (el.value.indexOf('on') == -1 ? '' : 0)));
+            return el.name + '=' + InputHTMLElementValue(el);
         return null;
     }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
 
@@ -1125,17 +1125,17 @@
      * @function InputHTMLElementValue
      * Хэлпер получения HTML элемента
      *
-     * @param el
+     * @param HTMLElement el
      * @param def
      * @returns {*}
      */
-    var InputHTMLElementValue = function(el) {
+    var InputHTMLElementValue = function(el, def) {
         var n = null;
         if (el instanceof HTMLElement) {
             switch ((el.getAttribute('type') || 'text').toLowerCase()) {
                 case 'checkbox': case'radio':
-                    n = el.checked ? ((el.value.indexOf('on') == -1 ? n : 1)) :
-                        (el.value.indexOf('on') == -1 ? (typeof def !== 'undefined' ? def: null) : 0);
+                    var on = (el.value.indexOf('on') == -1);
+                    n = el.checked ? ( on ? el.value : 1) : (on ?  '' : 0);
                     break;
                 // case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
                 // case 'color': case 'range': case 'search':
@@ -1143,11 +1143,50 @@
                 //
                 // case 'text': case 'textarea': case 'hidden':
                 default:
-                    n = QueryParam(el.value, QueryParam.NULLSTR);
+                    n = el.value || def;
             }
         }
-        return n;
+        return QueryParam(n, QueryParam.NULLSTR);
     }; g.InputHTMLElementValue = InputHTMLElementValue;
+
+    /**
+     * @function getElementsValues
+     *
+     * @param elements
+     * @returns {{}}
+     */
+    var getElementsValues = function(elements) {
+        var data = {}, next = function(keys, d, f, el) {
+            if (!keys || !keys.length) {
+                if (f) {
+                    if ( d[f] === undefined ) {
+                        d[f] = InputHTMLElementValue(el);
+                    } else {
+                        if (!(d[f] instanceof Array)) d[f] = [d[f]]; d[f].push(InputHTMLElementValue(el));
+                    }
+                }
+                return d;
+            }
+            var key = keys.shift().replace(/^\[+|\]+$/g, '');
+            if (f) {
+                if (!key || String(Number(key)) === key) {
+                    if ( d[f] === undefined ) d[f] = [];
+                    if (String(Number(key)) === key) return next(keys, d[f], Number(key), el);
+                } else { if ( d[f] === undefined ) d[f] = {}; }
+                return next(keys, d[f], key, el);
+            }
+            if ( d === undefined ) d = [];
+            return next(keys, d, key, el);
+        };
+
+        if (elements.length) obj2array(elements).map(function(v) {
+            var field = null; if (field = v.name.match(/^\w+/gm)) {
+                if (!data.hasOwnProperty(field)) data[field[0]]=undefined;
+                return next(v.name.match(/(\[\w+\]?)/gm), data, field[0], v);
+            } return undefined;
+        });
+        return data;
+    }; g.getElementsValues = getElementsValues;
 
     /**
      * @function setValueInputHTMLElement
@@ -1158,7 +1197,7 @@
     var setValueInputHTMLElement = function(el, value) {
         switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
             case 'checkbox': case 'radio':
-                el.checked = el.value === 'on' ? !!value : String(el.value) == String(value);
+                el.checked = el.value === 'on' ? !!value : String(el.value) === String(value);
                 break;
             case 'number':
                 el.value = Number(value);
