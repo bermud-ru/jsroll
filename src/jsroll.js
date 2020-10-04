@@ -63,6 +63,61 @@
         505: 'HTTP Version Not Supported'
     };
 
+    g.WEBSOCKET_RESPONSE_CODE = {
+        1000: 'normal closure',
+        1001: 'going away',
+        1002: 'protocol error',
+        1003: 'unknown data (opcode)',
+        1004: 'frame too large',
+        1005: 'rrmote host error',
+        1006: 'remote host error',
+        1007: 'utf8 expected',
+        1008: 'message violates server policy',
+        1015: 'CERT_AUTHORITY_INVALID'
+    };
+
+    var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : undefined);
+    var ws = function (url, opt) {
+        // var socket = new WebSocket(url, opt.hasOwnProperty('protocol') ? opt.protocol : '');
+        this.protocol = '';
+        this.opt = opt;
+        this.url = url;
+    }; ws.prototype = {
+        socket: null,
+        connected: false,
+        binaryType: 'blob',
+        // WebSocket.CONNECTING: 0
+        // WebSocket.OPEN: 1
+        // WebSocket.CLOSING: 2
+        // WebSocket.CLOSED: 3
+        get readyState() { return this.socket.readyState; },
+        up: function(opt){
+            var self = this, socket = new WebSocket(this.url);
+            socket.binaryType = this.binaryType;
+            ['error','open','message','close'].forEach(function (e) { socket.addEventListener(e, self[e].bind(self)); });
+            this.socket = socket;
+            return this;
+        },
+        error: function(e) {
+            this.connected = false;
+            var close = (this.opt && typeof this.opt.error === 'function') ? this.opt.error.call(this, e) : (console.error(e) || true);
+            if ( close && this.socket)  this.socket.close();
+            return this;
+        },
+        message: function(e) {
+            return (this.opt && typeof this.opt.message === 'function') ? this.opt.message.call(this, e) : console.log(e);
+        },
+        open: function(e) {
+            this.connected = new Date();
+            return (this.opt && typeof this.opt.open === 'function') ? this.opt.open.call(this, e) : console.log(e);
+        },
+        close: function(e) {
+            this.connected = false;
+            // setTimeout(function() { return ws(url, opt); }, 1000);
+            return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
+        }
+    }; g.ws = ws;
+
     /**
      * @function eventCode
      * Хелпер обработки кода нажатия на устройтвах ввода типа клавиатура.
