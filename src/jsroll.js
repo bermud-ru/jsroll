@@ -115,6 +115,9 @@
             this.connected = false;
             // setTimeout(function() { return ws(url, opt); }, 1000);
             return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
+        },
+        send: function(data) {
+            this.socket.send(data);
         }
     }; g.ws = ws;
 
