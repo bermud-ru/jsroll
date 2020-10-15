@@ -1069,7 +1069,13 @@
             }
             res = element.testPattern;
         }
-        if (typeof (validator = element.getAttribute('validator') || element['validator']) === 'function') res = validator.apply(element, [res]);
+        if (typeof (validator = element.getAttribute('validator') || element['validator']) === 'function')
+        {
+            res = validator.apply(element, [res]);
+        } else if (element.hasAttribute('validator')) {
+            var validator = func(element.getAttribute('validator'));
+            res = validator.apply(element, [res]);
+        }
         return res;
     };
 
