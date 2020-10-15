@@ -1334,7 +1334,7 @@
                             type = (el.getAttribute('type') || 'text').toLowerCase();
                             if (type === 'button') { continue; }
                             var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
-                            var n = InputHTMLElementValue(el);
+                            var n = g.InputHTMLElementValue(el);
                             if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
                                 f.__MODEL__[field] = n;
                             } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
