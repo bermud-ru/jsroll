@@ -393,7 +393,7 @@
         var self = this; this.elements.forEach(function (e,i,a) { e.group = self; });
     }; group.prototype = {
         events:{},
-        on:function (event, fn, opt) {
+        on: function (event, fn, opt) {
             var self = this;
             self.events[event] = fn;
             this.elements.forEach(function (e,i,a) { e.ui.on(event, self.events[event], opt); });
@@ -425,31 +425,16 @@
             }
             return !!this.wrongs.length;
         },
-        __MODEL__: {},
-        set MODEL(d) {
+        set data(d) {
             if (d && typeof d === 'object') {
-                this.__MODEL__ = d;  this.wrongs = [];
-                for (var i = 0; i < this.elements.length; i++) if (d.hasOwnProperty(this.elements[i].name)) {
-                    this.elements[i].value = d[this.elements[i].name];
-                    if (['checkbox', 'radio'].indexOf((this.elements[i].getAttribute('type') || 'text').toLowerCase()) > -1) {
-                        this.elements[i].checked = parseInt(d[this.elements[i].name]) !== 0;
-                    }
+                this.wrongs = [];
+                for (var i = 0; i < this.elements.length; i++) {
+                    setValueInputHTMLElement(this.elements[i],  (d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
                 }
-            } else {
-                this.__MODEL__ = {};
             }
         },
-        get MODEL() {
-            this.__MODEL__ = {};
-            for (var i = 0; i < this.elements.length; i++) {
-                var n = this.elements[i].value.length ? new Number(this.elements[i].value) : NaN;
-                this.__MODEL__[this.elements[i].name || i] = ['checkbox', 'radio'].indexOf((this.elements[i].getAttribute('type') || 'text').toLowerCase()) < 0 ? (isNaN(n) ? this.elements[i].value : n) : (this.elements[i].checked ? (this.elements[i].value.indexOf('on') == -1 ? this.elements[i].value : 1) : (this.elements[i].value.indexOf('on') == -1 ? '' : 0));
-            }
-            return this.__MODEL__;
-        },
-        data: function() {
-            var data = []; for (var i = 0; i < this.elements.length; i++) { data.push(g.InputHTMLElementSerialize(this.elements[i])); }
-            return data.join('&');
+        get data() {
+            return getElementsValues(this.elements);
         },
         send: function () {
             var args = arguments, self= this;

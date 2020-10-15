@@ -1171,25 +1171,12 @@
     };  g.xhr = xhr;
 
     /**
-     * @function InputHTMLElementSerialize
-     * Сериализация элемента
-     *
-     * @param HTMLElement el
-     * @returns {*}
-     */
-    var InputHTMLElementSerialize = function (el) {
-        if (el instanceof HTMLElement)
-            return el.name + '=' + InputHTMLElementValue(el);
-        return null;
-    }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
-
-    /**
      * @function InputHTMLElementValue
      * Хэлпер получения HTML элемента
      *
-     * @param HTMLElement el
-     * @param def
-     * @returns {*}
+     * @param { HTMLElement } el
+     * @param { * } def - Default value
+     * @returns { * }
      */
     var InputHTMLElementValue = function(el, def) {
         var n = null;
@@ -1272,6 +1259,18 @@
         }
     }; g.setValueInputHTMLElement = setValueInputHTMLElement;
 
+    /**
+     * @function InputHTMLElementSerialize
+     * Сериализация элемента
+     *
+     * @param { HTMLElement | Arrray } src
+     * @returns { String }
+     */
+    var InputHTMLElementSerialize = function (src) {
+        var el = (src instanceof HTMLElement) ? [src] : src;
+        var data = []; for (var i = 0; i < el.length; i++) { data.push(el[i].name + '=' + InputHTMLElementValue(el[i])); }
+        return data.join('&');
+    }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
 
     /**
      * @property form
