@@ -92,6 +92,9 @@
         // WebSocket.CLOSED: 3
         get readyState() { return this.socket.readyState; },
         up: function(opt){
+            if (!navigator.onLine) return console.error('Browser not connected!');
+            if (this.connected) return console.warn('Already connected!');
+
             var self = this, socket = new WebSocket(this.url);
             socket.binaryType = this.binaryType;
             ['error','open','message','close'].forEach(function (e) { socket.addEventListener(e, self[e].bind(self)); });
@@ -112,12 +115,13 @@
             return (this.opt && typeof this.opt.open === 'function') ? this.opt.open.call(this, e) : console.log(e);
         },
         close: function(e) {
+            if (!e) return this.connected ? this.socket.close() : true;
             this.connected = false;
             // setTimeout(function() { return ws(url, opt); }, 1000);
             return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
         },
         send: function(data) {
-            this.socket.send(data);
+            if (this.connected) this.socket.send(data); else console.warn(this.url + ' not connected!');
         }
     }; g.ws = ws;
 
