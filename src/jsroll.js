@@ -1201,8 +1201,8 @@
     /**
      * @function getElementsValues
      *
-     * @param elements
-     * @returns {{}}
+     * @param { Array } InputHTMLElement elements
+     * @returns { Object }
      */
     var getElementsValues = function(elements) {
         var data = {}, next = function(keys, d, f, el) {
@@ -1229,9 +1229,9 @@
         };
 
         if (elements.length) obj2array(elements).map(function(v) {
-            var field = null; if (field = v.name.match(/^\w+/gm)) {
+            var field = null; if (field = v.name.match(/^\w+/g)) {
                 if (!data.hasOwnProperty(field)) data[field[0]]=undefined;
-                return next(v.name.match(/(\[\w+\]?)/gm), data, field[0], v);
+                return next(v.name.match(/(\[\w+\]?)/g), data, field[0], v);
             } return undefined;
         });
         return data;
@@ -1246,7 +1246,7 @@
     var setValueInputHTMLElement = function(el, value) {
         switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
             case 'checkbox': case 'radio':
-                el.checked = el.value === 'on' ? !!value : String(el.value) === String(value);
+                el.checked = el.value === 'on' ? !!value : String(el.value) === String(value) || String(Number(el.value)) === String(el.value) && (Number(value) & Number(el.value)) === Number(el.value);
                 break;
             case 'number':
                 el.value = Number(value);

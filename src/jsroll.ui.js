@@ -429,7 +429,7 @@
             if (d && typeof d === 'object') {
                 this.wrongs = [];
                 for (var i = 0; i < this.elements.length; i++) {
-                    setValueInputHTMLElement(this.elements[i],  (d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
+                    setValueInputHTMLElement(this.elements[i],(d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
                 }
             }
         },
@@ -443,23 +443,21 @@
                     function(hr) {
                         self.response_header = hr;
                         var callback = args.shift();
-                        var result = callback.apply(this, args);
-                        return f;
+                        return callback.apply(this, args);
                     } :
                     function(hr) {
                         self.response_header = hr;
                         var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
 
                         if (res.result == 'error' ) {
-                            if (typeof self.fail == 'function') self.fail.call(f, res, args);
+                            if (typeof self.fail == 'function') self.fail(res, args);
                         } else {
-                            if (typeof self.done == 'function') self.done.call(f, res, args);
+                            if (typeof self.done == 'function') self.done(res, args);
                         }
-                        if (typeof self.after == 'function') { self.after.call(f, res, args) }
-                        return f;
+                        return self.after(res, args);
                     }
             }, self.opt));
-            return this;
+            return self;
         }
     }; g.group = group;
 
