@@ -1225,7 +1225,7 @@
                 return d;
             }
 
-            var key = QueryParam(keys.shift().replace(/^\[+|\]+$/g, ''), QueryParam.NULLSTR);
+            var key = keys.shift().replace(/^\[+|\]+$/g, '');
             if (f) {
                 if ( d[f] === undefined ) d[f] = key ? {} : [];
                 return next(keys, d[f], key, el);
