@@ -1202,10 +1202,9 @@
      * @function getElementsValues
      *
      * @param { Array } elements InputHTMLElement
-     * @param { Boolean } grouped
      * @returns { Object }
      */
-    var getElementsValues = function(elements, grouped) {
+    var getElementsValues = function(elements) {
         var data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
@@ -1213,9 +1212,9 @@
                     if ( d[f] === undefined ) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
-                        if (!!grouped && (['checkbox','radio'].indexOf((this.getAttribute('type') || 'text').toLowerCase()) >-1) &&
-                            String(Number(el.value)) === String(el.value)) {
-                            if (el.checked) d[f] = Number(d[f]) | Number(el.value);
+                        if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
+                            var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
+                            if (grp && el.checked || !grp) d[f] = Number(d[f]) | Number(el.value);
                         } else {
                             if (!(d[f] instanceof Array)) d[f] = [d[f]];
                             d[f].push(InputHTMLElementValue(el));
