@@ -1210,7 +1210,7 @@
             if (!keys || !keys.length) {
                 var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
                 if (f && (!grp || grp && el.checked)) {
-                    if ( d[f] === undefined ) {
+                    if ( d[f] === undefined || (grp && d[f] === null)) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
                         if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
@@ -1221,6 +1221,7 @@
                         }
                     }
                 }
+                if (d[f] === undefined && grp && !el.checked) d[f] = null;
                 return d;
             }
 
