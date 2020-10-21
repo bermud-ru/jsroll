@@ -1201,7 +1201,7 @@
     /**
      * @function getElementsValues
      *
-     * @param { Array } elements InputHTMLElement
+     * @param { InputHTMLElement [] } elements
      * @returns { Object }
      */
     var getElementsValues = function(elements) {
@@ -1234,8 +1234,9 @@
         };
 
         if (elements.length) obj2array(elements).map(function(v) {
-            var field = null; if (field = v.name.match(/^\w+/g)) {
-                if (!data.hasOwnProperty(field)) data[field[0]]=undefined;
+            var field = null;
+            if ((v.getAttribute('type') || 'text') != 'button' && (field = v.name.match(/^\w+/g))) {
+                if (!data.hasOwnProperty(field)) data[field[0]] = undefined;
                 return next(v.name.match(/(\[\w+\]?)/g), data, field[0], v);
             } return undefined;
         });
@@ -1251,7 +1252,11 @@
     var setValueInputHTMLElement = function(el, value) {
         switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
             case 'checkbox': case 'radio':
-                el.checked = el.value === 'on' ? !!value : String(el.value) === String(value) || String(Number(el.value)) === String(el.value) && (Number(value) & Number(el.value)) === Number(el.value);
+                if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
+                    el.checked = (Number(value) & Number(el.value)) === Number(el.value);
+                } else {
+                    el.checked = el.value === 'on' ? !!value : String(el.value) === String(value);
+                }
                 break;
             case 'number':
                 el.value = Number(value);
@@ -1263,19 +1268,6 @@
             default: el.value = QueryParam(value, QueryParam.NULLSTR);
         }
     }; g.setValueInputHTMLElement = setValueInputHTMLElement;
-
-    /**
-     * @function InputHTMLElementSerialize
-     * Сериализация элемента
-     *
-     * @param { HTMLElement | Arrray } src
-     * @returns { String }
-     */
-    var InputHTMLElementSerialize = function (src) {
-        var el = (src instanceof HTMLElement) ? [src] : src;
-        var data = []; for (var i = 0; i < el.length; i++) { data.push(el[i].name + '=' + InputHTMLElementValue(el[i])); }
-        return data.join('&');
-    }; g.InputHTMLElementSerialize = InputHTMLElementSerialize;
 
     /**
      * @property form
@@ -1361,13 +1353,13 @@
                 };
 
                 f.prepare = function(validator) {
-                    var data = [];
+                    var data = '';
                     if (!validator || (typeof validator === 'function' && validator.call(f, data))) {
-                        for (var i = 0; i < f.elements.length; i++) { data.push(InputHTMLElementSerialize(f.elements[i])); }
+                        data = encoder(t.MODEL, '&');
                     } else {
                         f.setAttribute('valid', 0);
                     }
-                    return data.join('&');
+                    return data;
                 };
 
                 f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
