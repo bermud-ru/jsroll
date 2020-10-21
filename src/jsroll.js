@@ -1201,30 +1201,36 @@
     /**
      * @function getElementsValues
      *
-     * @param { Array } InputHTMLElement elements
+     * @param { Array } elements InputHTMLElement
+     * @param { Boolean } grouped
      * @returns { Object }
      */
-    var getElementsValues = function(elements) {
+    var getElementsValues = function(elements, grouped) {
         var data = {}, next = function(keys, d, f, el) {
+            if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
                 if (f) {
                     if ( d[f] === undefined ) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
-                        if (!(d[f] instanceof Array)) d[f] = [d[f]]; d[f].push(InputHTMLElementValue(el));
+                        if (!!grouped && (['checkbox','radio'].indexOf((this.getAttribute('type') || 'text').toLowerCase()) >-1) &&
+                            String(Number(el.value)) === String(el.value)) {
+                            if (el.checked) d[f] = Number(d[f]) | Number(el.value);
+                        } else {
+                            if (!(d[f] instanceof Array)) d[f] = [d[f]];
+                            d[f].push(InputHTMLElementValue(el));
+                        }
                     }
                 }
                 return d;
             }
+
             var key = keys.shift().replace(/^\[+|\]+$/g, '');
             if (f) {
-                if (!key || String(Number(key)) === key) {
-                    if ( d[f] === undefined ) d[f] = [];
-                    if (String(Number(key)) === key) return next(keys, d[f], Number(key), el);
-                } else { if ( d[f] === undefined ) d[f] = {}; }
+                if ( d[f] === undefined ) d[f] = key ? {} : [];
                 return next(keys, d[f], key, el);
             }
-            if ( d === undefined ) d = [];
+
             return next(keys, d, key, el);
         };
 
@@ -1240,8 +1246,8 @@
     /**
      * @function setValueInputHTMLElement
      *
-     * @param el
-     * @param value
+     * @param { InputHTMLElement } el
+     * @param { * } value
      */
     var setValueInputHTMLElement = function(el, value) {
         switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
