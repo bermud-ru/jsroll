@@ -1208,13 +1208,13 @@
         var data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
-                if (f) {
+                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
+                if (f && (!grp || grp && el.checked)) {
                     if ( d[f] === undefined ) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
                         if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
-                            var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
-                            if (grp && el.checked || !grp) d[f] = Number(d[f]) | Number(el.value);
+                            d[f] = Number(d[f]) | Number(el.value);
                         } else {
                             if (!(d[f] instanceof Array)) d[f] = [d[f]];
                             d[f].push(InputHTMLElementValue(el));
