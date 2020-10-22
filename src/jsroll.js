@@ -1202,15 +1202,16 @@
      * @function getElementsValues
      *
      * @param { InputHTMLElement [] } elements
+     * @param { int } opt
      * @returns { Object }
      */
-    var getElementsValues = function(elements) {
-        var data = {}, next = function(keys, d, f, el) {
+    var getElementsValues = function(elements, opt) {
+        var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
                 var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
                 if (f && (!grp || grp && el.checked)) {
-                    if ( d[f] === undefined || (grp && d[f] === null)) {
+                    if ( d[f] === undefined || (grp && d[f] === empty)) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
                         if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
@@ -1221,7 +1222,7 @@
                         }
                     }
                 }
-                if (d[f] === undefined && grp && !el.checked) d[f] = null;
+                if (d[f] === undefined && grp && !el.checked) d[f] = empty;
                 return d;
             }
 
