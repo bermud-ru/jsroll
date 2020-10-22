@@ -1257,7 +1257,7 @@
                 if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
                     el.checked = (Number(value) & Number(el.value)) === Number(el.value);
                 } else {
-                    el.checked = el.value === 'on' ? !!value : String(el.value) === String(value);
+                    el.checked = el.value === 'on' ? !!value : ((value instanceof Array) ? value.indexOf(QueryParam(el.value)) >-1 : String(el.value) === String(value));
                 }
                 break;
             case 'number':
