@@ -572,21 +572,21 @@
     /**
      * @function obj2array
      * 
-     * @param a
-     * @returns {Array}
+     * @param { Object } a
+     * @returns { Array }
      */
     var obj2array = function (a) { return (a && typeof a === 'object') ? Array.prototype.slice.call(a) : []; }; g.obj2array = obj2array;
 
     /**
      * function kv2array
      *
-     * @param Object o
-     * @param String glue
+     * @param { Object } o
+     * @param { String | Function } glue
      * @returns { Array }
      */
     var kv2array = function (o, glue) {
         return o && typeof o === 'object' ? Object.keys(o).map(function (v,i,a) {
-            return v + ( glue ? glue : ' ' ) + o[v];
+            return typeof glue === 'function' ? glue(v, o[v]) : (v + ( glue ? glue : ' ' ) + o[v]);
         }) : [];
     }; g.kv2array = kv2array;
 
@@ -605,9 +605,9 @@
      * @function quoter
      * Заменяет одинарные и двойные кавычки на Html коды и возрващает строку
      *
-     * @param any v
-     * @param Integer opt
-     * @returns {string}
+     * @param { * }  v
+     * @param { Integer } opt
+     * @returns { string }
      */
     var quoter = function(v, opt) {
         var s = typeof v === 'string' ? v : ( v ? JSON.stringify(v) : null );
@@ -626,7 +626,7 @@
      * @function bundler
      * Возращает массив не empty элементо массива
      *
-     * @returns {*[]}
+     * @returns { *[] }
      */
     var bundler = function() {
         return obj2array(arguments).filter(function (v) { return (typeof v !== 'undefined' && v !== null && v !== ''); });
@@ -635,14 +635,14 @@
     /**
      * @function bitfields
      *
-     * @param Array status
-     * @param Integer d
-     * @returns {Array}
+     * @param { Integer } status
+     * @param { Array } d
+     * @returns { Array }
      */
     var bitfields = function (status, d) {
         var res = [], st = parseInt(status);
         if (!st || typeof d !== 'object' || d === null) return res;
-        for (var i=0; i < d.length; i++) { if (st & Math.pow(2,i)) res.push(d[i]); }
+        for (var i = 0; i < d.length; i++) { if (st & Math.pow(2,i)) res.push(d[i]); }
         return res;
     }; g.bitfields = bitfields;
 
@@ -1357,7 +1357,7 @@
                 f.prepare = function(validator) {
                     var data = '';
                     if (!validator || (typeof validator === 'function' && validator.call(f, data))) {
-                        data = encoder(t.MODEL, '&');
+                        data = encoder(f.MODEL, '&');
                     } else {
                         f.setAttribute('valid', 0);
                     }

@@ -380,84 +380,73 @@
      * @param opt
      */
     var group = function (els, opt) {
-        this.__valid = true;
         this.opt = Object.merge({
-            method: 'get',
-            url: g.location.href,
-            before: function (e) { g.spinner = true; },
-            after: function (e) { g.spinner = false; }
+            method: 'post',
+            url: location.href,
+            before: function (data) { return this.valid ? spinner = true : false; },
+            after: function (res, hr) { this.valid = res; return spinner = false; },
+            done: function(hr) {
+                var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+                if ( res.result == 'error' ) { self.opt.fail(res, hr); } else { self.opt.done(res, hr); }
+                return self.opt.after(res, hr);
+            },
+            fail: function (res, hr) { return console.error(res.message || res); },
+            api: xhr
         }, opt);
-        this.wrongs = [];
-        this.elements = typeof els === 'string' ? ui.els(els) : els;
-        this.length = this.elements.length || 0;
-        var self = this; this.elements.forEach(function (e,i,a) { e.group = self; });
+        this.__elements = typeof els === 'string' ? ui.els(els) : els;
+        if ( this.__elements instanceof Array ) {
+            var self = this; this.elements.forEach(function (e, i, a) { e.group = self; });
+        } else {
+            this.opt.method = this.__elements.getAttribute('method') || 'post';
+            this.opt.url = this.__elements.getAttribute('action') || this.opt.url;
+            this.__elements.addEventListener('submit', this.onsubmit, true);
+        }
     }; group.prototype = {
+        onsubmit: function(e) { this.send(); return e.preventDefault(); },
+        get length() { return this.elements.length; },
+        __elements: [],
+        get elements() { return this.__elements instanceof HTMLFormElement ? this.__elements.elements : this.__elements; },
         events:{},
         on: function (event, fn, opt) {
             var self = this;
             self.events[event] = fn;
             this.elements.forEach(function (e,i,a) { e.ui.on(event, self.events[event], opt); });
         },
+        __valid: [],
         set valid (res) {
-            this.wrongs = [];
-            if (res.message) for (var i = 0; i < this.elements.length; i++) {
-                this.__valid = true;
-                if (res.message.hasOwnProperty(this.elements[i].name)) {
-                    this.elements[i].status = 'error';
-                    this.__valid = false;
-                    this.wrongs.push(this.elements[i].name);
-                } else {
-                    this.elements[i].status = 'none';
+            this.__valid = [];
+            if (res && typeof res.message === 'object') {
+                for (var i = 0; i < this.elements.length; i++) {
+                    if (res.message.hasOwnProperty(this.elements[i].name)) {
+                        this.elements[i].status = res.result || 'error';
+                        this.__valid.push(this.elements[i]);
+                    } else {
+                        this.elements[i].status = 'none';
+                    }
                 }
             }
         },
         get valid () {
-            this.__valid = true;
-            var self = this; this.wrongs = [];
-            this.elements.forEach(function (e,i,a) { var chk = input_validator(e); if (!chk) { self.wrongs.push(e.name);}  self.__valid &= chk; });
-            return this.__valid ;
-        },
-        is_wrong:function () {
-            if (arguments.length) {
-                var self = this, arg = typeof arguments[0] === 'object' ? arguments[0] : Array.prototype.slice.call(arguments, 0);
-                var x = true; arg.forEach(function (e,i,a) { x &= self.wrongs.indexOf(e) > -1; });
-                return x;
-            }
-            return !!this.wrongs.length;
+            this.__valid = [];
+            var self = this;
+            this.elements.forEach(function (e,i,a) {  if (!input_validator(e)) self.__valid.push(e); });
+            return !this.__valid.length ;
         },
         set data(d) {
             if (d && typeof d === 'object') {
-                this.wrongs = [];
                 for (var i = 0; i < this.elements.length; i++) {
                     setValueInputHTMLElement(this.elements[i],(d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
                 }
             }
         },
-        get data() {
-            return getElementsValues(this.elements);
-        },
-        send: function () {
-            var args = arguments, self= this;
-            if (typeof self.after == 'function') { self.opt.after(); }
-            g.xhr(Object.assign({data: self.data(), done: typeof args[0] == 'function' ?
-                    function(hr) {
-                        self.response_header = hr;
-                        var callback = args.shift();
-                        return callback.apply(this, args);
-                    } :
-                    function(hr) {
-                        self.response_header = hr;
-                        var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-
-                        if (res.result == 'error' ) {
-                            if (typeof self.fail == 'function') self.fail(res, args);
-                        } else {
-                            if (typeof self.done == 'function') self.done(res, args);
-                        }
-                        return self.after(res, args);
-                    }
-            }, self.opt));
-            return self;
+        get data() { return getElementsValues(this.elements); },
+        send: function (method) {
+            var data = this.data;
+            try {
+                return this.opt.before(data) ? this.opt.api(Object.assign({data: JSON.stringify(data)}, this.opt)) : false;
+            } catch (e) {
+                this.opt.fail({result:'error', message: e.message});
+            }
         }
     }; g.group = group;
 
