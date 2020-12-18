@@ -1,6 +1,6 @@
 {
   "name": "bermud-ru/jsroll",
-  "version": "1.0.0",
+  "version": "2.1.2",
   "type": "project",
   "description": "JsRoll RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework",
   "keywords": [
@@ -32,5 +32,6 @@
       }
     }
     ],
+
   "download": "https://github.com/bermud-ru/jsroll/archive/master.zip"
 }
