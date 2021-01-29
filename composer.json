@@ -32,6 +32,19 @@
       }
     }
     ],
+  
+  "scripts": {
+    "post-install-cmd": [
+    ],
+    "post-package-install": [
+      "bash ./post-install"
+    ],
+    "post-update-cmd": [
+    ],
+    "post-package-update": [
+      "bash ./post-update"
+    ]
+  },
 
   "download": "https://github.com/bermud-ru/jsroll/archive/master.zip"
 }
