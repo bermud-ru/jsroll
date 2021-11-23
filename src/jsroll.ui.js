@@ -7,8 +7,120 @@
  * @data 16/04/2018
  * @status beta
  * @version 2.1.1b
- * @revision $Id: jsroll.js 2.1.1b 2018-04-16 10:10:01Z $
+ * @revision $Id: jsroll.ui.js 2.1.1b 2018-04-16 10:10:01Z $
  */
+
+var Application = function (app) {
+    var self = this;
+    if (window.addEventListener) {
+        window.addEventListener('online', function (e) { return self.online(e); }, false);
+        window.addEventListener('offline', function (e) { return self.offline(e); }, false);
+        document.addEventListener('DOMContentLoaded', function(event) {
+            return self.ready(event);
+        }, false);
+        window.addEventListener('popstate', function(event) {
+            var hash = (location.pathname+location.search).hash();
+            if (hash !== urn.handled.hash) {
+                urn.handled.hash = hash;
+                if (typeof urn.handled.handler === 'function') urn.handled.handler.call(self, location.pathname, location.search, false);
+            }
+            return false;
+            // var r = confirm("You pressed a Back button! Are you sure?!");
+            // if (r === true) {
+            //     // Call Back button programmatically as per user confirmation.
+            //     history.back();
+            //     // Uncomment below line to redirect to the previous page instead.
+            //     // window.location = document.referrer // Note: IE11 is not supporting this.
+            // } else {
+            //     // Stay on the current page.
+            //     history.pushState(null, null, window.location.pathname+window.location.search);
+            // }
+            // history.pushState(null, null, window.location.pathname+window.location.search);
+        }, false);
+    } else {
+        document.body.ononline = function (e) { return self.online(e);  };
+        document.body.onoffline = function (e) { return self.offline(e); };
+        document.onreadystatechange = function (e) {
+            if (document.readyState === "complete") { return self.ready(e); }
+        }
+        // window.onhashchange = function() {
+        //     console.log(window.location.pathname+  window.location.search);
+        // }
+    }
+
+    // if (app && typeof app === 'object') this.merge(app);
+}; Application.prototype = {
+    notsupport:null, //'/notsupport.html',
+    url: null,
+    socket: null,
+    run: function () {
+        if (typeof window.ui === 'undefined') return this.notsupport ? window.location.href = this.notsupport : alert('Application not supported!');
+        this.merge(str2json(decodeURIComponent(storage.getItem('Application'))));
+        if (navigator.onLine) {
+            this.online();
+            // if (this.url) { try { this.socket = window.ws(this.url); } catch (e) { console.error(e); } }
+        } else {
+            this.offline();
+        }
+    },
+    online: function (e) { return console.log('app online ' + datetimer(new Date())); },
+    offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
+    ready: function (e) { return console.log('app started'); },
+    resize: function (e) { return false; },
+    serialize: function (e) {
+        var props = {}, self = this;
+        Object.getOwnPropertyNames(self).forEach( function (i ) {
+            if (i.startsWith('$')) { props[i] = self[i]; }
+        });
+        return storage.setItem('Application', encodeURIComponent(JSON.stringify(props)));
+    },
+    destroy: function (e) {
+        this.serialize();
+        if (!navigator.sendBeacon || !navigator.onLine) return;
+        var url = "/logout";
+        // // Create the data to send
+        var data = "state=" + event.type + "&location=" + location.href;
+        // // Send the beacon
+        var status = navigator.sendBeacon(url, data);
+        // // Log the data and result
+        console.log("; data = ", data, "; status = ", status);
+    },
+    setCookie: function (name,value,days,path) {
+        if (typeof name !== 'string') return ;
+        var expires = "";
+        if (days) {
+            var date = new Date();
+            date.setTime(date.getTime() + (days*24*60*60*1000));
+            expires = "; expires=" + date.toUTCString();
+        }
+        document.cookie = name + "=" + (value || "")  + expires + "; path="+(path||'/');
+    },
+    getCookie: function (name) {
+        if (typeof name !== 'string') return ;
+        var nameEQ = name + "=";
+        var ca = document.cookie.split(';');
+        for(var i=0; i < ca.length; i++) {
+            var c = ca[i];
+            while (c.charAt(0) === ' ') c = c.substring(1,c.length);
+            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+        }
+        return null;
+    },
+    clearCookie: function (name) {
+        if (typeof name === 'string') document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+    }
+};
+
+if (window.app === undefined ) {
+    window.app = new Application();
+    window.onload = function (event) { return app.run(event); }
+    window.onunload = function (event) { return app.destroy(event); };
+    window.onresize = function (event) { return app.resize(event); };
+    document.addEventListener('deviceready', function() {
+        // Heavy sorces redy to work (espesial for
+        // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
+    }, false);
+}
 
 (function ( g, undefined ) {
     'suspected';
@@ -29,7 +141,7 @@
          * @returns {css}
          */
         el: function(i) {
-            this.instance = typeof i === 'string' ? g.document.querySelector(i) : i ;
+            this.instance = typeof i === 'string' ? g.document.querySelector(i) : i;
             return this;
         },
         /**
@@ -143,10 +255,10 @@
      */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
         function CustomEvent ( event, params ) {
-            params = params || { bubbles: false, cancelable: false, detail: undefined };
-            var evt = g.document.createEvent( 'CustomEvent' );
-            evt.initCustomEvent( event, params.bubbles, params.cancelable, params.detail );
-            return evt;
+            var opt = Object.assign({ bubbles: false, cancelable: false, detail: undefined }, params);
+            var event = g.document.createEvent( 'CustomEvent' );
+            event.initCustomEvent( event, opt.bubbles, opt.cancelable, opt.detail );
+            return event;
         }
         CustomEvent.prototype = g.Event.prototype;
         return CustomEvent;
@@ -155,9 +267,9 @@
     Element.matches = Element.matches || Element.matchesSelector || Element.webkitMatchesSelector || Element.msMatchesSelector ||
         function(selector) {
             var node = this, nodes = (node.parentNode || node.document).querySelectorAll(selector), i = -1;
-            while (nodes[++i] && nodes[i] != node);
+            while (nodes[++i] && nodes[i] !== node);
             return !!nodes[i];
-        };
+    };
 
     /**
      * @class ui - HTML elements Extention
@@ -166,47 +278,45 @@
      */
     var ui = function(instance) {
         if (instance.hasOwnProperty('ui')) return instance;
-        this._parent = null;
-        this.instance = instance || g.document;
-        if (instance) { this.instance.css = new css(this.instance); this.wrap(this.instance.parentElement); }
+        this.instance = instance || g;
+        if (instance) {
+            if (this.instance instanceof Array) this.instance.__proto__.css = new css(this.instance);
+            else this.instance.css = new css(this.instance);
+            if (this.instance.parentElement) this.wrap(this.instance.parentElement);
+        }
         return this;
     }; ui.prototype = {
         wrap:function(el, v){
             if (el && !el.hasOwnProperty('ui')) {
-                el.ui = new ui(el); if (typeof v == 'string') g[v]=el;
+                if (el instanceof Array) el.__proto__.ui = new ui(el); else el.ui = new ui(el);
+                if (typeof v == 'string') g[v]=el;
             }
             return el;
         },
-        el: function (s, v) {
+        el: function (s, fn) {
             var el = null;
             if (typeof s === 'string') {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
-            } else if (typeof s === 'object') { el = s }
-            if (el) {
-                if (!el.hasOwnProperty('ui')) el.ui = new ui(el);
-                if (typeof v === 'string') g[v] = el;
-                else if (typeof v === 'function') v.call(el, arguments);
-            }
+            } else if ( s instanceof HTMLElement) { el = s }
+            if (el) {  this.wrap(el); if (typeof fn === 'function') fn.call(el); }
             return el;
         },
-        els: function (s, fn, v) {
-            var r = [];
+        els: function (s, fn) {
+            var r = [], self = this;
             if (typeof s === 'string'|| s instanceof Array) {
-                var c = typeof s === 'string' ? s.split(/,/) : s;
+                var c = typeof s === 'string' ? s.split(/\s*,\s*/) : s;
                 c.forEach((function (x) {
-                    r.push.apply(r, obj2array(this.instance.querySelectorAll(x.trim())||{}).map(function (e, i, a) {
-                        if (!e.hasOwnProperty('ui')) e.ui = new ui(e);
-                        if (typeof fn == 'function') fn.call(e, i, a);
+                    r.push.apply(r, obj2array(self.instance.querySelectorAll(x), []).map(function (e, i, a) {
+                        if ( e instanceof HTMLElement ) self.wrap(e); if (typeof fn == 'function') fn.call(e, i, a);
                         return e;
                     }));
-                }).bind(this));
-                if (typeof fn == 'string') g[fn]=r; else if (typeof v == 'string') g[v]=r;
+                }).bind(self));
             }
-            return r;
+            return self.wrap(r);
         },
         attr: function (a, v) {
-            if (a == undefined) {
+            if (a === undefined) {
                 var attrs = {}, n;
                 for (var i in this.instance.attributes)
                     attrs[(n = this.instance.attributes[i].nodeName)] = this.instance.getAttribute(n);
@@ -215,7 +325,7 @@
                 for (var i in a) if (! /\d+/.test(i)) this.instance.setAttribute(i,a[i]);
                 return this;
             } else if (typeof a === 'string' && typeof v === 'undefined') {
-                var mask = a.indexOf('*') != -1 ? re('/'+a.split('*')[0]+'/i') : null;
+                var mask = a.indexOf('*') !== -1 ? re('/'+a.split('*')[0]+'/i') : null;
                 if (mask) {
                     var data = {};
                     obj2array(this.instance.attributes).forEach(function (e, i, a) {
@@ -226,7 +336,7 @@
                     return data;
                 } else {
                     try {
-                        return JSON.parse(this.instance.getAttribute(a));
+                        return str2json(this.instance.getAttribute(a));
                     } catch (e) {
                         return this.instance.getAttribute(a);
                     }
@@ -239,36 +349,59 @@
             }
             return this;
         },
-        tmpl: function (str, data, cb, opt) {
-            tmpl.apply( this.instance, [str, data, cb, opt] );
-            return this.instance;
-        },
-        merge: function () {
-            merge.apply(this.instance, arguments);
-            return this.instance;
-        },
-        src: function (e) {
-            if (e instanceof Event) {
-                return this.wrap(e.target || e.srcElement);
-            }
-            return this.instance;
-        },
-        on: function (event, fn, opt) {
-            var self = this;
-            event.split(',').forEach( function(e) {
-                var a = self.instance instanceof Element ? [self.instance] : self.instance;
-                a.map( function (i) { i.addEventListener(e.trim(), fn, !!opt); });
+        tpl: function (str, data, cb, opt) {
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            a.forEach( function (v, i) {
+                v.ui.inner = tpl(str, data instanceof Array ? data[i] : data, cb, opt);
             });
             return this.instance;
         },
+        merge: function () {
+            var args = arguments, a = this.instance instanceof Array ? this.instance : [this.instance];
+            a.forEach( function (i) { merge.apply(i, args); });
+            return this.instance;
+        },
+        src: function (e, def) {
+            var el = e ? (e.target || e.srcElement || e) : def;
+            if (el instanceof HTMLElement) return this.wrap(el);
+            return el;
+        },
+        on: function (event, fn, opt) {
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            event.split(/\s*,\s*/).forEach( function(e) {
+                var tags = e.split(':'), event = tags.pop();
+                a.forEach( function (i) {
+                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.addEventListener(event, fn, !!opt);
+                });
+            });
+            return this.instance;
+        },
+        off: function (event, fn, opt) {
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            event.split(/\s*,\s*/).forEach( function(e) {
+                var tags = e.split(':'), event = tags.pop();
+                a.forEach( function (i) {
+                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.removeEventListener(event, fn, !!opt);
+                });
+            });
+            return this.instance;
+        },
+        matches: function (s) {
+            var el = this.instance;
+            return typeof s === 'string' ? s.split(/\s*,\s*/).some( function(e) { return el.matches(e); }) : false;
+        },
         dg: function (s, event, fn, opt) {
-            var self = this;
-            self.instance.addEventListener(event, function(e) {
-                var found, el = (e.target || e.srcElement);
-                while (el && el.matches && el !== self && !(found = el.matches(s))) el = el.parentElement;
-                if (found) { fn.call(self.wrap(el), e); return el }
-                return !!found;
-            }, !!opt);
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            event.split(/\s*,\s*/).forEach( function(e) {
+                var tags = e.split(':'), event = tags.pop();
+                a.forEach( function (i) { i.addEventListener(event, function(e) {
+                    var self = this, found = false, el = g.ui.src(e);
+                    // while (el && el.matches && el !== this && !(found = el.ui.matches(s))) el = el.parentElement;
+                    while (el && el !== self && !(found = el.ui.matches(s))) el = el.parentElement;
+                    if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.call(el, e); }
+                    return found;
+                }, !!opt); });
+            });
             return this.instance;
         },
         /**
@@ -276,22 +409,32 @@
          * [application/xml] возвращает Document, но не SVGDocument или HTMLDocument
          * [image/svg+xml] возвращает SVGDocument, который так же является экземпляром класса Document
          * [text/html] возвращает  HTMLDocument (<html><body>...</body></html>, который так же является экземпляром класса Document
+         * [html/dom] Возвращает DOM структуру связанных елементов (exampl: conteiner.appendChild(DOM))
          **/
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
-            var nodes = g.dom(d, mime).childNodes;
-            return nodes.length > 1 ? nodes : nodes[0];
+            var nodes = mime === 'html/dom' ? g.ui.wrap(dom(d, 'text/html')).ui.el('body') : dom(d, mime);
+            return g.ui.wrap(nodes.childNodes.length > 1 ? nodes.childNodes : nodes.childNodes[0]);
+        },
+        set inner(s) {
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            a.forEach( function (el, i) {
+                var cntx = s instanceof Array ? (s[i] || s[0]) : s;
+                if (cntx instanceof HTMLElement) el.appendChild(cntx); else el.innerHTML = cntx;
+            });
         },
         up: function (d, mime) {
-            var nodes = g.dom(d, mime).childNodes, el = this.instance === g.document ? g.ui.el('body') : this.instance;
-            for (var i = 0; i < nodes.length; i++) {
-                el.appendChild(nodes[i]);
-            }
+            var nodes = dom(d, mime).childNodes, el = this.instance === g.document ? ui.el('body') : this.instance;
+            for (var i = 0, l = nodes.length; i < l; i++) { el.appendChild(nodes[i]); }
             return el;
         },
         rm: function (s) {
-            if ( !s || typeof s !== 'string' ) return null;
-            this.els(s).forEach(function (el) { el.parentNode.removeChild(el); });
+            if ( typeof s === 'string' ) {
+                this.els(s).forEach(function (el) { el.parentNode.removeChild(el); });
+            } else {
+                var a = this.instance instanceof Array ? this.instance : [this.instance];
+                a.forEach( function (el) { el.remove(); });
+            }
             return this.instance;
         },
         get active() {
@@ -300,697 +443,118 @@
         focus: function(s) {
             var el = null;
             if (s) { el = (typeof s == 'string' ? this.el(s): s); } else { el = this.instance; }
-            if (el instanceof HTMLElement) g.setTimeout(function(e) { el.focus(); }, 0);
+            if (el instanceof HTMLElement) setTimeout(function(e) { el.focus(); }, 0);
             return el;
         }
     }; g.ui = new ui(document);
 
     /**
-     * @Helper copy2prn
-     * Подготавливает данные звёрнутые в шаблон к печати
+     * @function InputHTMLElementValue
+     * Хэлпер получения HTML элемента
      *
-     * @param template
-     * @param data
+     * @param { HTMLElement } el
+     * @param { * } def - Default value
+     * @returns { * }
      */
-    var copy2prn = function (template, data) {
-        var print_layer = g.document.createElement('iframe');
-        print_layer.name = 'print_layer';
-        print_layer.src = 'printer';
-        print_layer.style.display = 'none';
-        g.document.body.appendChild(print_layer);
-
-        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
-        frameDoc.document.open();
-        frameDoc.document.write(tmpl(template,data||{}));
-        frameDoc.document.close();
-
-        setTimeout(function () {
-            g.frames['print_layer'].focus();
-            g.frames['print_layer'].print();
-            g.document.body.removeChild(print_layer);
-        }, 1);
-    }; g.copy2prn = copy2prn;
-
-    /**
-     * @Helper Fader
-     * @param s
-     * @param opt
-     * @returns {boolean}
-     */
-    function fader(s, opt) {
-        if (!s) return false;
-        var res = null;
-
-        var opt = Object.assign({display:false,timeout:300,context:null},opt),
-            init = function (v) {
-                if (!v.hasOwnProperty('fade')) {
-                    v.faded = v.style.opacity == 0;
-                    v.opt = opt;
-                    v.opt.context = typeof opt.context === 'string' ? v.el(opt.context) : v;
-                    Object.defineProperty(v, 'fade', {
-                        get: function() { return v.faded; },
-                        set: function(is) {
-                            if (is) {
-                                v.css.add('fade');
-                                if (v.opt.display) setTimeout(function(){ v.style.display = 'none'; }, v.opt.timeout);
-                                return v.faded = true;
-                            } else {
-                                if (v.opt.display) v.style.display = v.getAttribute('display') ? v.getAttribute('display') : 'inherit';
-                                v.css.del('fade');
-                                return v.faded = false;
-                            }
-                        },
-                        enumerable: true,
-                        configurable: true
-                    });
-                }
-                return v;
-            };
-
-        if (typeof s === 'string') { res = g.ui.els(s); res.forEach(function (v,i,a) { init(v) }); }
-        else if (s instanceof HTMLElement) { res = init(s); }
-        else if (typeof s === 'object') { res = s; s.forEach(function (v,i,a) { init(v); }); }
-        return res
-    }; g.fader = fader;
-
-    /**
-     * @Helper group
-     * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
-     * @param els
-     * @param opt
-     */
-    var group = function (els, opt) {
-        this.opt = Object.merge({
-            method: 'post',
-            url: location.href,
-            before: function (data) { return this.valid ? spinner = true : false; },
-            after: function (res, hr) { this.valid = res; return spinner = false; },
-            done: function(hr) {
-                var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-                if ( res.result == 'error' ) { self.opt.fail(res, hr); } else { self.opt.done(res, hr); }
-                return self.opt.after(res, hr);
-            },
-            fail: function (res, hr) { return console.error(res.message || res); },
-            api: xhr
-        }, opt);
-        this.__elements = typeof els === 'string' ? ui.els(els) : els;
-        if ( this.__elements instanceof Array ) {
-            var self = this; this.elements.forEach(function (e, i, a) { e.group = self; });
-        } else {
-            this.opt.method = this.__elements.getAttribute('method') || 'post';
-            this.opt.url = this.__elements.getAttribute('action') || this.opt.url;
-            this.__elements.addEventListener('submit', this.onsubmit, true);
+    var InputHTMLElementValue = function(el, def) {
+        var n = null;
+        if (el instanceof HTMLElement) {
+            switch ((el.getAttribute('type') || 'text').toLowerCase()) {
+                case 'checkbox': case'radio':
+                    var on = (el.value.indexOf('on') === -1);
+                    n = el.checked ? ( on ? el.value : 1) : (on ?  '' : 0);
+                    break;
+                default:
+                    n = el.value || def;
+            }
         }
-    }; group.prototype = {
-        onsubmit: function(e) { this.send(); return e.preventDefault(); },
-        get length() { return this.elements.length; },
-        __elements: [],
-        get elements() { return this.__elements instanceof HTMLFormElement ? this.__elements.elements : this.__elements; },
-        events:{},
-        on: function (event, fn, opt) {
-            var self = this;
-            self.events[event] = fn;
-            this.elements.forEach(function (e,i,a) { e.ui.on(event, self.events[event], opt); });
-        },
-        __valid: [],
-        set valid (res) {
-            this.__valid = [];
-            if (res && typeof res.message === 'object') {
-                for (var i = 0; i < this.elements.length; i++) {
-                    if (res.message.hasOwnProperty(this.elements[i].name)) {
-                        this.elements[i].status = res.result || 'error';
-                        this.__valid.push(this.elements[i]);
+        return QueryParam(n, QueryParam.NULLSTR);
+    };
+
+    /**
+     * @function getElementsValues
+     *
+     * pack Element Attribute 2^0 + 2^1 + 2^2 ... 2^n values of array name bits AND in single value
+     * @param { InputHTMLElement [] } elements
+     * @param { int } opt
+     * @returns { Object }
+     */
+    var getElementsValues = function(elements, opt) {
+        var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
+            if ( d === undefined ) d = [];
+            if (!keys || !keys.length) {
+                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
+                if (f && (!grp || grp && el.checked)) {
+                    if ( d[f] === undefined || (grp && d[f] === empty)) {
+                        d[f] = InputHTMLElementValue(el);
                     } else {
-                        this.elements[i].status = 'none';
-                    }
-                }
-            }
-        },
-        get valid () {
-            this.__valid = [];
-            var self = this;
-            this.elements.forEach(function (e,i,a) {  if (!input_validator(e)) self.__valid.push(e); });
-            return !this.__valid.length ;
-        },
-        set data(d) {
-            if (d && typeof d === 'object') {
-                for (var i = 0; i < this.elements.length; i++) {
-                    setValueInputHTMLElement(this.elements[i],(d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
-                }
-            }
-        },
-        get data() { return getElementsValues(this.elements); },
-        send: function (method) {
-            var data = this.data;
-            try {
-                return this.opt.before(data) ? this.opt.api(Object.assign({data: JSON.stringify(data)}, this.opt)) : false;
-            } catch (e) {
-                this.opt.fail({result:'error', message: e.message});
-            }
-        }
-    }; g.group = group;
-
-}( window ));
-
-(function ( g, ui, undefined ) {
-    'suspected';
-    'use strict';
-
-    if ( typeof ui === 'undefined' ) return false;
-
-    g.config = {
-        app: {container:'[role="workspace"]'},
-        msg: {container:'.alert.alert-danger', tmpl:'alert-box'},
-        spinner: '.locker.spinner',
-        popup: {wnd:'.b-popup', container:'.b-popup .b-popup-content'}
-    };
-
-    /**
-     * Helper modalDialog
-     *
-     * @param e {Event|undefined} HTML element Event
-     * @param s {Object|String} selector
-     * @returns {*}
-     */
-    function modalDialog (e, s) {
-        var wnd = typeof s === 'object' ? s : ui.el(s);
-        if (wnd) {
-            if (!wnd.hasOwnProperty('modal')) {
-                wnd.modal = {
-                    kicker: e,
-                    visible: false,
-                    callback: null,
-                    event: function (e) { var key = g.eventCode(e); if ((key == 27 || key == 'Escape') && wnd.css.has('show')) wnd.modal.hide(wnd.modal.callback); },
-                    show: function (s, model, cb) {
-                        this.callback = typeof cb === 'function' ? cb : this.callback;
-                        if (s && !wnd.css.has('show')) {
-                            try {tmpl(s, (model ? model : {}), wnd);} catch (e) {
-                               console.error(e.message);
-                               return  this.hide();
-                            }
-                            wnd.css.add('show');
-                            g.addEventListener('keydown', wnd.modal.event);
-                            this.visible = true;
-                            if (this.callback) this.callback();
-
-                        }
-                        if (this.kicker instanceof HTMLElement) wnd.kicker = this.kicker
-                        return this;
-                    },
-                    getKicker: function() {
-                        return wnd.kicker;
-                    },
-                    hide: function (cb) {
-                        g.removeEventListener('keydown', wnd.modal.event);
-                        wnd.css.del('show');
-                        wnd.innerHTML = '';
-                        this.visible = false;
-                        this.callback = cb || this.callback;
-                        if (typeof this.callback  === 'function') {
-                            this.callback(this);
-                        }
-
-                        if (wnd.kicker) wnd.kicker.ui.focus();
-                        return this;
-                    }
-                };
-            } else if (e instanceof HTMLElement) wnd.modal.kicker = e;
-            return wnd;
-        }
-        console.error('modalDialog: "'+s+'" wrong dialog object or selector!');
-        return null;
-    }; g.modalDialog = modalDialog;
-
-    /**
-     * Application
-     * @param instance
-     * @returns {app}
-     */
-    var app = function(instance){
-        this.route = router;
-        //this.route.cfg({ mode: 'history'})
-        this.registry = {};
-        this.dim = {};
-        this.instance = instance || g;
-        //TODO ceteate poll events handlers
-        // ui.on("keydown", function (e) { if (e.keyCode == 27 ) g.app.popup(); });
-        return this;
-    }; app.prototype = {
-        online: function(e) {
-            console.log('app::online');
-            g.onbeforeunload = undefined;
-        },
-        offline: function(e) {
-            console.warn('app::offline');
-            g.onbeforeunload = function (event) {
-                if (navigator.onLine) return undefined;
-                var message = "Возможна потеря несохранённых данных.";
-                if (typeof event === "undefined") {	event = window.Event; }
-                if (event) { event.returnValue = message; }
-                return message;
-            }
-        },
-        bootstrap: function(rt) {
-            this.route.set(rt).chk(rt).lsn();
-            return this;
-        },
-        get store(){
-            return str2json(storage.getItem('app'), {});
-        },
-        set store(u){
-            var store = str2json(storage.getItem('app'), {});
-            if (typeof u === 'object') storage.setItem('app', JSON.stringify( Object.merge(store, u)));
-            else console.error('app::store only Object instance can store! ['+ JSON.stringify(u)+']');
-        },
-        widget: function (cfg, t, d, opt) {
-            var self = this, root = typeof cfg.root == 'string' ? g.ui.el(cfg.root) : cfg.root;
-            tmpl(t, d, function (c) {
-                if (root && c && (root.innerHTML = c)) {
-                    self.implement(root, cfg.event || []);
-                    self.inject(cfg.root, root, cfg.code || opt && opt.code);
-                }
-            }, opt);
-
-            return this;
-        },
-        event: function (s, map) {
-            this.registry[s] = map;
-            return this;
-        },
-        implement: function (p, s){
-            var self = this;
-            (s || []).forEach(function (a, i) {
-                for (var b in self.registry[a]) {
-                    switch  (typeof self.registry[a][b]) {
-                        case 'object': p.ui.els(a, function(){ this.ui.on(self.registry[a][b][0], self.registry[a][b][1]); return this }); break;
-                        case 'string': p.ui.els(a, function(){ this.ui.on(self.registry[a][0], self.registry[a][1]); return this }); return;
-                        case 'function': self.registry[a][b].call(p.ui.els(a), self.dim[a] || {});
-                    }
-                };
-            });
-            return self;
-        },
-        variable: function (el, id) {
-            if (!el) return undefined;
-            if (!el.hasOwnProperty('dim')) {
-                Object.defineProperty(el, 'dim', {
-                    get: function () {
-                        try {
-                            return g.app.dim[id] || (g.app.dim[id] = Object.assign(JSON.parse(storage.getItem(id)||''), {self:el}));
-                        } catch (e) { g.app.dim[id] = {}; g.app.dim[id].self = el; return g.app.dim[id]; }
-                    }
-                });
-                g.app.dim[id] = {}; g.app.dim[id].self = el;
-                el.store = function (fields) {
-                    var s = {};
-                    Object.keys(g.app.dim[id]).forEach(function(k){if(fields.indexOf(k) != -1) s[k] = g.app.dim[id][k];});
-                    storage.setItem(id, JSON.stringify(s));
-                    return this;
-                };
-            }
-            return el;
-        },
-        inject: function (root, el, fn) {
-            if (typeof fn === 'function') {
-                fn.apply(this.variable(el, root), arguments);
-            }
-            return false;
-        },
-        elem: fader(config.msg.container)[0],
-        msg: function (params) {
-            var self = this;
-            tmpl(config.msg.tmpl, params, self.elem);
-            self.elem.fade = false; setTimeout(function(){ self.elem.fade = true; }, 3000);
-            return this;
-        },
-        spinner_count: 0,
-        spinner_element: ui.el(g.config.spinner),
-        set spinner (v) {
-            v ? this.spinner_count++ : this.spinner_count--;
-            this.spinner_count > 0 ? this.spinner_element.style.display = 'block' : this.spinner_element.style.display = 'none';
-        },
-        get spinner() {
-            if (this.spinner_element.style.display == 'none') return false;
-            return true;
-        },
-        before: function (opt) {
-            g.app.spinner = true;
-        },
-        after: function (opt) {
-            if (opt && opt.hasOwnProperty('status') && parseInt(opt.status) == 408) g.app.msg({result:'warning', message:'Первышен интервал запроса!'});
-            g.app.spinner = false;
-        },
-        list: g,
-        popupEvent: function (e) { if (e.keyCode == 27 ) { if (!g.app.elem.css.has('fade')) { clearTimeout(g.app.elem.timer); g.app.elem.fade = true; } else {g.app.popup(); }} },
-        popup: function (id, data, opt) {
-            //TODO: refactoring code for popup!
-            var self = this;
-            this.wnd = this.wnd || ui.el(g.config.popup.wnd);
-            if (self.wnd.fade) {
-                this.container =  this.container || ui.el('[role="workspace"]');
-                var  up = false, t = {
-                    onTmplError:function () {
-                        g.app.msg({message:'Ошибка выполнения приложения!'});
-                        console.error(arguments);
-                        up = true;
-                    }
-                };
-                tmpl.apply(t, [id, data, this.variable(this.container, 'popupBox'), opt]);
-                if (!up) {
-                    g.addEventListener('keydown', g.app.popupEvent);
-                    self.container.css.del('is-(valid|invalid|warning|spinner)');
-                    self.wnd.fade = up = false;
-                }
-            } else {
-                g.removeEventListener('keydown', self.popupEvent);
-                if (typeof arguments[0] == 'function') arguments[0].apply(self, obj2array(arguments).slice(1));
-                self.container.innerHTML = null;
-                self.wnd.fade = true;
-                if (self.list) self.list.ui.el('[role="popup-box"]', function () {
-                    this.ui.focus();
-                });
-            }
-            return this;
-        },
-        fader: function (s, opt) { g.fader(s, opt); return this },
-        download:function(owner, url, opt) {
-            var self = owner, app = this;
-            return g.xhr(Object.assign({responseType: 'arraybuffer', url: url,
-                before: opt && opt.before || null,
-                after: opt && opt.after || null,
-                done: function(e, x) {
-                    var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
-                    if (res.result != 'ok') {
-                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        g.app.msg(res);
-                        return false;
-                    }
-
-                    try {
-                        var filename = g.uuid();
-                        if (opt && opt.hasOwnProperty('filename')) {
-                            filename = decodeURIComponent(quoter(opt['filename'],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
+                        if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
+                            d[f] = Number(d[f]) | Number(el.value);
                         } else {
-                            var disposition = this.getResponseHeader('Content-Disposition');
-                            if (disposition && disposition.indexOf('attachment') !== -1) {
-                                var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                                var matches = filenameRegex.exec(disposition);
-                                if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],  quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
-                            }
+                            if (!(d[f] instanceof Array)) d[f] = [d[f]];
+                            d[f].push(InputHTMLElementValue(el));
                         }
-
-                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        // if (this.getResponseHeader('Action-Status')) {
-                        //      g.app.msg({message:this.getResponseHeader('Action-Status')});
-                        // return
-                        // }
-                        return g.dwnBlob(this.response, filename, this.getResponseHeader('Content-Type'));
-                    } catch (e) {
-                        if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                        g.app.msg({message: this.status + ': ' + e + ' (URL: ' + url + ')'});
-                        console.error('app::download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                     }
-                },
-                fail: opt && opt.fail || function (e) {
-                    if (self.disabled) setTimeout(function () { self.disabled = false; self.css.del('spinner'); }, 1500);
-                    console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
-            },opt));
-        },
-        upload:function(stream, url, opt) {
-            var file = stream.files[0];
-            var done = opt.done; delete opt['done'];
-            var fail = opt.fail; delete opt['fail'];
-            var stop = opt.stop; delete opt['stop'];
-            var dir = opt.dir || null; delete opt['dir'];
+                if (d[f] === undefined && grp && !el.checked) d[f] = empty;
+                return d;
+            }
 
-            if (!file) return console.warn('File not found!');
+            var key = keys.shift().replace(/^\[+|\]+$/g, '');
+            if (f) {
+                if ( d[f] === undefined ) d[f] = key ? {} : [];
+                return next(keys, d[f], key, el);
+            }
 
-            var slice = function (file, start, end, type) {
-                var slice = file.mozSlice ? file.mozSlice : file.webkitSlice ? file.webkitSlice : file.slice ? file.slice : function () { };
-                return slice.bind(file)(start, end);
-            };
+            return next(keys, d, key, el);
+        };
 
-            var size = file.size, filename = file.name;
-            var sliceSize = opt.sliceSize||1024;
-            var start = opt.start||0, end;
-            var data, piece, xhr;
-
-            var loop = function () {
-                end = start + sliceSize;
-                data = new FormData();
-                if (size - end < 0) {
-                    end = size;
-                    if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
-                }
-
-                piece = slice(file, start, end);
-                data.append('dir', dir);
-                data.append('filename', filename);
-                data.append('size', size);
-                data.append('start', start);
-                data.append('end', end);
-                data.append('file', piece);
-
-                if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
-                    url: url,
-                    data: data,
-                    done: function (e, x) {
-                        var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-
-                        if (res.result == 'ok') {
-                            if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
-                            if (res.end < size) {
-                                start += sliceSize;
-                                setTimeout(loop, 1);
-                            } else {
-                                done.call(res);
-                            }
-                        } else {
-                            fail.call(res);
-                            g.app.msg(res);
-                        }
-                        return
-                    },
-                    fail: function (e, x) {
-                        if (typeof opt.fail === 'function') opt.fail.call(x,e);
-                        console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-                    }
-                }, opt));
-
-            };
-
-            if (size > 0) setTimeout(loop, 1);
-
-            return;
-
-        }
-
-    }; g.app = new app(g.document);
-
-    /**
-     * Paginator List Items View
-     *
-     * @param args
-     * @param model
-     */
-    g.paginator = function(args, model, limit) {
-        var self=this, pg = args.paginator, lm = limit ? parseInt(limit) : 10;
-        if (pg) this.ui.el('.paginator', function (e) {
-            tmpl('paginator-box', {pages: Math.ceil(pg.count / lm), page: pg.page, model: model }, this);
+        if (elements.length) obj2array(elements).map(function(v) {
+            var field = null;
+            if ((v.getAttribute('type') || 'text') !== 'button' && (field = v.name.match(/^\w+/g))) {
+                if (!data.hasOwnProperty(field)) data[field[0]] = undefined;
+                return next(v.name.match(/(\[\w+\]?)/g), data, field[0], v);
+            } return undefined;
         });
-        return pg;
+        return data;
     };
 
     /**
+     * @function setValueInputHTMLElement
      *
-     * @param els
-     * @param v
-     * @returns {*}
+     * @param { InputHTMLElement } el
+     * @param { * } value
      */
-    var filter = function (els, v) {
-        var elements = [], index = 0;
-        if (els) {
-            if (typeof v === 'object' && v.hasOwnProperty('page')) index = v['page'];
-            els.forEach(function (e, i, a) {
-                var fe =  ['INPUT','SELECT'].indexOf(e.tagName) > -1 ? e : e.ui.el('input,select');
-                if (fe) {
-                    elements.push(fe);
-                    if (typeof v === 'object' && v.hasOwnProperty(fe.name)) fe.value = v[fe.name];
-                    if (fe.tagName === 'INPUT') input_validator(fe);
+    var setValueInputHTMLElement = function(el, value) {
+        switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
+            case 'checkbox': case 'radio':
+                if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
+                    el.checked = (Number(value) & Number(el.value)) === Number(el.value);
+                } else {
+                    el.checked = el.value === 'on' ? !!value : ((value instanceof Array) ? value.indexOf(QueryParam(el.value)) >-1 : String(el.value) === String(value));
                 }
-            });
-
-            return {
-                el: elements,
-                index: index,
-                __valid: true,
-                transformer: null,
-                get valid(){
-                    var self = this; self.__valid = true;
-                    this.el.forEach(function (e,i,a) { self.__valid &= input_validator(e) });
-                    return this.__valid ;
-                },
-                set params(v) {
-                    var params = {}, self = this; self.__valid = true;
-                    if (v && typeof v === 'object') params = v; else if (typeof v === 'string') params = g.location.decoder(v);
-                    if (params.hasOwnProperty('page')) this.index = parseInt(params['page']);
-                    this.el.forEach(function (e,i,a) {
-                        setValueInputHTMLElement(e, params.hasOwnProperty(e.name) ? params[e.name] : null);
-                        self.__valid &= input_validator(e);
-                    });
-                },
-                get params() {
-                    var params = {}, self = this;
-                    this.el.forEach(function (e,i,a) {
-                        var v = InputHTMLElementValue(e);
-                        if (v) { params[e.name] = v;  input_validator(e); }
-                    });
-                    return params;
-                },
-                diff: function (b) {
-                    var a = this.params;
-                    return Object.keys(a).concat(Object.keys(b)).reduce(function(map, k) {
-                        if (a[k] != b[k]) map[k] = b[k];
-                        return map;
-                    }, {});
-                },
-                update:function (url) {
-                    var p = this.params;
-                    p['page'] = this.index||0;
-                    if (typeof url === 'string') {
-                        var u = g.location.decoder(url);
-                        this.el.forEach(function (e) { if (u.hasOwnProperty(e.name)) u[e.name] = ''; });
-                        return g.location.update(url, Object.assign(u,p));
-                    } else if (typeof url === 'object') {
-                        for (var i in this.el) {
-                            url[this.el[i].name] = InputHTMLElementValue(this.el[i]);
-                            if (url.hasOwnProperty(this.el[i].name) && !url[this.el[i].name]) delete url[this.el[i].name];
-                        }
-                        return Object.assign(url, p);
-                    }
-                    return '?' + g.location.encoder(p);
-                },
-                get uri() {
-                    var p = this.params;
-                    p['page'] = this.index||0;
-                    if (typeof this.transformer === 'function') return g.location.encoder(this.transformer(p));
-                    return g.location.encoder(p);
-                },
-                callback: function (res) {
-                   var result = true, msg = Object.keys(res.message||{});
-                    if (typeof res === 'undefined') return res;
-
-                    if (msg.length) {
-                        for (var i in this.el) {
-                            if (msg.indexOf(this.el[i].name) >-1) {
-                                switch (res.result) {
-                                    case 'ok':
-                                        this.el[i].status = 'success';
-                                        break;
-                                    case 'error':
-                                        result &= false;
-                                    // case 'warning':
-                                    default:
-                                        this.el[i].status = res.result;
-                                }
-                            }
-                            else { result &= input_validator(this.el[i]) }
-                        }
-                    }
-                    return result;
-                }
-            };
+                break;
+            case 'number':
+                el.value = Number(value);
+                break;
+            case 'text': case 'textarea': case 'hidden': case 'password':
+            case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
+            case 'color': case 'range': case 'search':
+            case 'email': case 'tel': case 'url':
+            default: el.value = QueryParam(value, QueryParam.NULLSTR);
         }
-        return null;
-    }; g.filter = filter;
+    };
 
     /**
+     * @function functionsetInputHTMLElementFromObject
      *
-     * @param route
-     * @param methods
-     * @param opt
-     * @returns {*}
+     * @param { InputHTMLElement }  el
+     * @param { Object } v - объете данных
+     * @param { Boolean } required - обязательное поле
+     * @param { String } alias альтернативное имя поля в объете данных
+     * @returns { Strring 'none' 'success', 'warning', 'error' }
      */
-    var crud = function (route, methods, opt) {
-        if (!route) return undefined;
-
-        var rt = route.match(/^\/\w+.*/i) ? '//'+location.hostname+route : route;
-        var rest = function (self, method, data) {
-            var raw = []; if (data && typeof data == 'object') {
-                for (var i in data) { raw.push(i+'='+ encodeURIComponent(g.QueryParam(data[i],QueryParam.NULLSTR))); }
-                data = raw.join('&')
-            }
-            return xhr(Object.assign({method: method, url: self.route, data: data}, self.opt));
-        };
-
-        var p = {
-            methods: methods ? methods : ['GET','POST','PUT','DELETE'],
-            route: route,
-            opt: opt ? opt : this,
-            rs: {},
-            error: {},
-            proc: null,
-            before: null,
-            after: null,
-            process: function (data, method) { return data; },
-            abort:function () { if (this.proc) this.proc.abort(); this.proc = null },
-            done:function (data, method) { return this.rs[method] = data },
-            fail:function (data, method) { return this.error = data }
-        };
-
-        for (var n in p.methods) {
-            var u = methods[n].toUpperCase();
-            p.rs[u] = {};
-            p[u] = (function(u){ return function(data) { this.rs[u] = null; return this.proc = rest(this,u,data); }}).apply(p,[u]);
-            // Object.defineProperty(p, u, { get: function() { return this.rs[u]; }});
-        }
-
-        if (rt) return p; else console.warn('Can\'t resolve route:' ,route);
-
-        return {};
-    }; g.crud = crud;
-
-}( window, window.ui ));
-
-(function ( g, ui, undefined ) {
-    'use strict';
-    if ( typeof ui === 'undefined' ) return false;
-
-    var msg = {
-        elem: ui.el(g.config.msg.container),
-        show: function (params, close) {
-            tmpl(g.config.msg.tmpl, params, this.elem);
-            this.elem.css.del('fade');
-            var el = this.elem;
-            if (typeof close == 'undefined' || !close) el.timer = setTimeout(function(){el.css.add('fade')}, 3000);
-            return this.elem;
-        }
-    }; g.msg = msg;
-
-    g.spinner_count = 0;
-    g.spinner_element = ui.el(g.config.spinner);
-    if (g.spinner_element) Object.defineProperty(g, 'spinner', {
-        __proto__: null,
-        enumerable: false,
-        configurable: false,
-        set: function (v) {
-            v ? g.spinner_count++ : g.spinner_count--;
-            g.spinner_count > 0 ? g.spinner_element.style.display = 'block' : g.spinner_element.style.display = 'none';
-        },
-        get: function () {
-            if (g.spinner_element.style.display == 'none') return false;
-            return true;
-        }
-    });
-
-    /**
-     * setValueFromObject
-     *
-     * @param owner
-     * @param v
-     */
-    var setValueFromObject = function(el, v, required, alias) {
+    var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
             el.value = null;
             if (!(this instanceof HTMLElement)) el.required = !!required;
@@ -1007,17 +571,238 @@
                     this.status = 'success';
                 }
             }
-
             return status;
         }
-        return false;
+        return 'none';
+    };
 
-    }; g.setValueFromObject = setValueFromObject;
+    /**
+     * crud
+     *
+     * @param meta
+     * @param api
+     */
+    var crud = function (meta, api) {
+        this.index = null;
+        this.meta = meta;
+        this.api = api ;
+    };
+    crud.prototype = Array.prototype;
+    Object.defineProperty(crud.prototype, 'data', {
+        set: function (data) {
+            if (data instanceof Array && data.length) {
+                var self = this;
+                self.merge(data.map(function (v) {
+                    return Object.merge(self.meta, v)
+                }));
+                self.index = 0;
+            }
+        },
+        get: function() { return this; },
+        enumerable: true, configurable: true
+    });
+    ['post','put','get','del'].map(function (v) {
+        crud.prototype[v] = function (data, opt) {
+        return typeof this.api === 'function' ? this.api(Object.assign(opt,{ data: data})): this.api[v](data, opt);
+    }});
+
+    g.crud = crud;
+
+    /**
+     * dataObject
+     *
+     * @param { Array } rows
+     * @param { Object } opt
+     * @returns {function(*=): function(*=): boolean}
+     */
+    var dataObject = function() {
+        return function (o) {
+            var index = is_empty(o.index) || parseInt(o.index);
+            var pk = o.primaryKey ? o.primaryKey : null;
+            var rows = o.crud;
+            var fn, worker = function (row) {
+                switch (opt.method.toLowerCase()) {
+                    case 'del': rows.splice(index,1); break;
+                    case 'post': if (pk) row[pk] = Math.max.apply(Math, rows.map(function(r) { return r[pk]; })) + 1;
+                        rows.push(row); break;
+                    case 'put': rows[index].merge(row); break;
+                    case 'get': default:
+                }
+                if (typeof opt.done === 'function') opt.done(index !== null ? rows[index] : rows);
+                return worker.done = true;
+            }
+            var opt = Object.assign({ srcElement: worker, method: 'get', index: index, rows: rows, timeout: 1000}, o);
+
+            worker.timeout = function () {
+                var res = ((Date.now() - worker.start) < opt.timeout);
+                if (!res) {
+                    clearTimeout(worker.instance);
+                    if (typeof opt.cansel === 'function') opt.cansel(); else console.warn('Worker timeout');
+                }
+                return res;
+            };
+
+            worker.start = Date.now();
+            worker.done = false;
+
+            if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
+                (fn = function () {
+                    if (worker.timeout()) worker.instance = setTimeout(function () {
+                        worker(o.data);
+                        if (!worker.done) return fn();
+                        if (typeof opt.after == 'function') opt.after();
+                        return false;
+                    }, 0);
+                })();
+            }
+            return worker;
+        };
+    }; g.dataObject = dataObject;
+
+    /**
+     * XHR Interface for common query
+     *
+     * @type {{fail: (function(*, *): void), method: string, before: (function(*): boolean), after: (function(*, *): boolean), api: (function(*=): (null|XMLHttpRequest)), done: (function(*=): boolean), url: string}}
+     */
+    g.group_xhr_opt = {
+        method: 'post',
+        url: location.pathname, //location.href,
+        before: function (e) { return true; },
+        after: function (e) { this.hXHR = null; return false; },
+        done: function(e) {
+            var xhr = ui.src(e), res = str2json(xhr.responseText,{result:'error', message:xhr.status + ': ' + HTTP_RESPONSE_CODE[xhr.status]});
+            if ( res.result === 'error' ) { console.warn(res.message); } else {
+                console.log('stored success!');
+            }
+            return false;
+        },
+        fail: function (e) { return console.error(HTTP_RESPONSE_CODE[ui.src(e).status]); },
+        cansel: function () { if (this.hXHR) this.hXHR.halt(); },
+        hXHR: null,
+        crud: function (params) { return this.hXHR = xhr(params); }
+    };
+
+    /**
+     * @Helper group
+     * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
+     * @param els
+     * @param opt
+     */
+    var group = function (els, opt) {
+        var self = this;
+        self.opt = Object.merge({srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
+        self.__elements = typeof els === 'string' ? ui.els(els) : els;
+
+        if ( self.__elements instanceof HTMLFormElement ) {
+            self.form = self.__elements;
+            Object.defineProperty(self.opt, 'method', {
+                get: function() { return self.form.getAttribute('method') || 'post' },
+                enumerable: true,  configurable: true });
+            self.opt.url = self.form.getAttribute('action') || self.opt.url;
+            self.form.addEventListener('submit',self.onsubmit.bind(self), true);
+            self.__elements = g.ui.wrap(obj2array(self.form.elements).map(function (el) { return g.ui.wrap(el);}));
+        }
+
+        if ( self.opt.submit ) {
+            var submit = self.opt.submit instanceof Array ? self.opt.submit : [self.opt.submit];
+            submit.forEach(function (v){ if (v instanceof HTMLElement) v.ui.on('click', self.onsubmit.bind(self)); });
+        }
+
+        self.hashing();
+        if (self.opt.change) self.elements.ui.on('change', self.opt.change.bind(self));
+    }; group.prototype = {
+        form: null,
+        __elements: [],
+        get elements() { return  this.__elements; },
+        get length() { return this.elements.length; },
+        byName: function (n) {
+            if (typeof n === 'undefined') return this.elements;
+            var r = []; for(var i = 0, l = this.length; i < l; i++) {
+                if (this.elements[i].getAttribute('name') === n || this.elements[i].getAttribute('id') === n) {
+                    r.push(this.elements[i]);
+                }
+            }
+            return r.length === 0 ? null : (r.length === 1 ? r[0] : g.ui.wrap(r));
+        },
+        bySelector: function (s) {
+            if (typeof s === 'undefined') return this.elements;
+            var r = []; for(var i = 0, l = this.length; i < l; i++) {
+                if (this.elements[i].matches(s)) { r.push(this.elements[i]); }
+            }
+            return r.length === 0 ? null : (r.length === 1 ? r[0] : g.ui.wrap(r));
+        },
+        onsubmit: function(e) {
+            e.stopPropagation();
+            if (e instanceof MouseEvent || e instanceof KeyboardEvent && (eventCode(e) === 13 || eventCode(e) === 'Enter')) {
+               this.store(this.data);
+            } return false;
+        },
+        __changed: null,
+        hashing: function(s) { this.__changed = JSON.stringify(s ? s : this.data).hash(); },
+        get isChanged() { return this.__changed !== JSON.stringify(this.data).hash(); },
+        __valid: [],
+        set valid (res) {
+            this.__valid = [];
+            if (res && typeof res.message === 'object') {
+                for (var i = 0, l = this.elements.length; i < l; i++) {
+                    if (res.message[this.elements[i].name]) {
+                        this.elements[i].status = res.result || 'error';
+                        this.__valid.push(this.elements[i]);
+                    } else {
+                        this.elements[i].status = 'none';
+                    }
+                }
+            }
+        },
+        get valid () {
+            this.__valid = []; var self = this;
+            this.elements.forEach(function (e,i,a) { if (!input_validator(e)) self.__valid.push(e); });
+            return !this.__valid.length ;
+        },
+        reset: function (attr) {
+            if (this.form) this.form.reset();
+            this.forEach(this.__elements, function (el) {
+                if (['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1)
+                    el.checked = el.ui.attr(attr||'default') || false;
+                else switch (el.tagName) {
+                    case 'SELECT':
+                        setValueInputHTMLElement(this,el.ui.attr(attr||'default') || 0);
+                        break;
+                    case 'INPUT':
+                    case 'TEXTAREA':
+                    default:
+                        setValueInputHTMLElement(this, el.ui.attr(attr||'default') || '');
+                }
+                el.status = 'none';
+            });
+            return this;
+        },
+        set data(d) {
+            if (d && typeof d === 'object') {
+                for (var i = 0, l = this.elements.length; i < l; i++) {
+                    setValueInputHTMLElement(this.elements[i],(d.hasOwnProperty(this.elements[i].name)) ? d[this.elements[i].name] : null);
+                }
+            }
+        },
+        get data() { return getElementsValues(this.elements); },
+        store: function (data) {
+            try {
+                if (this.opt.crud) {
+                    if (typeof this.opt.crud === 'function') { this.opt.crud(Object.assign({data: data}, this.opt)); }
+                    else { this.opt.crud[this.opt.method.toLocaleLowerCase()](data, this.opt) }
+                }
+            } catch (e) {
+                if (typeof this.opt.fail === 'function') this.opt.fail(e);
+                if (typeof this.opt.after === 'function') this.opt.after();
+            }
+            return this;
+        }
+    }; g.group = group;
 
     /**
      * @function isvalid
      *
-     * @param element
+     * @param { InputHTMLElement } element
      * @returns {boolean}
      */
     var isvalid = function (element) {
@@ -1026,10 +811,10 @@
         else if ((element.getAttribute('required') === null) && !element.value) res = true;
         else if ((pattern = element.getAttribute('pattern')) === null) res = true;
         else {
-            if (!element.hasOwnProperty('testPattern')) {
+            if (!element.hasOwnProperty('checkPattern')) {
                 element.regex = re(pattern);
-                Object.defineProperty(element, 'testPattern', {
-                    get: function testPattern() {
+                Object.defineProperty(element, 'checkPattern', {
+                    get: function checkPattern() {
                         if (typeof this.regex === 'object') {
                             this.regex.lastIndex=0;
                             return this.regex.test(this.value.trim())
@@ -1039,78 +824,27 @@
                     }
                 });
             }
-            res = element.testPattern;
+            res = element.checkPattern;
         }
         if (typeof (validator = element.getAttribute('validator') || element['validator']) === 'function')
         {
             res = validator.apply(element, [res]);
         } else if (element.hasAttribute('validator')) {
-            var validator = func(element.getAttribute('validator'));
+            validator = func(element.getAttribute('validator'));
             res = validator.apply(element, [res]);
         }
         return res;
     };
 
     /**
-     * input_validator
-     *
-     * @param element
-     * @param tags
-     * @returns {boolean}
-     */
-    var input_validator = function(element, tags) {
-        if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
-            var res = isvalid(element) && (element.hasOwnProperty('bindingElement') ? isvalid(element.bindingElement) : true);
-            if (element.type != 'hidden') {
-                inputer( element );
-                if (res === false) {
-                    element.status = 'error'
-                } else if (res === null || res === undefined) {
-                    element.status = 'warning'
-                } else {
-                    if (element.value && element.value.length) { element.status = 'success'; } else  { element.status = 'none'; }
-                }
-            }
-            return res;
-        }
-        return true;
-    };  g.input_validator = input_validator;
-
-    /**
-     * Set default value for FORM elements
-     *
-     * @param els
-     * @param attr
-     * @returns {*}
-     */
-    var set_default = function (els, attr) {
-        if (!els) return null;
-
-        return this.ui.els(els, function () {
-            if (['checkbox','radio'].indexOf((this.getAttribute('type') || 'text').toLowerCase()) >-1)
-                this.checked = this.ui.attr(attr||'default') || false;
-            else switch (this.tagName) {
-                case 'SELECT':
-                    this.value = this.ui.attr(attr||'default') || 0;
-                    break;
-                case 'INPUT':
-                case 'TEXTAREA':
-                default:
-                    this.value = this.ui.attr(attr||'default') || '';
-            }
-            this.status = 'none';
-        });
-    };  g.set_default = set_default;
-
-    /**
      * inputer
-     * //maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css
+     * bind STATUS property InputHTMLElement
      *
-     * @param el
+     * @param { InputHTMLElement } el
      * @returns {*}
      */
     var inputer = function(el) {
-        if (el instanceof Element && ui.wrap(el) && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
+        if (el instanceof Element && g.ui.wrap(el) && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warning|success|spinner)');
@@ -1146,36 +880,34 @@
                     return this._status;
                 }
             });
-
         }
         return el;
     }; g.inputer = inputer;
 
     /**
-     * @function formvalidator
-     * Default form validator
-     * @param res
-     * @returns {boolean}
+     * input_validator
+     *
+     * @param { InputHTMLElement } element
+     * @param { string } tags
+     * @returns { boolean }
      */
-    g.formvalidator = function(res, pushed) {
-        var m = res && res.hasOwnProperty('message') && typeof res.message === 'object' && res.message ? res.message: {};
-
-        for (var i = 0; i < this.elements.length; i++) {
-            if (!m.hasOwnProperty(this.elements[i].name) && !input_validator(this.elements[i])) {
-                if (!this.elements[i].hasOwnProperty('message') || (this.elements[i].message !== false))
-                    m[this.elements[i].name] = this.elements[i].message || 'Поле с неверными данными или пустым значения!';
+    var input_validator = function(element, tags) {
+        if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
+            var res = isvalid(element) && (element.hasOwnProperty('couple') ? isvalid(element.couple) : true);
+            if (element.type != 'hidden') {
+                inputer( element );
+                if (res === false) {
+                    element.status = 'error'
+                } else if (res === null || res === undefined) {
+                    element.status = 'warning'
+                } else {
+                    if (element.value && element.value.length) { element.status = 'success'; } else  { element.status = 'none'; }
+                }
             }
+            return res;
         }
-
-        if (Object.keys(m).length) {
-            if (g.spinner) g.spinner = false;
-            m['caption'] = 'Неверно заполнена форма!';
-            if (typeof pushed === 'undefined' || !!pushed) app.msg({message: m}); else return m;
-            return false;
-        }
-
         return true;
-    };
+    }; g.input_validator = input_validator;
 
     /**
      * @function pattern_validator
@@ -1183,26 +915,335 @@
      * @param element
      * @returns {*}
      */
-    var pattern_validator = function (element) {
-        if (!element) return console.error('pattern_validator of null object!');
+    // var pattern_validator = function (element) {
+    //     if (!element) return console.error('pattern_validator of null object!');
+    //
+    //     var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
+    //
+    //     els.forEach(function(el,i,a) {
+    //         if (el instanceof Element && ui.wrap(el)) inputer(el).ui.on('focus', function (e) {
+    //             if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
+    //             return false;
+    //         }).ui.on('input', function (e) {
+    //             if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
+    //             return false;
+    //         }).ui.on('blur', function (e) {
+    //             input_validator(this);
+    //             return false;
+    //         });
+    //     });
+    //
+    //     return;
+    // }; g.pattern_validator = pattern_validator;
 
-        var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
+}( window ));
 
-        els.forEach(function(el,i,a) {
-            if (el instanceof Element && ui.wrap(el)) inputer(el).ui.on('focus', function (e) {
-                if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
-                return false;
-            }).ui.on('input', function (e) {
-                if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
-                return false;
-            }).ui.on('blur', function (e) {
-                input_validator(this);
-                return false;
+(function ( g, ui, undefined ) {
+    'suspected';
+    'use strict';
+
+    if ( typeof ui === 'undefined' ) return false;
+
+    /**
+     * mb_case_title
+     *
+     * @param s {string}
+     * @returns {string|null}
+     */
+    g.mb_case_title = function(s) {
+        return s.length ? s.replace(/(?:^\s*|\s+)(\S?)/g, function(a, b){ return a.slice(0, -1) + b.toUpperCase(); }) : null;
+    };
+
+    /**
+     * Достаём необходимые поля из объекта
+     *
+     * @param o Object
+     * @param f Array
+     * @returns Object
+     */
+    g.fields_extractor = function (o, f) {
+        if (f && f.length) {
+            var result = {};
+            for (var i in f) if (o.hasOwnProperty(f[i])) result[f[i]] = o[f[i]]; else result[f[i]] = null;
+            return result;
+        }
+        return o;
+    };
+
+    /**
+     * @function datetimer
+     *
+     * @param dt { string | Date }
+     * @param option { int }
+     * @returns {string|null}
+     */
+    g.datetimer = function(dt, option){
+        var opt = typeof option === 'undefined' ? datetimer.DATETIME: Number(option);
+        if (!dt) return null;
+        var d = typeof dt === 'string' ? new Date(dt.replace(/\s/, 'T')) : dt;
+        var date = opt & datetimer.DATE ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth()+1)).slice(-2) + "." + d.getFullYear() : null;
+        var time = opt & datetimer.TIME ? ('0' + d.getHours()).slice(-2) + ":" + ('0' + d.getMinutes()).slice(-2) : null;
+        var second = opt & datetimer.SECOND ? '.' + ('0' + d.getSeconds()).slice(-2) : '';
+        return bundler(date, time).join(' ') + second;
+    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 3; datetimer.SECOND = 4;
+
+    /**
+     * @function localISOString
+     *
+     * @param dt {String}
+     * @param Z {String}
+     * @returns {string}
+     */
+    g.localISOString = function (dt, Z) {
+        var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+        return (new Date(Date.now(dt) - tzoffset)).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
+    };
+
+    /**
+     * @function utcISOString
+     *
+     * @param dt {String}
+     * @param Z {String}
+     * @returns {string}
+     */
+    g.utcISOString = function (dt, Z) {
+        return (new Date(dt || Date.now())).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
+    };
+
+    /**
+     * @function import from CSV
+     *
+     * @param file inpgutFomvElevent type file
+     *
+     *  <div class="btn-group ml-2 pt-2 pb-2">
+     *  <input type="file" id="CSVfile" name="CSVfile">
+     *  </div>
+     */
+    g.importFromCSV = function (file, cb) {
+        function parseFile2Array(csv) {
+            var dataSet = [];
+            csv.split(importFromCSV.EOL).forEach(function(line) {
+                var tuple = []; line.split(",").forEach(function(cell) { tuple.push(cell); });
+                dataSet.push(tuple);
             });
-        });
+            return dataSet;
+        }
 
-        return;
-    }; g.pattern_validator = pattern_validator;
+        file.ui.on('change', function (e) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+               return cb.call(this.file, parseFile2Array(g.ui.src(e).result)); //this is where the csv array will be
+            };
+            // var f = file.files[0];
+            file.files.forEach(function (f) { reader.file = f; reader.readAsText(f); });
+        });
+    }; g.importFromCSV.EOL = "\n";
+
+    /**
+     * @function exportToCSV
+     *
+     * @param { String } filename
+     * @param { Array } rows
+     */
+    g.exportToCSV = function(filename, rows) {
+        var processRow = function (row) {
+            var finalVal = '';
+            for (var j = 0, l = row.length; j < l; j++) {
+                var innerValue = row[j] === null ? '' : row[j].toString();
+                if (row[j] instanceof Date) { innerValue = row[j].toLocaleString(); }
+
+                var result = innerValue.replace(/"/g, '""');
+                if (result.search(/("|,|\n)/g) >= 0) result = '"' + result + '"';
+                if (j > 0) finalVal += ',';
+                finalVal += result;
+            }
+            return finalVal + '\n';
+        };
+
+        var csvFile = '';
+        for (var i = 0, l = rows.length; i < l; i++) {
+            csvFile += processRow(rows[i]);
+        }
+
+        dwnBlob(csvFile, filename,'text/csv;charset=utf-8;');
+    };
+
+    /**
+     * @function exportHTML2Word
+     *
+     * @param { string } innerHTML
+     * @param { string } fileName
+     */
+    g.exportHTML2Word = function (innerHTML, fileName) {
+        var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+            "xmlns='http://www.w3.org/TR/REC-html40'>" +
+            "<head><meta charset='utf-8'><title>" +(fileName||'document.doc')+ "</title></head><body>";
+        var footer = "</body></html>";
+        var sourceHTML = header+innerHTML+footer;
+
+        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;charset=utf-8;');
+    };
+
+    /**
+     * @Helper copy2prn
+     * Подготавливает данные звёрнутые в шаблон к печати
+     *
+     * @param { String } template - DOM element Id
+     * @param { Object } data - for tpl
+     */
+    g.copy2prn = function (template, data) {
+        var print_layer = g.document.createElement('iframe');
+        print_layer.name = 'print_layer';
+        print_layer.src = 'printer';
+        print_layer.style.display = 'none';
+        g.document.body.appendChild(print_layer);
+
+        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
+        frameDoc.document.open();
+        frameDoc.document.write(tpl(template,data||{}));
+        frameDoc.document.close(); // necessary for IE >= 10
+
+        setTimeout(function () {
+            g.frames['print_layer'].focus();// necessary for IE >= 10*/
+            g.frames['print_layer'].print();
+            g.frames['print_layer'].close();
+            g.document.body.removeChild(print_layer);
+        }, 1);
+    };
+
+    /**
+     * @function download
+     *
+     * @param { HTMLElement } button
+     * @param { String } url
+     * @param { Object } opt
+     * @returns {XMLHttpRequest}
+     */
+     g.download = function(button, url, opt) {
+        return xhr(Object.assign({responseType: 'arraybuffer', url: url,
+            done: function(e, x) {
+                var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
+                if (res.result !== 'ok') {
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    console.log('donwload - OK');
+                    return false;
+                }
+
+                try {
+                    var filename = uuid();
+                    if (opt && opt.hasOwnProperty('filename')) {
+                        filename = decodeURIComponent(quoter(opt['filename'], quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
+                    } else {
+                        var disposition = this.getResponseHeader('Content-Disposition');
+                        if (disposition && disposition.indexOf('attachment') !== -1) {
+                            var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                            var matches = filenameRegex.exec(disposition);
+                            if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],
+                                quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
+                        }
+                    }
+
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    return g.dwnBlob(this.response, filename, this.getResponseHeader('Content-Type'));
+                } catch (e) {
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                }
+            },
+            fail: opt && opt.fail || function (e) {
+                if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+            }
+        },opt));
+    };
+
+    /**
+     * @function upload
+     *
+     * @param stream
+     * @param url
+     * @param opt
+     */
+    g.upload = function(stream, url, opt) {
+        var file = stream.files[0];
+        var done = opt.done; delete opt['done'];
+        var fail = opt.fail; delete opt['fail'];
+        var stop = opt.stop; delete opt['stop'];
+        var dir = opt.dir || null; delete opt['dir'];
+
+        if (!file) return console.warn('File not found!');
+
+        var slice = function (file, start, end, type) {
+            var slice = file.mozSlice ? file.mozSlice : file.webkitSlice ? file.webkitSlice : file.slice ? file.slice : function () { };
+            return slice.bind(file)(start, end);
+        };
+
+        var size = file.size, filename = file.name;
+        var sliceSize = opt.sliceSize||1024;
+        var start = opt.start||0, end;
+        var data, piece, xhr;
+
+        var loop = function () {
+            end = start + sliceSize;
+            data = new FormData();
+            if (size - end < 0) {
+                end = size;
+                if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
+            }
+
+            piece = slice(file, start, end);
+            data.append('dir', dir);
+            data.append('filename', filename);
+            data.append('size', size);
+            data.append('start', start);
+            data.append('end', end);
+            data.append('file', piece);
+
+            if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
+                url: url,
+                data: data,
+                done: function (e, x) {
+                    var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+
+                    if (res.result === 'ok') {
+                        if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
+                        if (res.end < size) {
+                            start += sliceSize;
+                            setTimeout(loop, 1);
+                        } else {
+                            done.call(res);
+                        }
+                    } else {
+                        fail.call(res);
+                        g.app.msg(res);
+                    }
+                    return
+                },
+                fail: function (e, x) {
+                    if (typeof opt.fail === 'function') opt.fail.call(x,e);
+                    console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                }
+            }, opt));
+        };
+        if (size > 0) setTimeout(loop, 1);
+    };
+
+    /**
+     * Paginator List Items View
+     *
+     * @param { int } pg
+     * @param { string } model
+     * @param { int } limit
+     * @returns {*}
+     */
+    g.paginator = function(pg, model, limit) {
+        var lm = limit ? parseInt(limit) : 10;
+        if (pg) this.ui.el('.paginator', function (e) {
+            tpl('paginator-box', {pages: Math.ceil(pg.count / lm), page: pg.page, model: model }, this);
+        });
+    };
 
     /**
      * typeahead
@@ -1229,7 +1270,7 @@
             stoped: function (opt) {
                 if ( this.timer !== null ) {
                     if (this.__xhr) this.__xhr.cancel();
-                    if (this.timer) { g.clearTimeout(this.timer); this.timer = null }
+                    if (this.timer) { clearTimeout(this.timer); this.timer = null }
                 }
                 if (this.owner.pannel) this.owner.pannel.css.add('fade');
                 return;
@@ -1237,20 +1278,20 @@
             delayed: function () {
                 var th = this, key = th.owner.__key__;
                 var fn = function fn () {
-                    if (th.key == key) {
+                    if (th.key === key) {
                         if (th.owner.pannel) th.owner.pannel.css.add('fade');
                         th.xhr();
                     } else {
                         th.stoped();
-                        if (th.key != 'null' && th.key != key) {
-                            th.key = key; th.timer = g.setTimeout(fn.bind(th), th.delta);
+                        if (th.key !== 'null' && th.key !== key) {
+                            th.key = key; th.timer = setTimeout(fn.bind(th), th.delta);
                         }
                     }
 
                     return false;
                 };
                 th.key = key; if (!th.timer) th.stoped();
-                th.timer = g.setTimeout(fn.bind(th), th.delta);
+                th.timer = setTimeout(fn.bind(th), th.delta);
 
                 return;
             },
@@ -1262,7 +1303,7 @@
                 var list = th.cache[th.key] || [];
                 if ( owner.pannel && list.length ) {
                     owner.pannel.ui.el('.active', function () { this.css.del('active') });
-                    list.forEach(function(v,i,a) { if ((th.index < 0) && v[owner.name] && (v[owner.name].trim().toLowerCase() == owner.__key__)) th.index = i; });
+                    list.forEach(function(v,i,a) { if ((th.index < 0) && v[owner.name] && (v[owner.name].trim().toLowerCase() === owner.__key__)) th.index = i; });
                     owner.pannel.ui.el('[value="' + (th.index < 0 ? 0 : th.index) + '"]', function () { this.css.add('active') });
                 } else {
                     if (owner.pannel) owner.pannel.css.add('fade');
@@ -1270,19 +1311,20 @@
 
                 return false;
             },
-            tmpl:function(data){
+            tpl:function(data){
                 var th = this, owner = this.owner;
                 th.index = data.length ? 0 : -1;
 
                 if (owner.pannel) {
                     if (data.length) {
-                        tmpl(th.opt.tmpl, {data: data, field: owner.name}, function (cnt) {
-                            var n = ui.dom(cnt);
-                            owner.pannel.innerHTML = n ? n.innerHTML : null;
+                        tpl(th.opt.tpl, {data: data, field: owner.name}, function (cnt) {
+                            // var n = ui.dom(cnt);
+                            // owner.pannel.innerHTML = n ? n.innerHTML : null;
+                            owner.pannel.innerHTML = cnt;
                         });
                     }
                 } else {
-                    tmpl(this.opt.tmpl, {data: data, field: owner.name}, function (panel) {
+                    tpl(this.opt.tpl, {data: data, field: owner.name}, function (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel);
                         owner.parentElement.css.add(th.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
@@ -1311,7 +1353,7 @@
                     }
                 } else {
                     var len = stored ? th.cache[key].length : 0;
-                    var no_skip = !((key == 'null' && !!th.opt.skip) || (th.opt.skip > key.length));
+                    var no_skip = !((key === 'null' && !!th.opt.skip) || (th.opt.skip > key.length));
                     var no_eq = (key !== owner.__value.trim().toLowerCase());
                     if (is_correct && no_skip && no_eq && !len) {
                         var __status = owner.status, params = {};
@@ -1339,7 +1381,7 @@
                             before: function () { owner.status = 'spinner'; },
                             after: function () { owner.status = __status; },
                             done: function (e) {
-                                var res = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+                                var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
                                 switch (res.result) {
                                     case 'ok': case 'success':
                                         th.cache[key] = (res.data||[]).map(function (v) {
@@ -1372,8 +1414,8 @@
                 var owner = this.owner, th = this;
                 if (owner.ui.active ) {
                     if (data && data.length) {
-                        th.tmpl(data);
-                        if (th.index != -1) owner.setValue(th.value);
+                        th.tpl(data);
+                        if (th.index !== -1) owner.setValue(th.value);
                         if (owner.pannel) {
                             if (!th.opt.wrapper) owner.pannel.setAttribute('style','margin-top:-'+g.getComputedStyle(owner).marginBottom+';left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                             owner.pannel.css.del('fade');
@@ -1417,7 +1459,7 @@
                     owner.setValue(th.value);
                     if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
                     return false;
-                } else if (key == 'Enter' || key == 13) {
+                } else if (key === 'Enter' || key === 13) {
                     th.stoped();
                     if (owner.pannel) owner.pannel.css.add('fade');
                 }
@@ -1427,7 +1469,7 @@
             onFocus:function(e){
                 var owner = this, th = this.typeahead, len = owner.value.length;
                 if (len) owner.setSelectionRange(len, len);
-                if ((!len && th.opt.getEmpty) || (len && this.status != 'success')) {
+                if ((!len && th.opt.getEmpty) || (len && this.status !== 'success')) {
                     th.delayed();
                     th.activeItem(th.key = owner.__key__);
                 }
@@ -1453,7 +1495,7 @@
                         th.index = -1;
                         var list = th.cache[th.key = owner.__key__] || [];
                         list.forEach(function (v, i, a) {
-                            if ((th.index < 0) && (v[owner.name].trim().toLowerCase() == owner.__key__)) th.index = i;
+                            if ((th.index < 0) && (v[owner.name].trim().toLowerCase() === owner.__key__)) th.index = i;
                         });
                         if (th.index > -1) { item = th.value; key = th.value[owner.name].trim().toLowerCase()||'null'; } else if (owner.__value === owner.value) return;
                     } else {
@@ -1487,7 +1529,7 @@
             element.__value = element.value;
             element.typeahead.opt = merge({alias:null, getEmpty:true, query: null, dbf: null,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
-                up: element.hasAttribute("dropup"), tmpl: 'typeahead-tmpl',
+                up: element.hasAttribute("dropup"), tpl: 'typeahead-tpl',
                 error: function (res, xhr) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
@@ -1521,7 +1563,7 @@
     var maskedigits = function(element, pattern, cleared) {
     if (element.tagName === 'INPUT') {
         var el = inputer(element);
-        el.cleared = cleared == undefined ? true : !!cleared ;
+        el.cleared = cleared === undefined ? true : !!cleared ;
         if (pattern) el.maxLength = el.ui.attr('placeholder', pattern || '').attr('placeholder').length;
         if (!el.ui.attr('tabindex')) el.ui.attr('tabindex', '0');
         if (el && !el.hasOwnProperty('insertDigit')) {
@@ -1544,8 +1586,8 @@
                         this.e1 = this.selectionEnd = this.selectionStart = this.s1 =  pos > -1 ? pos : this.value.length;
                     } else if (pos > this.selectionStart) {
                         this.s1 = pos = this.selectionStart;
-                        var text = dg + (this.value.substr(pos, this.value.length).match(/\d+/g) || []).join('')+'_';
-                        for (var i= 0; i < text.length -1; i++) {
+                        text = dg + (this.value.substr(pos, this.value.length).match(/\d+/g) || []).join('')+'_';
+                        for (var i= 0, l = text.length - 1; i < l; i++) {
                             pos = this.value.indexOf(text.charAt(i+1), pos);
                             if (pos > -1) this.value = this.value.substr(0, pos) + text.charAt(i) + this.value.substr(pos+1, this.value.length);
                         }
@@ -1563,7 +1605,7 @@
                     this.value = '';
                     var placeholder = this.ui.attr('placeholder');
                     for (var i in placeholder) {
-                        if (text.length > i && placeholder[i] == text[i]) {
+                        if (text.length > i && placeholder[i] === text[i]) {
                             this.value += text[i]; pos++;
                         } else if (/_/.test(placeholder[i])) {
                             this.value += (pos < text.length) ? text[pos++] : '_';

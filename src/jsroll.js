@@ -76,30 +76,31 @@
         1015: 'CERT_AUTHORITY_INVALID'
     };
 
-    var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : undefined);
+    var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : function (url, opt) { return console.warn('WebSocket not supported!'); });
     var ws = function (url, opt) {
         // var socket = new WebSocket(url, opt.hasOwnProperty('protocol') ? opt.protocol : '');
         this.protocol = '';
-        this.opt = opt;
+        this.opt = Object.assign(this.opt, opt);
         this.url = url;
     }; ws.prototype = {
+        opt: {binaryType:'blob', reconnect:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
-        binaryType: 'blob',
         // WebSocket.CONNECTING: 0
         // WebSocket.OPEN: 1
         // WebSocket.CLOSING: 2
         // WebSocket.CLOSED: 3
-        get readyState() { return this.socket.readyState; },
+        get readyState() { return this.socket ? this.socket.readyState : WebSocket.CONNECTING; },
         up: function(opt){
             if (!navigator.onLine) return console.error('Browser not connected!');
             if (this.connected) return console.warn('Already connected!');
 
-            var self = this, socket = new WebSocket(this.url);
-            socket.binaryType = this.binaryType;
-            ['error','open','message','close'].forEach(function (e) { socket.addEventListener(e, self[e].bind(self)); });
-            this.socket = socket;
-            return this;
+            var self = this;
+            if (opt) self.opt = Object.assign(self.opt, opt);
+            self.socket = new WebSocket(self.url);
+            self.socket.binaryType = self.opt.binaryType;
+            ['error','open','message','close'].forEach(function (e) { self.socket.addEventListener(e, self[e].bind(self)); });
+            return self.socket;
         },
         error: function(e) {
             this.connected = false;
@@ -116,8 +117,11 @@
         },
         close: function(e) {
             if (!e) return this.connected ? this.socket.close() : true;
-            this.connected = false;
-            // setTimeout(function() { return ws(url, opt); }, 1000);
+            var self = this;
+            self.connected = false;
+            var fn; setTimeout(fn = function() {
+            return self.readyState === WebSocket.CONNECTING ? self.up() : setTimeout(fn, self.opt.reconnect);
+            }, self.opt.reconnect);
             return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
         },
         send: function(data) {
@@ -129,24 +133,14 @@
      * @function eventCode
      * Хелпер обработки кода нажатия на устройтвах ввода типа клавиатура.
      *
-     * @argument Event e - событие
-     * @result { Integer | String }
+     * @argument { Event } e - событие
+     * @result { int | string }
      */
     var eventCode = function (e) {
-            if (g.InputEvent && (e instanceof InputEvent)) {
-                return e.data;
-            } else if (e instanceof Event) switch (true) {
-                case e.key !== undefined:
-                    return e.key;
-                case e.keyIdentifier !== undefined:
-                    return e.keyIdentifier;
-                case e.keyCode !== undefined:
-                    return e.keyCode;
-                default:
-                    return e.charCode;
-            };
-            return null;
-        }; g.eventCode = eventCode;
+        return e instanceof InputEvent ? e.data : e instanceof Event ?
+        'key' in e ? e.key :'keyCode' in e ? e.keyCode : 'keyIdentifier' in e ? e.keyIdentifier : e.charCode : null;
+    };
+    g.eventCode = eventCode;
 
     var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
@@ -159,12 +153,12 @@
     }
 
     if (!('IDBKeyRange' in g)) {
-        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange|| null;
+        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange || null;
     }
 
     /**
      * IndexedDBInterface
-     * @param Object opt
+     * @param { Object } opt
      * @constructor
      */
     g.IndexedDBInterface = function(opt) {
@@ -174,7 +168,7 @@
             Object.defineProperty(self, 'active', {
                 __proto__: null,
                 get: function active() {
-                    return self.instance ? self.instance.readyState == 'done' : false;
+                    return self.instance ? self.instance.readyState === 'done' : false;
                 }
             });
 
@@ -184,11 +178,11 @@
 
             // Create schema
             self.instance.onupgradeneeded = function(e) {
-                return self.build(e.target.result);
+                return self.build(ui.src(e).result);
             };
             // on reload, instance up!
             self.instance.onsuccess = function(e) {
-                self.db = e.target.result;
+                self.db = ui.src(e).result;
                 return self.success(self.db);
             };
             self.instance.onblocked = function (e) {
@@ -294,15 +288,15 @@
     /**
      * @QueryParam
      * Helper for webSQl
-     * @param any v
-     * @param Integer o
-     * @returns {string|any}
+     * @param { * } v
+     * @param { int } o
+     * @returns { string|any }
      * @constructor
      */
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
         if (typeof v === 'undefined' || v === null) {
-            return !(opt & QueryParam.NULLSTR) && opt & QueryParam.QOUTED |  QueryParam.STRNULL ? (opt & QueryParam.NULLSQL ? 'NULL' : null) : '';
+            return !(opt & QueryParam.NULLSTR) && opt & QueryParam.QOUTED | QueryParam.STRNULL ? (opt & QueryParam.NULLSQL ? 'NULL' : null) : '';
         } else if (typeof v === 'object') {
             return opt & QueryParam.QOUTED ? "'" + JSON.stringify(v) + "'" : String(JSON.stringify(v));
         } else if (typeof v === 'string' && v === '') {
@@ -359,8 +353,8 @@
                     console.log('webSQL DB info:');
                     for (var i = 0; i < tablesNumber; i++) {
                         table = rs.rows.item(i);
-                        if ( table.type == 'table') {
-                            tx.executeSql( 'SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
+                        if ( table.type === 'table') {
+                            tx.executeSql('SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
                                 console.info('- table: ' + r.rows[0].name + ', DDL: ' + r.rows[0].sql);
                             });
                         } else {
@@ -425,7 +419,7 @@
                     var next = function (tx, rs) {
                         if (i < count) {
                             if (typeof rs !== 'undefined' ) ResultSet[i] = rs;
-                            self.executeSql(tx, query,  d[i++], next, fail)
+                            self.executeSql(tx, query, d[i++], next, fail)
                         } else {
                             return done.call(self, tx, count > 1 ? ResultSet : rs);
                         }
@@ -436,7 +430,7 @@
             );
         },
         grinder: function (o, fields, no_uppend) {
-            var res = {}, self = this;
+            var res = {}, self = this; // res = Object.create(null);
             if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) {
                 if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], self.opt) : null;
             });
@@ -509,14 +503,14 @@
      * @function dbf
      * webSQL wraper for common Interface
      *
-     * @param webSQL db
-     * @param Object opt
+     * @param { webSQL } db
+     * @param { Object } opt
      * @returns {{cancel: (function(): boolean), filter: (function(*=, *=, *=): instansce), fail: fail, opt: {}, done: done, db: *}|void}
      */
     var dbf = function (db, opt) {
         if (!db) return console.warn('webSQL ' + opt.naeme + ' not exit!');
         return {
-            opt: {},
+            opt: Object.create(null), // {}
             db: db,
             cancel: function () { return false; },
             done: function(tx, rs) {
@@ -540,6 +534,8 @@
     g.requestFileSystem = g.requestFileSystem || g.webkitRequestFileSystem;
 
     var is_url = /^(?:https?:\/\/)?(?:(?:[\w]+\.)(?:\.?[\w]{2,})+)?([\/\w]+)(\.[\w]+)|^(?:\/[\w]+){1,}/i;
+
+    g.is_empty = function (v) { return  v === '' || v === null || v === undefined || false; };
 
     /**
      * @function re
@@ -567,7 +563,8 @@
      * @argument { String } s - строка JSON
      * @returns {*}
      */
-    var str2json = function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; }; g.str2json = str2json;
+    var str2json = function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; };
+    g.str2json = str2json;
 
     /**
      * @function obj2array
@@ -606,7 +603,7 @@
      * Заменяет одинарные и двойные кавычки на Html коды и возрващает строку
      *
      * @param { * }  v
-     * @param { Integer } opt
+     * @param { int } opt
      * @returns { string }
      */
     var quoter = function(v, opt) {
@@ -704,21 +701,20 @@
     Object.defineProperty(Object.prototype, 'merge', {
         value: function() {
             if (!arguments.length) return null;
-
-            var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : null));
+            var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : Object.create(null)));
             if (typeof this === 'function' && o && o.__proto__.__proto__) o.__proto__.constructor = this;
 
             obj2array(arguments).forEach( function(v, k, a) {
-                if (o === null) {
-                    o = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
-                    if (o && typeof v === 'function' && o.__proto__) o.__proto__.constructor = v;
-                    return o;
-                }
-                var x = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : null));
+                var x = (typeof v === 'object' ? v : (typeof v === 'function' ? new v : undefined));
                 if (x) {
-                    if (typeof v === 'function' && x.__proto__) x.__proto__.constructor = v;
+                    if (typeof v === 'function' && o.__proto__) o.__proto__.constructor = v;
                     //TODO: https://developer.mozilla.org/ru/docs/Web/JavaScript/Reference/Operators/Object_initializer
-                    if (Object.getPrototypeOf(x) !== Object.prototype) Object.merge(o.__proto__, x.__proto__);
+                    // Object.create(x.prototype)
+                    if (!o.__proto__) { o.prototype = Object.create(x.__proto__); }
+                    else if (o.__proto__ && Object.getPrototypeOf(x) !== Object.prototype) {
+                        o.merge(x.__proto__);
+                        o.__proto__.constructor = x.__proto__.constructor;
+                    }
                     Object.defineProperties(o, Object.getOwnPropertyNames(x).reduce(function (d, key) {
                         if (o.hasOwnProperty(key) && Object.getOwnPropertyDescriptor(o, key)['set']) {
                             o[key] = x[key];
@@ -727,7 +723,7 @@
                             d[key] = Object.getOwnPropertyDescriptor(x, key);
                         }
                         return d;
-                    }, {}));
+                    }, Object.create(null))); // {}
                 }
             });
             return o;
@@ -745,7 +741,7 @@
     Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : Object.create(null))); // {}
             var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
@@ -773,7 +769,7 @@
                 }
             } else {
                 if (self.hasOwnProperty('childIndex')) {
-                    owner.heirs = {}; owner.heirs[self.childIndex] = self;
+                    owner.heirs = Object.create(null); owner.heirs[self.childIndex] = self; // {}
                 } else {
                     owner.heirs = []; owner.heirs.push(self)
                 }
@@ -858,49 +854,6 @@
         }
         return false;
     }; g.dwnBlob = dwnBlob;
-    
-    /**
-     * @function func
-     * - Создание фкнкции из строки
-     * - Создание фкнкции из строки, передача параметров в функцию и получение результата
-     * - или выполнение кода из строки в контексте
-     *
-     * @param str Текстовая строка содержащая определение функцц или содержащий JS код
-     * @param self Контекст в котором будет выполнен код
-     * @param args Аргументы функци
-     * @returns {*}
-     */
-    var func = function (str, self, args) {
-        if (typeof str !== 'string') return console.error("func src is't a string type!\n", str);
-        try {
-            var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
-            switch ( true ) {
-                case /^\s*function.*[}|;]*$/igm.test(s) :
-                    var _e = '_e'+uuid().replace(/-/g,'');
-                    var fn = new Function('var '+_e+'='+s+'; return ' + _e + '.apply(this, arguments)');
-                    // if (typeof args !== 'undefined')  {
-                    //     return fn.call(self || this || g, args);
-                    // } else {
-                    return fn;
-                    // }
-                    // var fn = new Function('return ' + s + '.apply(this, arguments)');
-                    // if (typeof self !== 'undefined' && this != g)  {
-                    //     return typeof fn === 'function' ? fn.call(self || this || g, args) : undefined;
-                    // } else {
-                    //     return fn;
-                    // }
-                    // return new Function('return ' + s + '.apply(this, arguments)');
-                default:
-                    // var fn = function (self, args) { try { return eval(s); } catch (e) {
-                    //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
-                    // } };
-                    // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
-                    return function () { return eval(s); };
-            }
-        } catch( e ) {
-            return console.error( 'func ', e.message + "\n", str );
-        }
-    }; g.func = func;
 
     /**
      * @function decoder
@@ -912,7 +865,7 @@
      * @result { Object }
      */
     var decoder = function(search, re) {
-        var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m;
+        var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m; // {}
         try {
             while (m = re.exec((search || g.location.search))) {
                 if (m[1] && m[2]) p[decodeURIComponent(m[1])] = QueryParam(decodeURIComponent(m[2]), QueryParam.STRNULL);
@@ -947,7 +900,7 @@
      * @result { String }
      */
     var update = function(search, params) {
-        var u = [], h = [], url = g.location.search, kv = params || {};
+        var u = [], h = [], url = g.location.search, kv = params || Object.create(null); // {}
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
         for (var i in kv) { p[decodeURIComponent(i)] = QueryParam(decodeURIComponent(kv[i]), QueryParam.STRNULL); }
@@ -962,8 +915,24 @@
     }; g.location.update = update;
 
     /**
-     * @function router
-     * Хелпер Маршрутизатор SPA
+     * @function browser URL params
+     *
+     * @Example: location.search = location.update({tab:tabIndex});
+     * location.protocol + '//' + location.host + location.pathname
+     * @Example: urn.set(location.pathname + location.update({tab:tabIndex})).lsn();
+     *
+     * @param id
+     * @param def
+     * @returns {{}|*|null}
+     */
+    var params = function (id, def) {
+        if (typeof id === 'string') return g.location.decoder()[id] || def || null;
+        return g.location.decoder();
+    }; g.location.params = params;
+
+    /**
+     * @function urn
+     * URN - Unifrorm Resource Name (унифицированное имя ресурса)
      *
      * @method { function () } fr
      * @method { function ( Regex, Callback ) } add
@@ -974,23 +943,23 @@
      *
      * @result { Object }
      */
-    function router(r){
+    function urn(r){
         var isHistory = !!(history.pushState) ? 1 : 0;
         var root = r;
         return {
-            root:root, rt:[], itv:0, base:isHistory ? g.location.pathname+g.location.search:'',
+            root:root, rt:[], itv:0, base:isHistory ? location.pathname+location.search:'',
             referrer:root,
+            handled: {hendler:null, hash:(location.pathname+location.search).hash()},
             clr: function(path) { return path.toString().replace(/\/$/, '').replace(/^\//, ''); },
             fr: isHistory ?
                 function(){
-                    return this.root + this.clr(decodeURI(g.location.pathname + g.location.search)).replace(/\?(.*)$/, '');
+                    return this.root + this.clr(decodeURI(location.pathname + location.search)).replace(/\?(.*)$/, '');
                 }:
                 function(){
-                    var m = g.location.href.match(/#(.*)$/);
-                    return this.root + (m ? this.clr(m[1]) : '');
+                    var m = location.href.match(/#(.*)$/); return this.root + (m ? this.clr(m[1]) : '');
                 },
             add: function(re, handler) {
-                if (typeof re == 'function') { handler = re; re = ''; }
+                if (typeof re === 'function') { handler = re; re = ''; }
                 this.rt.push({ re: re, handler: handler});
                 this.rt = this.rt.sort(function(a, b) {
                     if (a.re.toString().length < b.re.toString().length) return 1;
@@ -999,38 +968,83 @@
                 });
                 return this;
             },
-            rm: function(param) {
-                for(var i in this.rt) {
-                    if(this.rt[i].handler === param || this.rt[i].re.toString() === param.toString()) {
-                        this.rt.splice(i, 1);
-                        return this;
-                    }
-                }
+            rm: function(handler) {
+                for(var i in this.rt) if (this.rt[i].handler === handler) { this.rt.splice(i, 1); break; }
                 return this;
             },
-            chk: function(fr) {
-                var f = fr || this.fr(), m = false;
-                for(var i in this.rt) if (m = f.match(this.rt[i].re)) { this.rt[i].handler.call(m || {}, f); return this; }
+            chk: function() {
+                for(var i in this.rt) if (this.fr().match(this.rt[i].re)) {
+                    this.handled = {handler: this.rt[i].handler, hash:(location.pathname+location.search).hash()};
+                    if (this.rt[i].handler) {
+                        this.rt[i].handler(location.pathname, location.search, true);
+                    } else {
+                        console.warn('Handler not exist ['+this.fr()+']')
+                    }
+                    return this;
+                }
                 return this;
             },
             lsn: function() {
                 var s = this, c = s.fr(), fn = function() { if(c !== s.fr()) { c = s.fr(); s.chk(c); } return s; };
-                clearInterval(s.itv); s.itv = setInterval(fn, 50);
+                clearInterval(s.itv); s.itv = setInterval(fn, 30);
                 return s;
             },
             set: isHistory ?
                 function(path) {
-                    this.referrer = g.location.pathname+g.location.search;
+                    this.referrer = location.pathname+location.search;
                     history.pushState(null, null, this.root + this.clr(path || ''));
                     return this;
                 }:
                 function(path) {
-                    this.referrer = g.location.pathname+g.location.search;
-                    window.location.href = g.location.href.replace(/#(.*)$/, '') + '#' + (path || '');
+                    this.referrer = location.pathname+location.search;
+                    location.href = location.href.replace(/#(.*)$/, '') + '#' + (path || '');
                     return this;
                 }
         }
-    }; g.router = router('/');
+    }; g.urn = urn('/');
+
+    /**
+     * @function func
+     * - Создание фкнкции из строки
+     * - Создание фкнкции из строки, передача параметров в функцию и получение результата
+     * - или выполнение кода из строки в контексте
+     *
+     * @param str Текстовая строка содержащая определение функцц или содержащий JS код
+     * @param self Контекст в котором будет выполнен код
+     * @param args Аргументы функци
+     * @returns {*}
+     */
+    var func = function (str, self, args) {
+        if (typeof str !== 'string') return console.error("func src is't a string type!\n", str);
+        try {
+            var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
+            switch ( true ) {
+                case /^\s*function.*[}|;]*$/igm.test(s) :
+                    var $ = '$'+uuid().replace(/-/g,'');
+                    var fn = new Function('var '+$+'='+s+'; return '+$+'.apply(this, arguments)');
+                    // if (typeof args !== 'undefined')  {
+                    //     return fn.call(self || this || g, args);
+                    // } else {
+                    return fn;
+                // }
+                // var fn = new Function('return ' + s + '.apply(this, arguments)');
+                // if (typeof self !== 'undefined' && this != g)  {
+                //     return typeof fn === 'function' ? fn.call(self || this || g, args) : undefined;
+                // } else {
+                //     return fn;
+                // }
+                // return new Function('return ' + s + '.apply(this, arguments)');
+                default:
+                    // var fn = function (self, args) { try { return eval(s); } catch (e) {
+                    //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
+                    // } };
+                    // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
+                    return function () { return eval(s); };
+            }
+        } catch( e ) {
+            return console.error( 'func ', e.message + "\n", str );
+        }
+    }; g.func = func;
 
     /**
      * @function js
@@ -1078,346 +1092,78 @@
      * @result { Object }
      */
     function xhr(params){
-        var x = new xmlHttpRequest();
-        if (!x) return null;
-
-        x.fail = function(fn) {
-            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            return x;
-        };
-
-        x.done = function(fn) {
-            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            return x;
-        };
-
-        x.cancel = function(fn) {
-            if (typeof fn === 'function') return fn.call(x, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            return x;
-        };
-
-        x.process = function(opt) {
-            g.addEventListener('offline', x.onerror);
-            var proc = opt.process;
-            x.onreadystatechange = function(e) {
-                if (typeof proc === 'function') {
-                    return proc.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-                } else if (x.readyState == 4 && x.status >= 400) {
-                    g.removeEventListener('offline', x.onerror);
-                    x.fail.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-                    if (typeof x.after == 'function') x.after.call(x, {status:parseInt(x.status)});
-                }
-                return x;
-            };
-
-            x.timeout = opt.timeout;
-            x.ontimeout = function (e) {
-                x.halt({status:408});
-                return x;
-            };
-            return x;
-        };
-
-        x.halt = function(opt) {
-            x.abort();
-            g.removeEventListener('offline', x.onerror);
-            x.cancel.call(x, opt, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            if (typeof x.after == 'function') x.after.call(x, opt);
-            return x;
-        };
-
-        x.onerror = function (e) {
-            x.fail.call(x, e, {status:10});
-            x.halt({status:500});
-            return false;
-        };
-
-        x.onload = function(e) {
-            x.done.call(x, e, location.decoder(x.getAllResponseHeaders(), /([^:\s+\r\n]+):\s+([^\r\n]*)/gm));
-            if (typeof x.after == 'function') x.after.call(x, {status:parseInt(x.status)});
-            g.removeEventListener('offline', x.onerror);
-            return x;
-        };
+        var x = new xmlHttpRequest(); if (!x) return null;
 
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
         // DOMString, ArrayBuffer, Blob или Document в соответствии с responseType.
-        var opt = Object.assign({method:'GET',timeout:10000,cache:false}, params);
-        x.method = opt.method.toUpperCase();
-        var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params||{}).rs);
+        // g.location.pathname; g.location.href;
+        var d = {srcElement:x, withCredentials:true, async:true, username:null, password:null, method:'GET', url:g.location.pathname, timeout:10000, cache:false};
+        var opt = Object.assign(d, params);
+        var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params || {}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
 
+        x.process = function() {
+            g.addEventListener('offline', x.onerror);
+            x.timeout = opt.timeout;
+            x.onreadystatechange = function(e) {
+                if (typeof opt.process === 'function') return opt.process(e);
+                else if (x.readyState == g.xhr.DONE && x.status >= 400) return x.halt(e);
+                return x;
+            };
+            x.ontimeout = function (e) { return x.halt({srcElement: x, status:408}); };
+            return x;
+        };
+
+        x.halt = function(e) {
+            x.abort();
+            g.removeEventListener('offline', x.onerror);
+            if (e instanceof Event && (typeof opt.fail === 'function')) opt.fail(e);
+            else if (typeof opt.cancel === 'function') opt.cancel(e||x);
+            if (typeof opt.after === 'function') opt.after(e||x);
+            return x;
+        };
+
+        x.onerror = function (e) { return x.halt(e); };
+
+        x.onload = function(e) {
+            if (typeof opt.done === 'function') opt.done(e);
+            if (typeof opt.after === 'function') opt.after(e);
+            g.removeEventListener('offline', x.onerror);
+            return x;
+        };
+
         try {
-            for (var i in opt) if (typeof opt[i] == 'function') x[i]=opt[i];
-            if ((['GET', 'DELETE'].indexOf(x.method) >= 0) && opt.data) {
-                var u = opt.url || g.location;
-                opt.url = u + (u.indexOf('?') !=-1 ? '&':'?') + opt.data;
+            if (typeof opt.data === 'object') opt.data = g.location.encoder(opt.data);
+            if ( (['GET', 'DELETE'].indexOf(opt.method) >-1 ) && opt.data) {
+                opt.url += (opt.url.indexOf('?') >-1 ? '&':'?') + opt.data;
                 opt.data = null;
             }
-            if (typeof x.before == 'function') x.before.call(x, opt, x);
 
-            x.open(x.method, opt.url || g.location, opt.async || true, opt.username, opt.password);
-            for (var m in rs) x.setRequestHeader(m, rs[m]);
-            x.response_header = null;
-            x.process(opt).send(opt.data);
+            if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
+                x.withCredentials = opt.withCredentials;
+                x.open(opt.method.toUpperCase(), opt.url, opt.async, opt.username, opt.password);
+                for (var m in rs) x.setRequestHeader(m, rs[m]);
+                x.process().send(opt.data);
+            } else {
+                x.halt({srcElement: x, status:401});
+            }
         } catch (e) {
-            x.fail.call(x, e, {status:0});
-            x.halt({status:0});
-            return x;
+            x.halt(e);
         }
 
         return x;
-    };  g.xhr = xhr;
+    }; g.xhr = xhr;
+
+    g.xhr.UNSENT = 0; // исходное состояние
+    g.xhr.OPENED = 1; // вызван метод open
+    g.xhr.HEADERS_RECEIVED = 2; // получены заголовки ответа
+    g.xhr.LOADING = 3; // ответ в процессе передачи (данные частично получены)
+    g.xhr.DONE = 4; // запрос завершён
 
     /**
-     * @function InputHTMLElementValue
-     * Хэлпер получения HTML элемента
-     *
-     * @param { HTMLElement } el
-     * @param { * } def - Default value
-     * @returns { * }
-     */
-    var InputHTMLElementValue = function(el, def) {
-        var n = null;
-        if (el instanceof HTMLElement) {
-            switch ((el.getAttribute('type') || 'text').toLowerCase()) {
-                case 'checkbox': case'radio':
-                    var on = (el.value.indexOf('on') == -1);
-                    n = el.checked ? ( on ? el.value : 1) : (on ?  '' : 0);
-                    break;
-                // case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
-                // case 'color': case 'range': case 'search':
-                // case 'email': case 'tel': case 'url'
-                //
-                // case 'text': case 'textarea': case 'hidden':
-                default:
-                    n = el.value || def;
-            }
-        }
-        return QueryParam(n, QueryParam.NULLSTR);
-    }; g.InputHTMLElementValue = InputHTMLElementValue;
-
-    /**
-     * @function getElementsValues
-     *
-     * @param { InputHTMLElement [] } elements
-     * @param { int } opt
-     * @returns { Object }
-     */
-    var getElementsValues = function(elements, opt) {
-        var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
-            if ( d === undefined ) d = [];
-            if (!keys || !keys.length) {
-                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
-                if (f && (!grp || grp && el.checked)) {
-                    if ( d[f] === undefined || (grp && d[f] === empty)) {
-                        d[f] = InputHTMLElementValue(el);
-                    } else {
-                        if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
-                            d[f] = Number(d[f]) | Number(el.value);
-                        } else {
-                            if (!(d[f] instanceof Array)) d[f] = [d[f]];
-                            d[f].push(InputHTMLElementValue(el));
-                        }
-                    }
-                }
-                if (d[f] === undefined && grp && !el.checked) d[f] = empty;
-                return d;
-            }
-
-            var key = keys.shift().replace(/^\[+|\]+$/g, '');
-            if (f) {
-                if ( d[f] === undefined ) d[f] = key ? {} : [];
-                return next(keys, d[f], key, el);
-            }
-
-            return next(keys, d, key, el);
-        };
-
-        if (elements.length) obj2array(elements).map(function(v) {
-            var field = null;
-            if ((v.getAttribute('type') || 'text') != 'button' && (field = v.name.match(/^\w+/g))) {
-                if (!data.hasOwnProperty(field)) data[field[0]] = undefined;
-                return next(v.name.match(/(\[\w+\]?)/g), data, field[0], v);
-            } return undefined;
-        });
-        return data;
-    }; g.getElementsValues = getElementsValues;
-
-    /**
-     * @function setValueInputHTMLElement
-     *
-     * @param { InputHTMLElement } el
-     * @param { * } value
-     */
-    var setValueInputHTMLElement = function(el, value) {
-        switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
-            case 'checkbox': case 'radio':
-                if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
-                    el.checked = (Number(value) & Number(el.value)) === Number(el.value);
-                } else {
-                    el.checked = el.value === 'on' ? !!value : ((value instanceof Array) ? value.indexOf(QueryParam(el.value)) >-1 : String(el.value) === String(value));
-                }
-                break;
-            case 'number':
-                el.value = Number(value);
-                break;
-            case 'text': case 'textarea': case 'hidden':
-            case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
-            case 'color': case 'range': case 'search':
-            case 'email': case 'tel': case 'url':
-            default: el.value = QueryParam(value, QueryParam.NULLSTR);
-        }
-    }; g.setValueInputHTMLElement = setValueInputHTMLElement;
-
-    /**
-     * @property form
-     * Хелпер работы с данными формы
-     *
-     * @param f DOM элемент форма + f.rolling = ['post','get','put','delete' ets]
-     * @param params
-     * @returns {result:Object, data: String}}
-     */
-    Object.defineProperty(JSON, 'form', {
-        value: function(f) {
-            if (f && !f.hasOwnProperty('MODEL')) {
-                Object.defineProperty(f, 'MODEL', {
-                    set: function MODEL(d) {
-                        f.reset();
-                        if (typeof d === 'object') {
-                            var is_array, field, index, el, value, type;
-                            for (var i = 0; i < f.elements.length; i++) {
-                                field = null; index = null; el = f.elements[i];
-                                type = (el.getAttribute('type') || 'text').toLowerCase();
-                                if (type === 'button') { continue; }
-                                if ( is_array = /\[.*\]$/.test(el.name) ) {
-                                    field = el.name.replace(/\[.*\]$/,'');
-                                    if ( !d.hasOwnProperty(field) ) { continue; }
-                                    else { value = d[field]; }
-                                    if ( index = /\[([^\]]+)\]/.exec(this.elements[i].name) ) {
-                                        index = String(index[1]);
-                                        if ( !d[field].hasOwnProperty(index) ) { continue; }
-                                        else { value = d[field][index]; }
-                                    }
-                                } else {
-                                    field = el.name || String(i);
-                                    if ( !d.hasOwnProperty(field) ) { continue; }
-                                    else { value = d[field]; }
-                                }
-
-                                switch ( type ) {
-                                    case 'checkbox': case 'radio':
-                                        if (is_array) {
-                                            el.checked = el.value === 'on' ? !!value : str2json(value, []).indexOf(el.value) !== -1;
-                                        } else {
-                                            el.checked = el.value === 'on' ? !!value : String(el.value) == String(value);
-                                        }
-                                        break;
-                                    case 'number':
-                                        el.value = Number(value);
-                                        break;
-                                    case 'color': case 'date': case 'datetime-local': case 'email': case 'month':
-                                    case 'range': case 'search': case 'tel': case 'time': case 'url': case 'week':
-                                    case 'hidden': case 'text': case 'textarea':
-                                    default: el.value = QueryParam(value, QueryParam.NULLSTR);
-                                }
-                            }
-                        }
-                    },
-                    get: function MODEL() {
-                        f.__MODEL__ = {}; var el, type;
-                        for (var i=0; i < f.elements.length; i++) {
-                            el = f.elements[i];
-                            type = (el.getAttribute('type') || 'text').toLowerCase();
-                            if (type === 'button') { continue; }
-                            var field = el.name && /\[.*\]$/.test(el.name) ? el.name.replace(/\[.*\]$/,'') : (el.name || String(i));
-                            var n = g.InputHTMLElementValue(el);
-                            if ((typeof f.__MODEL__[field] === 'undefined') || (f.__MODEL__[field] === null)) {
-                                f.__MODEL__[field] = n;
-                            } else if (typeof f.__MODEL__[field] !== 'undefined' && n !== null) {
-                                if (typeof f.__MODEL__[field] !== 'object') f.__MODEL__[field] = [f.__MODEL__[field]];
-                                f.__MODEL__[field].push(n);
-                            }
-                        }
-
-                        return f.__MODEL__;
-                    }
-                });
-
-                f.is_valid = function() {
-                    if (!f.validator || (typeof f.validator === 'function' && f.validator.call(f))) {
-                        f.setAttribute('valid', 1);
-                        return true;
-                    }
-                    f.setAttribute('valid', 0);
-                    return false;
-                };
-
-                f.prepare = function(validator) {
-                    var data = '';
-                    if (!validator || (typeof validator === 'function' && validator.call(f, data))) {
-                        data = encoder(f.MODEL, '&');
-                    } else {
-                        f.setAttribute('valid', 0);
-                    }
-                    return data;
-                };
-
-                f.fail = typeof f.fail == 'function' ? f.fail : function (res) {
-                    f.setAttribute('valid', 0);
-                    var a = res.form||res.message;
-                    if (a) for (var i = 0; i < this.elements.length; i++) {
-                        if (a.hasOwnProperty(this.elements[i].name)) { this.elements[i].status = 'error'; }
-                        else { this.elements[i].status = 'none'; }
-                    }
-                    return f;
-                };
-
-                f.send = function() {
-                    var data = f.prepare(f.validator), before = true, args = arguments;
-                    if (f.getAttribute('valid') != 0) {
-                        if (typeof f.before === 'function') before = f.before();
-                        if (before === undefined || !!before) {
-                            var done = typeof args[0] == 'function' ? function(e, hr) {
-                                    f.response_header = hr||{};
-                                    var callback = args.shift();
-                                    callback.apply(this, args);
-                                    return f;
-                                } :
-                                function(e, hr) {
-                                    f.response_header = hr||{};
-                                    f.response = str2json(this.responseText) || {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
-
-                                    if (f.response.result == 'error' ) {
-                                        if (typeof f.fail == 'function') f.fail.call(f, f.response, hr, args);
-                                    } else {
-                                        if (typeof f.done == 'function') f.done.call(f, f.response, hr, args);
-                                    }
-                                    return f;
-                                };
-                            var after = (typeof f.after === 'function') ? f.after.bind(f) : undefined;
-                            f.response = {result: undefined};
-                            g.xhr(Object.assign({method: f.rest, url: f.action, data: data, done: done, after: after, fail: function (e, hr) {
-                                    console.error('JSON.form['+f.name+']: ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-                                }}, f.opt));
-                        }
-                    } else f.setAttribute('valid',1);
-                    return f;
-                };
-            }
-            f.setAttribute('valid', 1);
-            f.rest = f.getAttribute('rest') || f.method;
-            f.validator = f.validator || null;
-            f.opt = f.opt || {};
-
-            return f;
-        },
-        enumerable: false
-    });
-
-    /**
-     * @function tmpl
+     * @function tpl
      * Хелпер для генерации контескта
      *
      * @argument { String } str (url | html)
@@ -1427,106 +1173,92 @@
      *
      * @result { String }
      */
-    var tmpl = function tmpl( str, data, cb, opt ) {
-        var args = arguments; args[1] = args[1] || {};
-        var fn, self =  {
-            cached: false,
-            str: str,
-            data: data,
-            cb: cb,
-            opt: opt,
-            processing: false,
-            timer: null,
+    var tpl = function tpl( str, data, cb, opt ) {
+        var context = this, args = arguments; args[1] = args[1] || {};
+        var fn, self = {
+            context: context, attr: null, cached: false, str: str, data: data, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
-                var item = this, self = this;
-                if (item.processing) { item.timer = setTimeout(function () { item.wait(after, args); }, 50); return self; }
-                else if (typeof after == 'function') { after.apply(item.tmplContext, args); }
-                else if (after && (typeof (fn = func(after, item.tmplContext, args)) === 'function')) { fn.apply(item.tmplContext, args); }
+                var self = this;
+                if (self.processing) { self.timer = setTimeout(function () { self.wait(after, args); }, 50); return self; }
+                else if (typeof after == 'function') { after.apply(self.tpl, args); }
+                else if (after && (typeof (fn = func(after, self.tpl, args)) === 'function')) { fn.apply(self.tpl, args); }
                 return self;
             },
             response_header: null,
-            __tmplContext: undefined,
-            get tmplContext() {
-                if (this.__tmplContext) this.__tmplContext.owner = self;
-                return this.__tmplContext;
+            __tpl__: undefined,
+            get tpl() {
+                if (this.__tpl__) this.__tpl__.owner = self;
+                return this.__tpl__;
             },
-            set tmplContext(v) {
-                this.__tmplContext = v;
+            set tpl(v) {
+                this.__tpl__ = v;
             },
-            onTmplError: function (type, id, str, args, e ) {
+            onTplError: function (type, id, str, args, e ) {
                 var msg = e && typeof е === 'object' ? e.message : String(e);
-                return console.error('tmpl type=['+type+']', [id, str], args,  msg + "\n");
+                return console.error('tpl type=['+type+']', [id, str], args,  msg + "\n");
             }
         };
 
         var compile = function( str ) {
-            var _e = '_e'+uuid().replace(/-/g,''), source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
+            var $ = '$'+uuid().replace(/-/g,''),
+                source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
             if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
             // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
-            return source.length ? new Function(_e,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+_e+"){p.push('"+
+            return source.length ? new Function($,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+$+"){p.push('"+
                    source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("/((^|"+tag[1]+")[^\t]*)'/g"),"$1\r").replace(re("/\t=(.*?)"+tag[1]+"/g"),"',$1,'")
                    .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
             build = function( str, id ) {
-                var isId = typeof id !== 'undefined', data = {}, pattern = null;
-                var result = null, after, before, a, pig = g.document.getElementById(id);
+                var isId = typeof id !== 'undefined', pattern = null;
+                var dom = null, result = null, before, after, pig = g.ui.el(id);
 
                 try {
                     if (pig) {
-                        var nn = undefined;
-                        Array.prototype.slice.call(pig.attributes).forEach(function (i) {
-                            if ( i && /^tmpl-*/i.test(i.nodeName.toString()) && (nn=i.nodeName.toString().replace(/^tmpl-/i, '')) )
-                                try {
-                                    data[nn] = JSON.parse(i.value); //JSON.parse(i.nodeValue);
-                                } catch (e) {
-                                    data[nn] = i.value;
-                                }
-                        });
-                        if ((a = pig.getAttribute('arguments'))) try {
-                            data = Object.merge(JSON.parse(a) || {}, data);
-                        } catch (e) {
-                            return self.onTmplError('tmpl-arguments', id, str, args,a);
-                        }
-
-                        // args[1] = Object.merge(args[1], data);
-                        args[1].merge(data);
-                        // if (before = pig.getAttribute('before')) func(before, self, args);
-                        if (pig.getAttribute('before') && (typeof (fn = func(pig.getAttribute('before'), self, args)) === 'function')) { fn.apply(self, args); }
-                    } else {
-                        if (opt && typeof opt.before == 'object') {
-                            // args[1] = Object.assign(args[1], opt.before);
-                            args[1].merge(opt.before);
-                        } else if (opt && typeof opt.before == 'function') {
-                            opt.before.call(self, args);
+                        self.attributes = pig.ui.attr();
+                        if (before = pig.getAttribute('before') && (typeof (fn = func(before, self, args)) === 'function')) {
+                            fn(self, args);
                         }
                     }
+                    if (opt && typeof opt.before == 'object') {
+                        args[1].merge(opt.before);
+                    } else if (opt && typeof opt.before == 'function') {
+                        opt.before(self, args);
+                    }
 
-                    if (isId && g.tmpl.cache.hasOwnProperty(id)) {
-                        pattern = g.tmpl.cache[id];
+                    if (isId && g.tpl.cache.hasOwnProperty(id)) {
+                        pattern = g.tpl.cache[id];
                     } else {
                         pattern = compile(str);
-                        if (isId) { g.tmpl.cache[id] = pattern; if (self.cached) g.localStorage.setItem(id, encodeURIComponent(str)); }
+                        if (isId) { g.tpl.cache[id] = pattern; if (self.cached) g.localStorage.setItem(id, encodeURIComponent(str)); }
                     }
 
-                    if (!pattern) { return self.onTmplError('tmpl-pattern', id, str, args, 'пустой шаблон'); }
+                    if (!pattern) { return self.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
 
                     var awaiting = function (self) {
                         if (self.processing) { self.timer = setTimeout(function () { awaiting(self); }, 50); return; }
 
                         result = pattern.call(self, args[1]);
 
-                        if (typeof cb == 'function') { self.tmplContext = cb.call(self, result) || g.tmpl; }
-                        else if (self.tmplContext instanceof HTMLElement || cb instanceof HTMLElement && (self.tmplContext = cb)) { self.tmplContext.innerHTML = result; }
+                        if (typeof cb == 'function') { self.tpl = cb.call(dom = g.ui.dom(result,'html/dom'), result); }
+                        else if (self.tpl instanceof HTMLElement || cb instanceof HTMLElement && (self.tpl = cb)) {
+                            self.tpl.innerHTML = result;
+                        } else if (cb instanceof Array && (self.tpl = cb)) {
+                            cb.forEach(function (i) { i.innerHTML = result;} );
+                        }
 
-                        if (self.tmplContext && pig && (after = pig.getAttribute('after'))) { self.wait(after, args); }
-                        else if (opt && typeof opt.after == 'function') self.wait(opt.after, args);
-                        return result;
+                        if (self.tpl && pig && (after = pig.getAttribute('after')) &&
+                            (typeof (fn = func(after, self, args)) === 'function')) {
+                            self.wait(fn, args);
+                        }
+                        if (opt && typeof opt.after == 'function') {
+                            self.wait(opt.after, args);
+                        }
+                        return dom || result;
                     };
                     return awaiting(self);
                 } catch( e ) {
-                    return self.onTmplError('tmpl-build', id, str, args, e);
+                    return self.onTplError('tpl-build', id, str, args, e);
                 }
-                return result;
             };
 
         try {
@@ -1534,26 +1266,26 @@
             switch ( true ) {
                 case str.match(is_url) ? true : false:
                     var id = 'uri' + str.hash();
-                    if (g.tmpl.cache.hasOwnProperty(id)) { return build(null, id); }
-                    var opt = opt || {}; opt.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    if (g.tpl.cache.hasOwnProperty(id)) { return build(null, id); }
+                    var opt = opt || {}; opt.rs = Object.assign(opt.rs|| {}, {'Content-type':'text/x-template'});
                     self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
                     if (self.cached && (t = g.localStorage.getItem(id))) { return build(decodeURIComponent(t), id); }
-                    return g.xhr(Object.assign({ url: str, async: (typeof cb === 'function'),
-                        done: function(e, hr) { self.response_header = hr; return build(this.responseText, id); },
-                        fail: function(e, hr) { return self.onTmplError('tmpl-xhr', id, str, args, e); }
+                    return g.xhr(Object.assign({ owner: context, url: str, async: (typeof cb === 'function'),
+                        done: function(e) { return build(ui.src(e).responseText, id); },
+                        fail: function(e) { return self.onTplError('tpl-xhr', id, str, args, e); }
                         }, opt));
                 case !/[^#*\w\-\.]/.test(str) ? true : false:
-                    if (g.tmpl.cache.hasOwnProperty(str)) { return build(null, str); }
+                    if (g.tpl.cache.hasOwnProperty(str)) { return build(null, str); }
                     var tmp = g.document.getElementById(str.replace(/^#/,''));
-                    if (!tmp) { return self.onTmplError('tmpl-byId '+str+' not exist!'); }
+                    if (!tmp) { return self.onTplError('tpl-byId '+str+' not exist!'); }
                     self.cached = !!tmp.getAttribute('cached');
                     if (self.cached && (t = g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str );
             }
-        } catch ( e ) { return self.onTmplError('tmpl', id, str, args, e) }
-    }; tmpl.cache = {}; g.tmpl = tmpl;
+        } catch ( e ) { return self.onTplError('tpl', id, str, args, e) }
+    }; tpl.cache = {}; g.tpl = tpl;
 
     /**
      * @function storage
