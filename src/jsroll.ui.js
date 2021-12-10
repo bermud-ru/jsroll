@@ -16,7 +16,7 @@ var Application = function (app) {
         window.addEventListener('online', function (e) { return self.online(e); }, false);
         window.addEventListener('offline', function (e) { return self.offline(e); }, false);
         document.addEventListener('DOMContentLoaded', function(event) {
-            return self.ready(event);
+            return self.__ready__ = true;
         }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
@@ -50,6 +50,7 @@ var Application = function (app) {
 
     // if (app && typeof app === 'object') this.merge(app);
 }; Application.prototype = {
+    __ready__: false,
     notsupport:null, //'/notsupport.html',
     url: null,
     socket: null,
@@ -65,7 +66,17 @@ var Application = function (app) {
     },
     online: function (e) { return console.log('app online ' + datetimer(new Date())); },
     offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
-    ready: function (e) { return console.log('app started'); },
+    onready: function (fn, args) {
+        var self = this, wait = function(after, args) {
+            if (self.__ready__) {
+                if (wait.timer) clearTimeout(wait.timer);
+                return fn.call(self, args||[]);
+            } else {
+                return wait.timer = setTimeout(function () { wait(fn, args); }, 50);
+            }
+        }
+        return wait(fn, args);
+    },
     resize: function (e) { return false; },
     serialize: function (e) {
         var props = {}, self = this;
@@ -116,10 +127,10 @@ if (window.app === undefined ) {
     window.onload = function (event) { return app.run(event); }
     window.onunload = function (event) { return app.destroy(event); };
     window.onresize = function (event) { return app.resize(event); };
-    document.addEventListener('deviceready', function() {
-        // Heavy sorces redy to work (espesial for
-        // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
-    }, false);
+    // document.addEventListener('deviceready', function() {
+    //     // Heavy cordova sorces redy to work (espesial for
+    //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
+    // }, false);
 }
 
 (function ( g, undefined ) {
@@ -251,6 +262,8 @@ if (window.app === undefined ) {
     /**
      * CustomEvent
      *
+     * @param event { eventinterface }
+     * @param params { object }
      *  polyfill
      */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
@@ -577,10 +590,10 @@ if (window.app === undefined ) {
     };
 
     /**
-     * crud
+     * @function crud - Create Read Update Delete interface
      *
-     * @param meta
-     * @param api
+     * @param meta { Object }
+     * @param api { Object } provide interface GET,DEL,POST,PUT
      */
     var crud = function (meta, api) {
         this.index = null;
@@ -605,7 +618,6 @@ if (window.app === undefined ) {
         crud.prototype[v] = function (data, opt) {
         return typeof this.api === 'function' ? this.api(Object.assign(opt,{ data: data})): this.api[v](data, opt);
     }});
-
     g.crud = crud;
 
     /**
@@ -685,8 +697,8 @@ if (window.app === undefined ) {
     /**
      * @Helper group
      * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
-     * @param els
-     * @param opt
+     * @param { InputHTMLElement [] | HTMLForm } els
+     * @param { Object } opt
      */
     var group = function (els, opt) {
         var self = this;
@@ -894,7 +906,7 @@ if (window.app === undefined ) {
     var input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
             var res = isvalid(element) && (element.hasOwnProperty('couple') ? isvalid(element.couple) : true);
-            if (element.type != 'hidden') {
+            if (element.type !== 'hidden') {
                 inputer( element );
                 if (res === false) {
                     element.status = 'error'
@@ -1002,9 +1014,9 @@ if (window.app === undefined ) {
     /**
      * @function utcISOString
      *
-     * @param dt {String}
-     * @param Z {String}
-     * @returns {string}
+     * @param dt { String }
+     * @param Z { String }
+     * @returns { String }
      */
     g.utcISOString = function (dt, Z) {
         return (new Date(dt || Date.now())).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
@@ -1014,10 +1026,12 @@ if (window.app === undefined ) {
      * @function import from CSV
      *
      * @param file inpgutFomvElevent type file
+     * @param cb { Function } callback function
      *
-     *  <div class="btn-group ml-2 pt-2 pb-2">
-     *  <input type="file" id="CSVfile" name="CSVfile">
-     *  </div>
+     * UI Example:
+     * <div class="btn-group ml-2 pt-2 pb-2">
+     * <input type="file" id="CSVfile" name="CSVfile">
+     * </div>
      */
     g.importFromCSV = function (file, cb) {
         function parseFile2Array(csv) {
@@ -1111,6 +1125,32 @@ if (window.app === undefined ) {
             g.frames['print_layer'].close();
             g.document.body.removeChild(print_layer);
         }, 1);
+    };
+
+    /**
+     * @function crypt
+     *
+     * @param { String } salt
+     * @param { String } text
+     */
+    g.crypt = function (salt, text){
+        var textToChars = function(text) { return text.split('').map(function (c) { return c.charCodeAt(0);})};
+        var applySaltToChar = function (code) { return textToChars(salt).reduce(function (a, b){ return a ^ b; }, code);};
+        var byteHex = function(n) { return ('00' + Number(n).toString(16)).substr(-3); };
+        return text.split('').map(textToChars).map(applySaltToChar).map(byteHex).join('');
+    };
+
+    /**
+     * @function decrypt
+     *
+     * @param { String } salt
+     * @param { String } encoded
+     */
+    g.decrypt = function (salt, encoded) {
+        var textToChars = function(text){ return text.split('').map(function (c) { return c.charCodeAt(0); }); };
+        var applySaltToChar = function (code){ return textToChars(salt).reduce(function (a, b) { return a ^ b; }, code); };
+        return encoded.match(/.{1,3}/g).map(function (hex){ return parseInt(hex, 16); })
+            .map(applySaltToChar).map(function(charCode){ return String.fromCharCode(charCode)}).join('');
     };
 
     /**
@@ -1219,7 +1259,7 @@ if (window.app === undefined ) {
                         fail.call(res);
                         g.app.msg(res);
                     }
-                    return
+                    return false;
                 },
                 fail: function (e, x) {
                     if (typeof opt.fail === 'function') opt.fail.call(x,e);

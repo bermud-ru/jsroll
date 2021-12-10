@@ -138,7 +138,7 @@
      */
     var eventCode = function (e) {
         return e instanceof InputEvent ? e.data : e instanceof Event ?
-        'key' in e ? e.key :'keyCode' in e ? e.keyCode : 'keyIdentifier' in e ? e.keyIdentifier : e.charCode : null;
+        'key' in e ? e.key : 'keyCode' in e ? e.keyCode : 'keyIdentifier' in e ? e.keyIdentifier : e.charCode : null;
     };
     g.eventCode = eventCode;
 
@@ -157,72 +157,97 @@
     }
 
     /**
-     * IndexedDBInterface
-     * @param { Object } opt
+     * @class idxDB
+     *
+     * @param { string } name
+     * @param { int } version
+     * @param { object } opt
      * @constructor
      */
-    g.IndexedDBInterface = function(opt) {
+    g.idxDB = function(name, version, opt) {
         var self = this;
-
-        try {
-            Object.defineProperty(self, 'active', {
-                __proto__: null,
-                get: function active() {
-                    return self.instance ? self.instance.readyState === 'done' : false;
-                }
-            });
-
-            if (typeof opt === 'object') self.merge(opt);
-
-            self.instance = g.indexedDB.open(self.name, self.version);
-
-            // Create schema
-            self.instance.onupgradeneeded = function(e) {
-                return self.build(ui.src(e).result);
+        this.name = name;
+        this.version = parseInt(version);
+        Object.defineProperty(self, 'active', {
+            __proto__: null,
+            get: function active() {
+                return self.idxDBinstance ? self.idxDBinstance.readyState === 'done' : false;
+            }
+        });
+        if (typeof opt === 'object') self.merge(opt);
+        return self;
+    }; g.idxDB.prototype = {
+        IDBOpenDBRequest: null,
+        get db() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.result : null; },
+        connect: function () {
+            var self = this, max = 0, wait = function () {
+                clearTimeout(wait.processs);
+                if (!self.heirs && max++ < 30) {
+                    return wait.processs = setTimeout(wait, 20);
+                };
+                var idxDBinstance = g.indexedDB.open(self.name, self.version, function (e) {
+                    return self.build(e);
+                });
+                // Create schema
+                idxDBinstance.onupgradeneeded = function (e) {
+                    return self.build(e);
+                };
+                // on reload, idxDBinstance up!
+                idxDBinstance.onsuccess = function (e) {
+                    return self.success(e);
+                };
+                idxDBinstance.onblocked = function (e) {
+                    return self.blocked(e);
+                };
+                // on Error
+                idxDBinstance.onerror = function (e) {
+                    return self.fail(e);
+                };
+                return self.idxDBinstance = idxDBinstance;
             };
-            // on reload, instance up!
-            self.instance.onsuccess = function(e) {
-                self.db = ui.src(e).result;
-                return self.success(self.db);
-            };
-            self.instance.onblocked = function (e) {
-                return self.blocked(e);
-            };
-            // on Error
-            self.instance.onerror = function (e) {
+            return wait();
+        },
+        destroy: function (event) {
+            var self = this;
+            self.idxDBinstance = null; // Дропнули всё
+            self.populate = true; // Пересоздали хранилище
+            var idxDBinstance = self.idxDBinstance = g.indexedDB.deleteDatabase(self.name, self.version);
+            idxDBinstance.onsuccess = function (e) {
+                return self.success(e);
+            }
+            idxDBinstance.onerror = function (e) {
                 return self.fail(e);
             }
-        } catch (e) {
-            self.fail(e);
-        }
-    }; g.IndexedDBInterface.prototype = {
-        db: null,
-        name: null,
-        version: 1,
-        schema: null,
-        destroy: function () {
-            var self = this;
-            self.instance = null; // Дропнули всё
-            self.populate = true; // Пересоздали хранилище
-            var instance = g.indexedDB.deleteDatabase(self.name, self.version);
-            instance.onsuccess = self.success;
-            instance.onerror = self.fail;
-            instance.onblocked = self.blocked;
+            idxDBinstance.onblocked = function (e) {
+                return self.blocked(e);
+            }
+            idxDBinstance.onupgradeneeded = function (e) {
+                return self.build(e);
+            }
+        },
+        build: function (e) {
+            this.IDBOpenDBRequest = ui.src(e);
+            var db = this.IDBOpenDBRequest.result;
+            obj2array(this.heirs).map(function (v, i, a) { v.build(db); });
+            return this;
         },
         success: function (e) {
-            console.log(this.name+' database ver '+this.version+' successfully');
+            this.IDBOpenDBRequest = ui.src(e);
+            var db = this.IDBOpenDBRequest.result;
+            obj2array(this.heirs).map(function (v, i, a) { v.init(db); });
+            return this;
+        },
+        close: function () {
+            var self = this;
+            try { self.db.close(); } catch (e) { self.fail(e); }
+            return self;
+        },
+        blocked:function (e) {
+            console.warn(e);
             return this;
         },
         fail: function (e) {
             console.error('Fail '+this.name+' database ver '+this.version, e.message);
-            return this;
-        },
-        blocked:function (e) {
-            console.warn('Couldn\'t operate '+self.name+'database ver '+this.version+' due to the operation being blocked');
-            return this;
-        },
-        upgrade: function (e) {
-            console.log(this.name+' DDLs database ver '+this.version+' successfully inits!');
             return this;
         },
         data2row: function (data, flag) {
@@ -238,28 +263,8 @@
             }
             return data;
         },
-        build: function (db) {
-            var self = this;
-            self.db = db || self.db;
-            try {
-                if (self.db.objectStoreNames.contains(self.name)) {
-                    self.db.deleteObjectStore(self.name); // Удалили хранилище
-                }
-                self.db.createObjectStore(self.name);
-                // Пересоздаём все дочерние сторажы
-                if (self.heirs) self.heirs.map(function (v, i, a) { v.schema(db); });
-                self.upgrade();
-                return true;
-            } catch (e) {
-                self.fail(e);
-                return false;
-            }
-        },
-        close: function (db) {
-            var self = this;
-            self.db = db || self.db;
-            try { self.db.close(); } catch (e) { self.fail(e); }
-            return self;
+        hook: function (model) {
+            return __parent__(this, model);
         }
     };
 
@@ -325,27 +330,46 @@
     var paramStatment = function (v, i, a) { return v + ' = ?'; };
 
     /**
-     * @webSQL
+     * @webSQL wrapper for native webSQL object
      *
-     * @param db
-     * @param opt
+     * @param opt { Object } {name:"DB", version: "1.0", displayName: "Create "+datetimer(new Date()), estimatedSize:200000}
+     * @return webSQLinstance { webSQL }
      */
-    var webSQL = function (db, opt) {
-        if (typeof db !== 'object') throw "webSQL object not exist!";
+    var webSQL = function ( opt) {
         var self = this;
-        if (typeof opt === 'object') self.merge(opt);
-        this.db = db;
+        if ('openDatabase' in g) {
+            this.webSQLinstance = openDatabase(opt.name, opt.version||'1.0', opt.displayName||"DB instace dreated at "+(new Date()), opt.estimatedSize||200000);
+            self.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
+                function(tx, rs) {
+                    var table, tablesNumber = rs.rows.length;
+                    for (var i = 0; i < tablesNumber; i++) {
+                        table = rs.rows.item(i);
+                        if ( table.type === 'table') {
+                            tx.executeSql('SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
+                                self.tables[r.rows[0].name] = {type:'table', DDL:r.rows[0].sql};
+                            });
+                        } else {
+                            self.tables[table.name] = {type: table.type};
+                        }
+                    }
+                }
+            );
+        } else {
+            this.webSQLinstance = null; throw "webSQL object not exist!";
+        }
+        if (opt && typeof opt === 'object') self.merge(opt);
     };
     webSQL.prototype = {
         opt: QueryParam.STRNULL | QueryParam.INTQOUTED,
         changeVersion: function(currentVer, newVer, callback){
             try {
-                return this.db.changeVersion(currentVer, newVer, callback);
+                return this.webSQLinstance.changeVersion(currentVer, newVer, callback);
             } catch (e) {
                 this.fail(null, e);
             }
             return false;
         },
+        tables: {},
         get info() {
             return this.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
                 function(tx, rs) {
@@ -365,8 +389,9 @@
             );
         },
         get version() {
-            return this.db.version;
+            return this.webSQLinstance.version;
         },
+        turn: false,
         runnig: false,
         proc: function (tx, callback) {
             this.runnig = tx;
@@ -386,14 +411,17 @@
         cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
         transaction: function (proc, fail) {
             var self = this;
-            //  self.db.readTransaction(function (tx) {
-            return self.db.transaction(
-                function (tx) {
-                    return self.proc(tx, proc);
-                },
-                function (error) {
-                    return self.fail(self.running, error, fail);
-                });
+            //  self.webSQLinstance.readTransaction(function (tx) {
+            var wait = function() {
+                if (!self.turn || !self.runnig) {
+                    if (wait.timer) clearTimeout(wait.timer);
+                    return self.webSQLinstance.transaction(
+                        function (tx) { return self.proc(tx, proc);},
+                        function (error) { return self.fail(self.running, error, fail); }
+                    );
+                } else { return wait.timer = setTimeout(wait, 50); }
+            }
+            wait();
         },
         executeSql: function(tx, query, data, done, fail) {
             var self = this, multiQuery = typeof query !== 'string' ;
@@ -411,9 +439,18 @@
                 return self.fail(tx, e, fail);
             }
         },
+        /**
+         * webSQL:stmt
+         *
+         * @param query { String }
+         * @param data { Array }
+         * @param done { function }
+         * @param fail { function }
+         * @param bulk { webSQL.BULK | webSQL.UPSERT | webSQL.DEFAULT }
+         */
         stmt: function (query, data, done, fail, bulk) {
             var self = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
-            return this.transaction(
+            return self.transaction(
                 function (tx) {
                     var i = 0, count = d.length, ResultSet = [];
                     var next = function (tx, rs) {
@@ -421,7 +458,7 @@
                             if (typeof rs !== 'undefined' ) ResultSet[i] = rs;
                             self.executeSql(tx, query, d[i++], next, fail)
                         } else {
-                            return done.call(self, tx, count > 1 ? ResultSet : rs);
+                            return typeof done === 'function' ? done.call(self, tx, count > 1 ? ResultSet : rs) : null;
                         }
                     };
                     return next(tx);
@@ -450,9 +487,28 @@
              }
             return query;
         },
+        /**
+         * webSQL:filter
+         *
+         * @param query { String }
+         * @param params { Array }
+         * @param done { function }
+         * @param fail { function }
+         * @return {*|void}
+         */
         filter: function (query, params, done, fail) {
             return this.stmt(this.filtration(query, params), [], done, fail);
         },
+        /**
+         * webSQL:insert
+         *
+         * @param table { String }
+         * @param params  { Array }
+         * @param done { function }
+         * @param fail { function }
+         * @param option { Object }
+         * @return {*|void}
+         */
         insert: function (table, params, done, fail, option) {
             var opt = typeof option === 'undefined' ? webSQL.DEFAULT : Number(option);
             // FOR UPSERT!!!
@@ -467,6 +523,15 @@
 
             return this.stmt(query, values, done, fail, opt & webSQL.BULK);
         },
+        /**
+         *
+         * @param table { String }
+         * @param params { Array }
+         * @param filter
+         * @param done { function }
+         * @param fail { function }
+         * @return {*|void}
+         */
         update: function (table, params, filter, done, fail) {
             var keys = [], where = [], self = this;
             if (typeof filter === 'string') {
@@ -503,15 +568,15 @@
      * @function dbf
      * webSQL wraper for common Interface
      *
-     * @param { webSQL } db
+     * @param { webSQL } webSQLinstance
      * @param { Object } opt
      * @returns {{cancel: (function(): boolean), filter: (function(*=, *=, *=): instansce), fail: fail, opt: {}, done: done, db: *}|void}
      */
-    var dbf = function (db, opt) {
+    var dbf = function (webSQLinstance, opt) {
         if (!db) return console.warn('webSQL ' + opt.naeme + ' not exit!');
         return {
-            opt: Object.create(null), // {}
-            db: db,
+            opt: {},
+            webSQLinstance: webSQLinstance,
             cancel: function () { return false; },
             done: function(tx, rs) {
                 if (typeof this.opt.done === 'function') this.opt.done.call(this, tx, rs);
@@ -524,7 +589,7 @@
             filter: function(query, params, opt) {
                 if (typeof opt === 'object') this.opt.merge(opt);
                 if (typeof opt.before === 'function') opt.before.call(this);
-                this.db.filter(query, params, this.done.bind(this), this.fail.bind(this));
+                this.webSQLinstance.filter(query, params, this.done.bind(this), this.fail.bind(this));
                 return this;
             }
         }
@@ -578,7 +643,7 @@
      * function kv2array
      *
      * @param { Object } o
-     * @param { String | Function } glue
+     * @param { string | function } glue
      * @returns { Array }
      */
     var kv2array = function (o, glue) {
@@ -591,7 +656,7 @@
      * @function coalesce
      * Return first not empty in the function arguments
      *
-     * @returns {variant | null}
+     * @returns { variant | null }
      */
     var coalesce = function() {
         for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null && arguments[i] !== '') return arguments[i] };
@@ -632,7 +697,7 @@
     /**
      * @function bitfields
      *
-     * @param { Integer } status
+     * @param { int } status
      * @param { Array } d
      * @returns { Array }
      */
@@ -659,8 +724,8 @@
      * @function crc32
      * Cyclic redundancy check, CRC32
      *
-     * @param string str
-     * @returns {number}
+     * @param { string } str
+     * @returns { number }
      */
     var crc32 = function(str) {
         var makeCRCHelper = g.makeCRCHelper || (g.makeCRCHelper = function(){
@@ -701,7 +766,7 @@
     Object.defineProperty(Object.prototype, 'merge', {
         value: function() {
             if (!arguments.length) return null;
-            var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : Object.create(null)));
+            var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
             if (typeof this === 'function' && o && o.__proto__.__proto__) o.__proto__.constructor = this;
 
             obj2array(arguments).forEach( function(v, k, a) {
@@ -723,7 +788,7 @@
                             d[key] = Object.getOwnPropertyDescriptor(x, key);
                         }
                         return d;
-                    }, Object.create(null))); // {}
+                    }, {}));
                 }
             });
             return o;
@@ -741,7 +806,7 @@
     Object.defineProperty(Object.prototype, '__parent__', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : Object.create(null))); // {}
+            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
             var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
@@ -769,12 +834,11 @@
                 }
             } else {
                 if (self.hasOwnProperty('childIndex')) {
-                    owner.heirs = Object.create(null); owner.heirs[self.childIndex] = self; // {}
+                    owner.heirs = {}; owner.heirs[self.childIndex] = self;
                 } else {
                     owner.heirs = []; owner.heirs.push(self)
                 }
             }
-
             return self;
         },
         enumerable: false
@@ -783,7 +847,7 @@
     /**
      * String extension
      * hash of string
-     * @returns { integer } 32bit integer
+     * @returns { int } 32bit integer
      */
     Object.defineProperty(String.prototype, 'hash', {
         value: function() {
@@ -799,8 +863,8 @@
      * @function bb (BlobBuilder)
      * Генерация Blob объекта
      *
-     * @param Object blobParts содержимое файла
-     * @param Object option параметры формирвания контейнера Blob mime-type etc
+     * @param { Object } blobParts содержимое файла
+     * @param { Object } option параметры формирвания контейнера Blob mime-type etc
      * @returns {*}
      */
     var bb = function(blobParts, option) {
@@ -859,13 +923,13 @@
      * @function decoder
      * Возвращает объект (Хеш-таблица) параметров
      *
-     * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
-     * @argument RegExp регулярное выражение, по умолчанию /[?&]([^=#]+)=([^&#]*)/
+     * @param { String | window.location } search строка в формате url (Uniform Resource Locator)
+     * @param { Regex } regex регулярное выражение, по умолчанию /[?&]([^=#]+)=([^&#]*)/
      *
      * @result { Object }
      */
-    var decoder = function(search, re) {
-        var re=re || /[?&]([^=#]+)=([^&#]*)/g, p={}, m; // {}
+    var decoder = function(search, regex) {
+        var re = regex || /[?&]([^=#]+)=([^&#]*)/g, p={}, m; // {}
         try {
             while (m = re.exec((search || g.location.search))) {
                 if (m[1] && m[2]) p[decodeURIComponent(m[1])] = QueryParam(decodeURIComponent(m[2]), QueryParam.STRNULL);
@@ -878,7 +942,8 @@
      * @function encoder
      * Возвращает строку вида ключ=значение разделёных &
      *
-     * @argument { Object } Хеш-таблица параметров
+     * @param params { Object }  Хеш-таблица параметров
+     * @param divider { string }
      *
      * @result { String }
      */
@@ -894,13 +959,13 @@
      * @function update
      * Возвращает Url c обновёнными (если были) или добавленными параметрами
      *
-     * @argument { String | window.location } url строка в формате url (Uniform Resource Locator)
-     * @argument { JSON object } параметры в формате ключ-значения
+     * @param { String | window.location } search строка в формате url (Uniform Resource Locator)
+     * @param params {  object }  параметры в формате ключ-значения
      *
      * @result { String }
      */
     var update = function(search, params) {
-        var u = [], h = [], url = g.location.search, kv = params || Object.create(null); // {}
+        var u = [], h = [], url = g.location.search, kv = params || {};
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
         for (var i in kv) { p[decodeURIComponent(i)] = QueryParam(decodeURIComponent(kv[i]), QueryParam.STRNULL); }
@@ -921,8 +986,8 @@
      * location.protocol + '//' + location.host + location.pathname
      * @Example: urn.set(location.pathname + location.update({tab:tabIndex})).lsn();
      *
-     * @param id
-     * @param def
+     * @param id { string }
+     * @param def { * }
      * @returns {{}|*|null}
      */
     var params = function (id, def) {
@@ -935,8 +1000,8 @@
      * URN - Unifrorm Resource Name (унифицированное имя ресурса)
      *
      * @method { function () } fr
-     * @method { function ( Regex, Callback ) } add
-     * @method { function ( Regex | Callback ) } rm
+     * @method { function ( Regex, function ) } add
+     * @method { function ( Regex | function ) } rm
      * @method { function ( String ) } chk
      * @method { function () } lsn
      * @method { function ( String ) } set
@@ -1009,9 +1074,9 @@
      * - Создание фкнкции из строки, передача параметров в функцию и получение результата
      * - или выполнение кода из строки в контексте
      *
-     * @param str Текстовая строка содержащая определение функцц или содержащий JS код
-     * @param self Контекст в котором будет выполнен код
-     * @param args Аргументы функци
+     * @param str { string } Текстовая строка содержащая определение функцц или содержащий JS код
+     * @param self { Object } Контекст в котором будет выполнен код
+     * @param args { [] }Аргументы функци
      * @returns {*}
      */
     var func = function (str, self, args) {
@@ -1050,17 +1115,17 @@
      * @function js
      * Динамическая загрузка javascript
      *
-     * @argument { text | url } src источник
-     * @argument { Object {container, async, type, onload, onreadystatechange} } opt параметры созадваемого скрипта
+     * @param src { string }  источник
+     * @param params { Object } container, async, type, onload, onreadystatechange  параметры созадваемого скрипта
      *
      * 1. var head = g.document.getElementsByTagName("head");
      *    head[0].appendChild(s); // записываем в <head></head>
      * 2. g.document.body.appendChild(s); // записываем в <body></body>
      */
-    function js(src, opt) {
+    function js(src, params) {
         if (!src) return null;
 
-        var opt = Object.assign({async:false, type:'text/javascript', container:g.document.body}, opt);
+        var opt = Object.assign({async:false, type:'text/javascript', container:g.document.body}, params);
         var s = g.document.createElement('script');
         s.type = opt.type;
         s.async = opt.async; // дождаться заргрузки или нет
@@ -1102,14 +1167,14 @@
         var d = {srcElement:x, withCredentials:true, async:true, username:null, password:null, method:'GET', url:g.location.pathname, timeout:10000, cache:false};
         var opt = Object.assign(d, params);
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params || {}).rs);
-        if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() == 'multipart/form-data') delete rs['Content-type'];
+        if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() === 'multipart/form-data') delete rs['Content-type'];
 
         x.process = function() {
             g.addEventListener('offline', x.onerror);
             x.timeout = opt.timeout;
             x.onreadystatechange = function(e) {
                 if (typeof opt.process === 'function') return opt.process(e);
-                else if (x.readyState == g.xhr.DONE && x.status >= 400) return x.halt(e);
+                else if (x.readyState === g.xhr.DONE && x.status >= 400) return x.halt(e);
                 return x;
             };
             x.ontimeout = function (e) { return x.halt({srcElement: x, status:408}); };
@@ -1166,10 +1231,10 @@
      * @function tpl
      * Хелпер для генерации контескта
      *
-     * @argument { String } str (url | html)
-     * @argument { JSON } data объект с даннными
-     * @argument { undefined | function } cb callback функция
-     * @argument { undefined | object } дополнительые методы и своийства
+     * @param { String } str (url | html)
+     * @param { JSON } data объект с даннными
+     * @param { undefined | function } cb callback функция
+     * @param { undefined | object } opt дополнительые методы и своийства
      *
      * @result { String }
      */

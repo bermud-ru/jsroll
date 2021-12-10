@@ -14,191 +14,392 @@
 'suspected';
 'use strict';
 
-var IndexedDBmodel = function (db, vertion) {
-    return new IndexedDBInterface({
-    url: '/sync',
-    name: db,
-    ver: vertion,
-    modelName: null,
-    tablelName: null,
-    primaryKey: null,
-    processing: false,
-    xhrCount: 0,
-    requestLimit: 15000,
-    landing: function (idx) { return null; },
-    schema: function () { return null; },
-    success: function (db) { return console.log('IndexedDBmodel '+db+' успешно стартовала'); },
-    init: function () {
-        var model = this;
-        if (model.heirs) model.heirs.map(function (v, i, a) {
-            v.xhrCount = 0;
-            v.populate();
-        });
-    },
-    get: function (id, opt) {
-        var model = this;
-        var handler = Object.assign({done: null, fail: null}, opt);
-
-        if (id && typeof handler.done === 'function') {
-            try {
-                var tx = model.db.transaction([model.tablelName], 'readonly');
-                var store = tx.objectStore(model.tablelName);
-                tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
-                // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
-                return store.get(id).onsuccess = handler.done;
-            } catch (e) {
-                if (handler.fail) handler.fail(e); else model.fail(e);
-            }
-        }
-    },
-    getAll: function (done) {
-        var model = this;
-        if (typeof done === 'function') {
-            try {
-                if (typeof done === 'function') {
-                    var tx = model.db.transaction([model.tablelName], 'readonly');
-                    tx.onabort = model.fail;
-                    // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
-                    var store = tx.objectStore(model.tablelName);
-                    return store.getAll().onsuccess = done;
-                }
-            } catch (e) {
-                model.fail(e);
-            }
-        }
-    },
-    add: function (data, opt) {
-        var model = this, row = model.data2row(data, QueryParam.STRNULL);
-        var handler = Object.assign({done: null, fail: null}, opt);
-        try {
-            var tx = model.db.transaction([model.tablelName], 'readwrite');
-            (handler.fail == null) ? model.fail : handler.fail;
-            // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
-            var store = tx.objectStore(model.tablelName);
-
-            if (model.hasOwnProperty('primaryKey') && row.hasOwnProperty(model.primaryKey)) {
-                if (row[model.primaryKey] == null) {
-                    delete row[model.primaryKey];
+/**
+ * @helper IndexedDBmodel
+ *
+ * @param tables { string[] }
+ * @param primaryKey { string | null }
+ * @param build { function } create store in IndexedDB instahce
+ * @param init { function } after IndexedDB instahce up
+ * @param opt { Object } extra for create Model
+ * @return { Object }
+ * @constructor
+ */
+var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
+    return Object.merge({
+        tables: typeof tables === 'string' ? [tables] : tables,
+        primaryKey: primaryKey,
+        init: init,
+        build: build,
+        get: function (id, opt) {
+            var self = this;
+            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail}, opt);
+            if (id && typeof handler.done === 'function') {
+                try {
+                    var tx = self.owner.db.transaction(self.tables, 'readonly');
+                    var store = tx.objectStore(self.tables);
+                    tx.onerror = tx.onabort = handler.fail;
+                    // tx.oncomplete = function (event) { self.db.close(); /** after handler **/ };
+                    return store.get(id).onsuccess = handler.done;
+                } catch (e) {
+                    handler.fail(e);
                 }
             }
-            tx.onabort = function (e) {
-                if (model.hasOwnProperty('primaryKey') && row.hasOwnProperty(model.primaryKey))
-                    throw 'PrimaryKey[' + model.primaryKey + '] can\'t use ' + model.tablelName + '::add() method, on populated dataset!';
-            };
-            if (typeof handler.done === 'function') store.add(row).onsuccess = handler.done; else store.add(row);
-        } catch (e) {
-            if (handler.fail) handler.fail(e); else model.fail(e);
-        }
-    },
-    put: function (data, opt) {
-        var model = this, row = model.data2row(data, QueryParam.STRNULL);
-        var handler = Object.assign({done: null, fail: null}, opt);
-        try {
-            var tx = model.db.transaction([model.tablelName], 'readwrite');
-            tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
-            // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
-            var store = tx.objectStore(model.tablelName);
-
-            if (row[model.primaryKey] === null) throw 'PrimaryKey is not set!';
-            if (typeof handler.done === 'function') store.put(row).onsuccess = handler.done; else store.put(row);
-        } catch (e) {
-            if (handler.fail) handler.fail(e); else model.fail(e);
-        }
-    },
-    del: function (idx, opt) {
-        var model = this;
-        var handler = Object.assign({done: null, fail: null}, opt);
-        try {
-            var tx = model.db.transaction([model.tablelName], 'readwrite');
-            tx.onerror = tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
-            // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
-            var store = tx.objectStore(model.tablelName);
-            if (typeof handler.done === 'function') store.delete(idx).onsuccess = handler.done; else store.delete(idx);
-        } catch (e) {
-            if (handler.fail) handler.fail(e); else model.fail(e);
-        }
-    },
-    populate: function (idx) {
-        var model = this;
-        if (!model.processing && model.xhrCount < model.requestLimit) xhr({
-            url: location.update(model.url, {
-                model: model.tablelName,
-                ver: model.version,
-                idx: idx ? JSON.stringify(idx) : ''
-            }),
-            // rs: {'Hash': acl.user.hash}, // -------------------------------------
-            before: function (e) { model.processing = true; },
-            after: function (e) { model.processing = false; },
-            done: function (e, hr) {
-                var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
-                if (res.result === 'ok') {
-                    var count = res.data.rows ? res.data.rows.length : 0;
-                    if (count) {
-                        var i = 0, idx = [];
-                        var next = function () {
-                            if (i < count) {
-                                idx.push(res.data.rows[i][model.primaryKey]);
-                                model.add(res.data.rows[i++], {done: next});
-                            } else {
-                                model.xhrCount += count;
-                                model.processing = false;
-                                if (count) { return model.populate(idx); }
-                            }
-                        };
-                        next();
+        },
+        getAll: function (done) {
+            var self = this;
+            if (typeof done === 'function') {
+                try {
+                    if (typeof done === 'function') {
+                        var tx = self.owner.db.transaction(self.tables, 'readonly');
+                        tx.onerror = tx.onabort = self.fail;
+                        // tx.oncomplete = function (event) { self.db.close(); /** after handler **/ };
+                        var store = tx.objectStore(self.tables);
+                        return store.getAll().onsuccess = done;
                     }
-                } else {
-                    app.msg(res);
+                } catch (e) {
+                    self.owner.fail(e);
                 }
-            },
-            fail: function (e) {
-                var self = this;
-                self.xhrCount++;
-                console.error('Model[' + self.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
             }
-        });
-    }
-});
-}
+        },
+        add: function (data, opt) {
+            var self = this, row = self.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail}, opt);
+            try {
+                console.log('db', self.owner.db);
+                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                tx.onerror = handler.fail;
+                console.log('tx', tx);
+                // tx.oncomplete = function (event) { self.db.close(); /** after handler **/ };
+                var store = tx.objectStore(self.tables[0]);
+                console.log('store', store);
+                if (self.primaryKey && row.hasOwnProperty(self.primaryKey)) {
+                    if (row[self.primaryKey] === null) {
+                        delete row[self.primaryKey];
+                    }
+                }
+                tx.onabort = function (e) {
+                    if (self.primaryKey && row.hasOwnProperty(self.primaryKey))
+                        console.error('row PrimaryKey[' + self.primaryKey + '] = ' + row[self.primaryKey] + ' in ' + JSON.stringify(self.tables) + 'already has!');
+                };
+                if (typeof handler.done === 'function') store.add(row).onsuccess = handler.done; else store.add(row);
+            } catch (e) {
+                handler.fail(e);
+            }
+        },
+        put: function (data, opt) {
+            var self = this, row = self.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail}, opt);
+            try {
+                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                tx.onerror = tx.onabort = handler.fail;
+                // tx.oncomplete = function (event) { self.db.close(); /** after handler **/ };
+                var store = tx.objectStore(self.tablelName);
+                if (!self.primaryKey || row[self.primaryKey] === null) throw 'PrimaryKey is not set!';
+                if (typeof handler.done === 'function') store.put(row).onsuccess = handler.done; else store.put(row);
+            } catch (e) {
+                handler.fail(e);
+            }
+        },
+        del: function (idx, opt) {
+            var self = this;
+            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail}, opt);
+            try {
+                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                tx.onerror = tx.onabort = handler.fail;
+                // tx.oncomplete = function (event) { self.db.close(); /** after handler **/ };
+                var store = tx.objectStore(self.tables);
+                if (typeof handler.done === 'function') store.delete(idx).onsuccess = handler.done; else store.delete(idx);
+            } catch (e) {
+                handler.fail(e);
+            }
+        }
+    }, opt);
+}; g.IndexedDBmodel = IndexedDBmodel;
 
-var webDBmodel = function (db, opt) {
+//
+// var IndexedDBmodel = function (db, vertion) {
+//     return new IndexedDBInterface({
+//     url: '/sync',
+//     name: db,
+//     ver: vertion,
+//     modelName: null,
+//     tablelName: null,
+//     primaryKey: null,
+//     processing: false,
+//     xhrCount: 0,
+//     requestLimit: 15000,
+//     landing: function (idx) { return null; },
+//     schema: function () { return null; },
+//     success: function (db) { return console.log('IndexedDBmodel '+db+' успешно стартовала'); },
+//     init: function () {
+//         var model = this;
+//         if (model.heirs) model.heirs.map(function (v, i, a) {
+//             v.xhrCount = 0;
+//             v.populate();
+//         });
+//     },
+//     get: function (id, opt) {
+//         var model = this;
+//         var handler = Object.assign({done: null, fail: null}, opt);
+//
+//         if (id && typeof handler.done === 'function') {
+//             try {
+//                 var tx = model.db.transaction([model.tablelName], 'readonly');
+//                 var store = tx.objectStore(model.tablelName);
+//                 tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
+//                 // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
+//                 return store.get(id).onsuccess = handler.done;
+//             } catch (e) {
+//                 if (handler.fail) handler.fail(e); else model.fail(e);
+//             }
+//         }
+//     },
+//     getAll: function (done) {
+//         var model = this;
+//         if (typeof done === 'function') {
+//             try {
+//                 if (typeof done === 'function') {
+//                     var tx = model.db.transaction([model.tablelName], 'readonly');
+//                     tx.onabort = model.fail;
+//                     // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
+//                     var store = tx.objectStore(model.tablelName);
+//                     return store.getAll().onsuccess = done;
+//                 }
+//             } catch (e) {
+//                 model.fail(e);
+//             }
+//         }
+//     },
+//     add: function (data, opt) {
+//         var model = this, row = model.data2row(data, QueryParam.STRNULL);
+//         var handler = Object.assign({done: null, fail: null}, opt);
+//         try {
+//             var tx = model.db.transaction([model.tablelName], 'readwrite');
+//             (handler.fail == null) ? model.fail : handler.fail;
+//             // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
+//             var store = tx.objectStore(model.tablelName);
+//
+//             if (model.hasOwnProperty('primaryKey') && row.hasOwnProperty(model.primaryKey)) {
+//                 if (row[model.primaryKey] == null) {
+//                     delete row[model.primaryKey];
+//                 }
+//             }
+//             tx.onabort = function (e) {
+//                 if (model.hasOwnProperty('primaryKey') && row.hasOwnProperty(model.primaryKey))
+//                     throw 'PrimaryKey[' + model.primaryKey + '] can\'t use ' + model.tablelName + '::add() method, on populated dataset!';
+//             };
+//             if (typeof handler.done === 'function') store.add(row).onsuccess = handler.done; else store.add(row);
+//         } catch (e) {
+//             if (handler.fail) handler.fail(e); else model.fail(e);
+//         }
+//     },
+//     put: function (data, opt) {
+//         var model = this, row = model.data2row(data, QueryParam.STRNULL);
+//         var handler = Object.assign({done: null, fail: null}, opt);
+//         try {
+//             var tx = model.db.transaction([model.tablelName], 'readwrite');
+//             tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
+//             // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
+//             var store = tx.objectStore(model.tablelName);
+//
+//             if (row[model.primaryKey] === null) throw 'PrimaryKey is not set!';
+//             if (typeof handler.done === 'function') store.put(row).onsuccess = handler.done; else store.put(row);
+//         } catch (e) {
+//             if (handler.fail) handler.fail(e); else model.fail(e);
+//         }
+//     },
+//     del: function (idx, opt) {
+//         var model = this;
+//         var handler = Object.assign({done: null, fail: null}, opt);
+//         try {
+//             var tx = model.db.transaction([model.tablelName], 'readwrite');
+//             tx.onerror = tx.onabort = (handler.fail == null) ? model.fail : handler.fail;
+//             // tx.oncomplete = function (event) { model.db.close(); /** after handler **/ };
+//             var store = tx.objectStore(model.tablelName);
+//             if (typeof handler.done === 'function') store.delete(idx).onsuccess = handler.done; else store.delete(idx);
+//         } catch (e) {
+//             if (handler.fail) handler.fail(e); else model.fail(e);
+//         }
+//     },
+//     populate: function (idx) {
+//         var model = this;
+//         if (!model.processing && model.xhrCount < model.requestLimit) xhr({
+//             url: location.update(model.url, {
+//                 model: model.tablelName,
+//                 ver: model.version,
+//                 idx: idx ? JSON.stringify(idx) : ''
+//             }),
+//             // rs: {'Hash': acl.user.hash}, // -------------------------------------
+//             before: function (e) { model.processing = true; },
+//             after: function (e) { model.processing = false; },
+//             done: function (e, hr) {
+//                 var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+//                 if (res.result === 'ok') {
+//                     var count = res.data.rows ? res.data.rows.length : 0;
+//                     if (count) {
+//                         var i = 0, idx = [];
+//                         var next = function () {
+//                             if (i < count) {
+//                                 idx.push(res.data.rows[i][model.primaryKey]);
+//                                 model.add(res.data.rows[i++], {done: next});
+//                             } else {
+//                                 model.xhrCount += count;
+//                                 model.processing = false;
+//                                 if (count) { return model.populate(idx); }
+//                             }
+//                         };
+//                         next();
+//                     }
+//                 } else {
+//                     app.msg(res);
+//                 }
+//             },
+//             fail: function (e) {
+//                 var self = this;
+//                 self.xhrCount++;
+//                 console.error('Model[' + self.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
+//             }
+//         });
+//     },
+//     sync: function () {
+//         var model = this;
+//
+//         var tableName = tab1.tableName;
+//         var tx = model.db.transaction([tableName], 'readonly');
+//         var sFamilies = tx.objectStore(tableName);
+//         sFamilies.getAll().onsuccess = function(event)
+//         {
+//             console.log(event.target.result);
+//             var data = obj2array(event.target.result);
+//             if (data.length) {
+//                 if (navigator.onLine && !model.__xhr2 && tableName) { xhr({method:'PUT',url: '/sync',
+//                     data: JSON.stringify({table:'families',rows:data}),
+//                     rs: {'Hash': acl.user.hash,'ver': model.ver||'0.1','Content-type': 'application/json'},
+//                     before: function (e) { model.__xhr2 = this; },
+//                     after: function (e) { model.__xhr2 = null; },
+//                     done: function (e, hr) {
+//                         try {
+//                             var res = JSON.parse(this.responseText);
+//                             var idx = JSON.parse(res.idx);
+//                         } catch (e) {
+//                             res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+//                         }
+//
+//                         if (res.result ==  'ok') {
+//                             app.msg({result:'success', message: 'Синхронизация статусов семей успешно завершена, синронизировано: ' + idx.length});
+//                             console.log(idx);
+//                             if (idx.length) {
+//                                 // TODO: set: synced=1, transmitted=1
+//                                 g.setTimeout(function() {}, 100);
+//                             }
+//                         } else {
+//                             if (res.result == 'error') {
+//                                 app.msg(res);
+//                             }
+//                         }
+//                         //return
+//                     },
+//                     fail: function (e) { console.error('sync Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this); }
+//                 }); }
+//             } else {}
+//         };
+//
+//         var tableName = tab3.tableName;
+//         var tx = model.db.transaction([tableName], 'readonly');
+//         var sQuestionnaire = tx.objectStore(tableName);
+//         sQuestionnaire.getAll().onsuccess = function(event)
+//         {
+//             console.log(event.target.result);
+//             var data = obj2array(event.target.result);
+//             if (data.length) {
+//                 if (navigator.onLine && !model.__xhr && tableName) { xhr({method:'PUT',url: '/sync',
+//                     data: JSON.stringify({table:'questionnaires',rows:data}),
+//                     rs: {'Hash': acl.user.hash,'ver': model.ver||'0.1','Content-type': 'application/json'},
+//                     before: function (e) { model.__xhr = this; },
+//                     after: function (e) { model.__xhr = null; },
+//                     done: function (e, hr) {
+//                         try {
+//                             var res = JSON.parse(this.responseText);
+//                             var idx = JSON.parse(res.idx); // "idx":[1]
+//                             //console.log(idx);
+//                         } catch (e) {
+//                             res = {result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]};
+//                         }
+//
+//                         if (res.result ==  'ok') {
+//                             app.msg({result:'success', message: 'Синхронизация анкет успешно завершена, синронизировано: ' + idx.length});
+//                             console.log(idx);
+//                             if (idx.length) {
+//                                 // TODO: set: synced=1, transmitted=1
+//                                 g.setTimeout(function() {}, 100);
+//                             }
+//                         } else {
+//                             if (res.result == 'error') {
+//                                 app.msg(res);
+//                                 //console.error(res.row);
+//                             }
+//                         }
+//                         //return
+//                     },
+//                     fail: function (e) { console.error('sync Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this); }
+//                 }); }
+//             } else {
+//                 /* TODO:
+//                                     if (model.table == 'families') {
+//                                         console.log('transfer families...');
+//                                         g.setTimeout(function() { g.families.synchronizer.put(); return false }, 100);
+//                                     } else {
+//                                         if (model.table == 'questionnaires') {
+//                                             console.log('transfer questionnaires...');
+//                                             g.setTimeout(function() { g.questionnaires.synchronizer.put(); return false }, 100);
+//                                         }
+//                                     }
+//                 */
+//             }
+//         };
+//     },
+//     unload: function(query, count, option) {
+//
+//     }
+// });
+// }
+// g.IndexedDBmodel = IndexedDBmodel;
+
+/**
+ * webSQLmodel
+ *
+ * @param webSQLinstance { webSQL }
+ * @param opt { Object }
+ */
+var webSQLmodel = function ( webSQLinstance, opt) {
     if (opt && typeof opt === 'object') this.merge(opt);
-
-    if (db && typeof db === 'object') {
-        this.version = db.version;
-    } else {
-        try { db = 'openDatabase' in g ? openDatabase(this.name, this.version, this.displayName, this.estimatedSize) : null; }
-        catch (e) { db = null; console.error(e); }
-    }
-    if (db !== null) this.db = new webSQL(db);
-}; webDBmodel.prototype = {
-    db: null,
-    name: 'DB',
-    version: '1.0',
-    displayName: 'webSQL',
-    estimatedSize: 20000,
+    if (webSQLinstance !== null) this.webSQLinstance = webSQLinstance;
+    else throw "webSQL object not exist!";
+}; webSQLmodel.prototype = {
+    webSQLinstance: null,
     modelName: null,
     tableName: null,
     primaryKey: null,
     processing: false,
     requestLimit: 1500,
     DDL: null,
-    done: function(tx, rs) { return console.log('webDBmodel '+this.db+' успешно стартовала') },
-    fail: function(tx, e) { return console.error('webDBmodel '+e.message) },
+    done: function(tx, rs) { return console.log('webSQLmodel '+this.webSQLinstance+' успешно стартовала') },
+    fail: function(tx, e) { return console.error('webSQLmodel '+e.message) },
     init: function (query, ver) {
-        if (this.db === null) return console.error('DB webSQL not istalled!');
-        if (typeof ver !== 'undefined' && ver != this.db.version) this.db.changeVersion(this.db.version, ver, this.changeVersion);
-        this.db.stmt([query ? query : this.DDL], [], this.done, this.fail); return this;
+        if (this.webSQLinstance === null) return console.error('DB webSQL not istalled!');
+        if (typeof ver !== 'undefined' && ver !== this.webSQLinstance.version) this.webSQLinstance.changeVersion(this.webSQLinstance.version, ver, this.changeVersion);
+        this.webSQLinstance.stmt([query ? query : this.DDL], [], this.done, this.fail); return this;
     },
     changeVersion:function(tx) { return console.log(tx); },
     unload: function(query, count, option) {
         var model = this, opt = Object.assign({timer:0, xhrCount:0, url:'/chunking', method:'PUT', params:{}, limit : 100, page:0, count:0}, option);
-        if (typeof count === 'string') model.db.filter(count, [], function (tx, rs) {
+        if (typeof count === 'string') model.webSQLinstance.filter(count, [], function (tx, rs) {
             opt.count = rs.rows ? rs.rows[0].count : 0;
             if (opt.count === 0) { return false; } else { if (typeof opt.before === 'function') opt.before(rs); }
             var payload = function (tx, rs) {
                 var limit = ' LIMIT '+ opt.limit+' OFFSET ' + (opt.page * opt.limit);
-                model.db.filter(query+limit, [], function(t, r) {
+                model.webSQLinstance.filter(query+limit, [], function(t, r) {
                     opt.length = parseInt(r && r.rows.length);
                     var wait = function() {
                         if (model.processing && !opt.timer) { opt.timer = setTimeout(function () { wait(); }, 50);  return false; }
@@ -207,7 +408,7 @@ var webDBmodel = function (db, opt) {
                             // --------------------------------------------------
                             rs: {'Hash': acl.user.hash, 'Content-type': 'application/json'},
                             data: JSON.stringify(Object.assign({
-                                ver: model.db.version,
+                                ver: model.webSQLinstance.version,
                                 pk: model.primaryKey,
                                 table: model.tablelName,
                                 page: opt.page,
@@ -246,7 +447,7 @@ var webDBmodel = function (db, opt) {
             clearTimeout(opt.timer);
             xhr({
                 url: location.update(opt.url , Object.assign({
-                    ver: model.db.version,
+                    ver: model.webSQLinstance.version,
                     limit: opt.limit,
                     page: opt.page,
                     pk: model.primaryKey,
@@ -290,9 +491,51 @@ var webDBmodel = function (db, opt) {
         return proc();
     }
 };
-// document.addEventListener("deviceready", function() {
-//     db = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
-// }, false);
-// var election13092020 = new webDBmodel(null, {name:"DB" + (acl.user.distric_id || 0) + (acl.user.polling_station || 0), version: "1.2", displayName: "Стораж 2020:09:13", estimatedSize:200000});
+g.webSQLmodel = webSQLmodel;
+// var db = new webSQLmodel(new webSQL({name:"DB", version: "1.0", displayName: "DB instace dreated at "+datetimer(new Date()), estimatedSize:200000}));
+
+var sqlObject = function() {
+    return function (o) {
+        var index = is_empty(o.index) || parseInt(o.index);
+        var pk = o.primaryKey ? o.primaryKey : null;
+        var rows = o.crud;
+        var fn, worker = function (row) {
+            switch (opt.method.toLowerCase()) {
+                case 'del': rows.splice(index,1); break;
+                case 'post': if (pk) row[pk] = Math.max.apply(Math, rows.map(function(r) { return r[pk]; })) + 1;
+                    rows.push(row); break;
+                case 'put': rows[index].merge(row); break;
+                case 'get': default:
+            }
+            if (typeof opt.done === 'function') opt.done(index !== null ? rows[index] : rows);
+            return worker.done = true;
+        }
+        var opt = Object.assign({ srcElement: worker, method: 'get', index: index, rows: rows, timeout: 1000}, o);
+
+        worker.timeout = function () {
+            var res = ((Date.now() - worker.start) < opt.timeout);
+            if (!res) {
+                clearTimeout(worker.instance);
+                if (typeof opt.cansel === 'function') opt.cansel(); else console.warn('Worker timeout');
+            }
+            return res;
+        };
+
+        worker.start = Date.now();
+        worker.done = false;
+
+        if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
+            (fn = function () {
+                if (worker.timeout()) worker.instance = setTimeout(function () {
+                    worker(o.data);
+                    if (!worker.done) return fn();
+                    if (typeof opt.after == 'function') opt.after();
+                    return false;
+                }, 0);
+            })();
+        }
+        return worker;
+    };
+}; g.sqlObject = sqlObject;
 
 }( window, window.ui ));
