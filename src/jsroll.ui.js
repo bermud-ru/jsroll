@@ -565,7 +565,7 @@ if (window.app === undefined ) {
      * @param { Object } v - объете данных
      * @param { Boolean } required - обязательное поле
      * @param { String } alias альтернативное имя поля в объете данных
-     * @returns { Strring 'none' 'success', 'warning', 'error' }
+     * @returns { Strring 'none' 'success', 'warn', 'error' }
      */
     var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
@@ -859,8 +859,8 @@ if (window.app === undefined ) {
         if (el instanceof Element && g.ui.wrap(el) && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
-                    this.parentElement.css.del('has-(danger|warning|success|spinner)');
-                    this.css.del('is-(valid|invalid|warning|spinner)');
+                    this.parentElement.css.del('has-(danger|warn|success|spinner)');
+                    this.css.del('is-(valid|invalid|warn|spinner)');
                     if (this.disabled) stat = 'none'; else if (stat === undefined || stat === null) stat = 'warn';
                     switch (stat) {
                         case 'error':
@@ -868,10 +868,10 @@ if (window.app === undefined ) {
                             this.css.add('is-invalid');
                             this.parentElement.css.add('has-danger');
                             break;
-                        case 'warning': case 'warn':
-                            this._status = 'warning';
-                            this.css.add('is-warning');
-                            this.parentElement.css.add('has-warning');
+                        case 'warn':
+                            this._status = 'warn';
+                            this.css.add('is-warn');
+                            this.parentElement.css.add('has-warn');
                             break;
                         case 'success': case 'ok':
                             this._status = 'success';
@@ -911,7 +911,7 @@ if (window.app === undefined ) {
                 if (res === false) {
                     element.status = 'error'
                 } else if (res === null || res === undefined) {
-                    element.status = 'warning'
+                    element.status = 'warn'
                 } else {
                     if (element.value && element.value.length) { element.status = 'success'; } else  { element.status = 'none'; }
                 }
@@ -1152,6 +1152,46 @@ if (window.app === undefined ) {
         return encoded.match(/.{1,3}/g).map(function (hex){ return parseInt(hex, 16); })
             .map(applySaltToChar).map(function(charCode){ return String.fromCharCode(charCode)}).join('');
     };
+
+    /**
+     * @function base64_encode Encodes data with MIME base64
+     * original by: Tyler Akins (http://rumkin.com)
+     * improved by: Bayron Guevara
+     *
+     * @param data {string}
+     * @return {string}
+     */
+    function base64_encode( data ) {
+        var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
+
+        do { // pack three octets into four hexets
+            o1 = data.charCodeAt(i++);
+            o2 = data.charCodeAt(i++);
+            o3 = data.charCodeAt(i++);
+
+            bits = o1<<16 | o2<<8 | o3;
+
+            h1 = bits>>18 & 0x3f;
+            h2 = bits>>12 & 0x3f;
+            h3 = bits>>6 & 0x3f;
+            h4 = bits & 0x3f;
+
+            // use hexets to index into b64, and append result to encoded string
+            enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
+        } while (i < data.length);
+
+        switch( data.length % 3 ){
+            case 1:
+                enc = enc.slice(0, -2) + '==';
+                break;
+            case 2:
+                enc = enc.slice(0, -1) + '=';
+                break;
+        }
+
+        return enc;
+    }; g.base64_encode = base64_encode;
 
     /**
      * @function download
@@ -1439,7 +1479,7 @@ if (window.app === undefined ) {
                                         th.opt.error(res, this);
                                         break;
                                     case 'warn': default:
-                                        __status = 'warning';
+                                        __status = 'warn';
                                         th.opt.warn(res, this);
                                 }
                                 return this;

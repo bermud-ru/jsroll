@@ -16,7 +16,7 @@
     var version = '2.1.2b';
 
     g.HTTP_RESPONSE_CODE = {
-          0: 'Request runtime error',
+          0: 'Request runtime error / address unreachable',
          10: 'Application offline',
         100: 'Continue',
         101: 'Switching Protocol',
@@ -263,7 +263,7 @@
             }
             return data;
         },
-        hook: function (model) {
+        bind: function (model) {
             return __parent__(this, model);
         }
     };
@@ -1158,7 +1158,12 @@
      */
     function xhr(params){
         var x = new xmlHttpRequest(); if (!x) return null;
-
+        Object.defineProperty(x, 'responseJSON', {
+            __proto__: null,
+            get: function responseJSON() {
+                return str2json(this.responseText,{result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[parseInt(this.status)]});
+            }
+        });
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
@@ -1241,7 +1246,7 @@
     var tpl = function tpl( str, data, cb, opt ) {
         var context = this, args = arguments; args[1] = args[1] || {};
         var fn, self = {
-            context: context, attr: null, cached: false, str: str, data: data, cb: cb, processing: false, timer: null,
+            context: context, attr: null, cache: true, str: str, data: data, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
                 var self = this;
                 if (self.processing) { self.timer = setTimeout(function () { self.wait(after, args); }, 50); return self; }
@@ -1273,7 +1278,7 @@
                    source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("/((^|"+tag[1]+")[^\t]*)'/g"),"$1\r").replace(re("/\t=(.*?)"+tag[1]+"/g"),"',$1,'")
                    .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
-            build = function( str, id ) {
+            build = function( str, id, cashe ) {
                 var isId = typeof id !== 'undefined', pattern = null;
                 var dom = null, result = null, before, after, pig = g.ui.el(id);
 
@@ -1290,11 +1295,11 @@
                         opt.before(self, args);
                     }
 
-                    if (isId && g.tpl.cache.hasOwnProperty(id)) {
-                        pattern = g.tpl.cache[id];
+                    if ( cache ) {
+                        pattern = func(cache);
                     } else {
                         pattern = compile(str);
-                        if (isId) { g.tpl.cache[id] = pattern; if (self.cached) g.localStorage.setItem(id, encodeURIComponent(str)); }
+                        if (isId && self.cache) g.sessionStorage.setItem(id, pattern.toString());
                     }
 
                     if (!pattern) { return self.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
@@ -1327,24 +1332,21 @@
             };
 
         try {
-            var t;
+            var cache;
             switch ( true ) {
-                case str.match(is_url) ? true : false:
+                case str.match(is_url):
                     var id = 'uri' + str.hash();
-                    if (g.tpl.cache.hasOwnProperty(id)) { return build(null, id); }
+                    if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
+                    // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
                     var opt = opt || {}; opt.rs = Object.assign(opt.rs|| {}, {'Content-type':'text/x-template'});
-                    self.cached = opt.hasOwnProperty('cached') ? !!opt.cached : false;
-                    if (self.cached && (t = g.localStorage.getItem(id))) { return build(decodeURIComponent(t), id); }
                     return g.xhr(Object.assign({ owner: context, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
                         fail: function(e) { return self.onTplError('tpl-xhr', id, str, args, e); }
                         }, opt));
-                case !/[^#*\w\-\.]/.test(str) ? true : false:
-                    if (g.tpl.cache.hasOwnProperty(str)) { return build(null, str); }
+                case !/[^#*\w\-\.]/.test(str):
+                    if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
                     var tmp = g.document.getElementById(str.replace(/^#/,''));
                     if (!tmp) { return self.onTplError('tpl-byId '+str+' not exist!'); }
-                    self.cached = !!tmp.getAttribute('cached');
-                    if (self.cached && (t = g.localStorage.getItem(str))) { return build(decodeURIComponent(t), str); }
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str );

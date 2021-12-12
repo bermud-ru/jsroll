@@ -416,7 +416,7 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                             before: function (e) { model.processing = true; },
                             after: function (e) { model.processing = false; opt.xhrCount++; },
                             done: function (e, hr) {
-                                var res = str2json(this.responseText,{result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+                                var res = ui.src(e).responseJSON;
                                 if (res.result === 'ok') {
                                     if ( opt.length + (opt.page++ * opt.limit) < opt.count ) {
                                         if (typeof opt.progress === 'function') opt.progress(model, Object.assign(opt, {rows:res.data ? res.data.rows:[]}));
@@ -457,7 +457,7 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                 before: function (e) { model.processing = true; return false; },
                 after: function (e) { model.processing = false; opt.xhrCount++; return false; },
                 done: function (e, hr) {
-                    var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+                    var res = ui.src(e).responseJSON;
                     if (res.result === 'ok') {
                         opt.length = res.data && res.data.rows ? res.data.rows.length : 0;
                         opt.page = res.paginator.page + 1;
