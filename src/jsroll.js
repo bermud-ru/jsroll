@@ -182,9 +182,8 @@
         connect: function () {
             var self = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
-                if (!self.heirs && max++ < 30) {
-                    return wait.processs = setTimeout(wait, 20);
-                };
+                if (!self.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
+
                 var idxDBinstance = g.indexedDB.open(self.name, self.version, function (e) {
                     return self.build(e);
                 });
@@ -633,7 +632,7 @@
 
     /**
      * @function obj2array
-     * 
+     *
      * @param { Object } a
      * @returns { Array }
      */
@@ -676,13 +675,19 @@
         if (s) {
             opt = typeof opt === 'undefined' ? quoter.CODE_QOUTAS : opt;
             if (opt & quoter.SLASHES_QOUTAS) s =  s.replace(/\\"/g, '"').replace(/\\'/g, "'");
+            if (opt & quoter.DOUBLE_SLASHES) s =  s.replace(/\\/g, '\\');
             if (opt & quoter.CODE_QOUTAS) s =  s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            if (opt & quoter.CODE_QOUTAS2) s =  s.replace(/"/g, '&#39;').replace(/'/g, '&quot;');
+            if (opt & quoter.QOUTAS_CODE) s =  s.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             return s;
         }
         return '';
     }; g.quoter = quoter;
     g.quoter.CODE_QOUTAS = 1;
-    g.quoter.SLASHES_QOUTAS = 2;
+    g.quoter.CODE_QOUTAS2 = 2;
+    g.quoter.SLASHES_QOUTAS = 4;
+    g.quoter.DOUBLE_SLASHES = 8;
+    g.quoter.QOUTAS_CODE = 16;
 
     /**
      * @function bundler
@@ -693,6 +698,21 @@
     var bundler = function() {
         return obj2array(arguments).filter(function (v) { return (typeof v !== 'undefined' && v !== null && v !== ''); });
     }; g.bundler = bundler;
+
+    /**
+     * Достаём необходимые поля из объекта
+     *
+     * @param o { Object }
+     * @param f { string[] }
+     * @returns Object
+     */
+    g.data_maker = function (o, f) {
+        if (f instanceof Array) {
+            var r = {}; f.forEach(function (v) { r[v] = o.hasOwnProperty(v) ? o[v] : null; })
+            return r;
+        }
+        return o;
+    };
 
     /**
      * @function bitfields
@@ -749,6 +769,227 @@
 
         return (crc ^ (-1)) >>> 0;
     }; g.crc32 = crc32;
+
+    /**
+     * mb_case_title
+     *
+     * @param s {string}
+     * @returns {string|null}
+     */
+    g.mb_case_title = function(s) {
+        return s.length ? s.replace(/(?:^\s*|\s+)(\S?)/g, function(a, b){ return a.slice(0, -1) + b.toUpperCase(); }) : null;
+    };
+
+    /**
+     * @function datetimer
+     *
+     * @param dt { string | Date }
+     * @param option { int }
+     * @returns {string|null}
+     */
+    g.datetimer = function(dt, option){
+        var opt = typeof option === 'undefined' ? datetimer.DATETIME: Number(option);
+        if (!dt) return null;
+        var d = typeof dt === 'string' ? new Date(dt.replace(/\s/, 'T')) : dt;
+        var date = opt & datetimer.DATE ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth()+1)).slice(-2) + "." + d.getFullYear() : null;
+        var time = opt & datetimer.TIME ? ('0' + d.getHours()).slice(-2) + ":" + ('0' + d.getMinutes()).slice(-2) : null;
+        var second = opt & datetimer.SECOND ? '.' + ('0' + d.getSeconds()).slice(-2) : '';
+        return bundler(date, time).join(' ') + second;
+    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 3; datetimer.SECOND = 4;
+
+    /**
+     * @function localISOString
+     *
+     * @param dt {String}
+     * @param Z {String}
+     * @returns {string}
+     */
+    g.localISOString = function (dt, Z) {
+        var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
+        return (new Date(Date.now(dt) - tzoffset)).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
+    };
+
+    /**
+     * @function utcISOString
+     *
+     * @param dt { String }
+     * @param Z { String }
+     * @returns { String }
+     */
+    g.utcISOString = function (dt, Z) {
+        return (new Date(dt || Date.now())).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
+    };
+
+    /**
+     * @function import from CSV
+     *
+     * @param file inpgutFomvElevent type file
+     * @param cb { Function } callback function
+     *
+     * UI Example:
+     * <div class="btn-group ml-2 pt-2 pb-2">
+     * <input type="file" id="CSVfile" name="CSVfile">
+     * </div>
+     */
+    g.importFromCSV = function (file, cb) {
+        function parseFile2Array(csv) {
+            var dataSet = [];
+            csv.split(importFromCSV.EOL).forEach(function(line) {
+                var tuple = []; line.split(",").forEach(function(cell) { tuple.push(cell); });
+                dataSet.push(tuple);
+            });
+            return dataSet;
+        }
+
+        file.ui.on('change', function (e) {
+            var reader = new FileReader();
+            reader.onload = function (e) {
+                return cb.call(this.file, parseFile2Array(g.ui.src(e).result)); //this is where the csv array will be
+            };
+            // var f = file.files[0];
+            file.files.forEach(function (f) { reader.file = f; reader.readAsText(f); });
+        });
+    }; g.importFromCSV.EOL = "\n";
+
+    /**
+     * @function exportToCSV
+     *
+     * @param { String } filename
+     * @param { Array } rows
+     */
+    g.exportToCSV = function(filename, rows) {
+        var processRow = function (row) {
+            var finalVal = '';
+            for (var j = 0, l = row.length; j < l; j++) {
+                var innerValue = row[j] === null ? '' : row[j].toString();
+                if (row[j] instanceof Date) { innerValue = row[j].toLocaleString(); }
+
+                var result = innerValue.replace(/"/g, '""');
+                if (result.search(/("|,|\n)/g) >= 0) result = '"' + result + '"';
+                if (j > 0) finalVal += ',';
+                finalVal += result;
+            }
+            return finalVal + '\n';
+        };
+
+        var csvFile = '';
+        for (var i = 0, l = rows.length; i < l; i++) {
+            csvFile += processRow(rows[i]);
+        }
+
+        dwnBlob(csvFile, filename,'text/csv;charset=utf-8;');
+    };
+
+    /**
+     * @function exportHTML2Word
+     *
+     * @param { string } innerHTML
+     * @param { string } fileName
+     */
+    g.exportHTML2Word = function (innerHTML, fileName) {
+        var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
+            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
+            "xmlns='http://www.w3.org/TR/REC-html40'>" +
+            "<head><meta charset='utf-8'><title>" +(fileName||'document.doc')+ "</title></head><body>";
+        var footer = "</body></html>";
+        var sourceHTML = header+innerHTML+footer;
+
+        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;charset=utf-8;');
+    };
+
+    /**
+     * @Helper copy2prn
+     * Подготавливает данные звёрнутые в шаблон к печати
+     *
+     * @param { String } template - DOM element Id
+     * @param { Object } data - for tpl
+     */
+    g.copy2prn = function (template, data) {
+        var print_layer = g.document.createElement('iframe');
+        print_layer.name = 'print_layer';
+        print_layer.src = 'printer';
+        print_layer.style.display = 'none';
+        g.document.body.appendChild(print_layer);
+
+        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
+        frameDoc.document.open();
+        frameDoc.document.write(tpl(template,data||{}));
+        frameDoc.document.close(); // necessary for IE >= 10
+
+        setTimeout(function () {
+            g.frames['print_layer'].focus();// necessary for IE >= 10*/
+            g.frames['print_layer'].print();
+            g.frames['print_layer'].close();
+            g.document.body.removeChild(print_layer);
+        }, 1);
+    };
+
+    /**
+     * @function crypt
+     *
+     * @param { String } salt
+     * @param { String } text
+     */
+    g.crypt = function (salt, text){
+        var textToChars = function(text) { return text.split('').map(function (c) { return c.charCodeAt(0);})};
+        var applySaltToChar = function (code) { return textToChars(salt).reduce(function (a, b){ return a ^ b; }, code);};
+        var byteHex = function(n) { return ('00' + Number(n).toString(16)).substr(-3); };
+        return text.split('').map(textToChars).map(applySaltToChar).map(byteHex).join('');
+    };
+
+    /**
+     * @function decrypt
+     *
+     * @param { String } salt
+     * @param { String } encoded
+     */
+    g.decrypt = function (salt, encoded) {
+        var textToChars = function(text){ return text.split('').map(function (c) { return c.charCodeAt(0); }); };
+        var applySaltToChar = function (code){ return textToChars(salt).reduce(function (a, b) { return a ^ b; }, code); };
+        return encoded.match(/.{1,3}/g).map(function (hex){ return parseInt(hex, 16); })
+            .map(applySaltToChar).map(function(charCode){ return String.fromCharCode(charCode)}).join('');
+    };
+
+    /**
+     * @function base64_encode Encodes data with MIME base64
+     * original by: Tyler Akins (http://rumkin.com)
+     * improved by: Bayron Guevara
+     *
+     * @param data {string}
+     * @return {string}
+     */
+    function base64_encode( data ) {
+        var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+        var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
+
+        do { // pack three octets into four hexets
+            o1 = data.charCodeAt(i++);
+            o2 = data.charCodeAt(i++);
+            o3 = data.charCodeAt(i++);
+
+            bits = o1<<16 | o2<<8 | o3;
+
+            h1 = bits>>18 & 0x3f;
+            h2 = bits>>12 & 0x3f;
+            h3 = bits>>6 & 0x3f;
+            h4 = bits & 0x3f;
+
+            // use hexets to index into b64, and append result to encoded string
+            enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
+        } while (i < data.length);
+
+        switch( data.length % 3 ){
+            case 1:
+                enc = enc.slice(0, -2) + '==';
+                break;
+            case 2:
+                enc = enc.slice(0, -1) + '=';
+                break;
+        }
+
+        return enc;
+    }; g.base64_encode = base64_encode;
 
     /**
      * Object extension
@@ -920,6 +1161,123 @@
     }; g.dwnBlob = dwnBlob;
 
     /**
+     * @function download
+     *
+     * @param { HTMLElement } button
+     * @param { String } url
+     * @param { Object } opt
+     * @returns {XMLHttpRequest}
+     */
+    g.download = function(button, url, opt) {
+        return xhr(Object.assign({responseType: 'arraybuffer', url: url,
+            done: function(e, x) {
+                var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
+                if (res.result !== 'ok') {
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    console.log('donwload - OK');
+                    return false;
+                }
+
+                try {
+                    var filename = uuid();
+                    if (opt && opt.hasOwnProperty('filename')) {
+                        filename = decodeURIComponent(quoter(opt['filename'], quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
+                    } else {
+                        var disposition = this.getResponseHeader('Content-Disposition');
+                        if (disposition && disposition.indexOf('attachment') !== -1) {
+                            var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+                            var matches = filenameRegex.exec(disposition);
+                            if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],
+                                quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
+                        }
+                    }
+
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    return g.dwnBlob(this.response, filename, this.getResponseHeader('Content-Type'));
+                } catch (e) {
+                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                    console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                }
+            },
+            fail: opt && opt.fail || function (e) {
+                if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
+                console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+            }
+        },opt));
+    };
+
+    /**
+     * @function upload
+     *
+     * @param stream
+     * @param url
+     * @param opt
+     */
+    g.upload = function(stream, url, opt) {
+        var file = stream.files[0];
+        var done = opt.done; delete opt['done'];
+        var fail = opt.fail; delete opt['fail'];
+        var stop = opt.stop; delete opt['stop'];
+        var dir = opt.dir || null; delete opt['dir'];
+
+        if (!file) return console.warn('File not found!');
+
+        var slice = function (file, start, end, type) {
+            var slice = file.mozSlice ? file.mozSlice : file.webkitSlice ? file.webkitSlice : file.slice ? file.slice : function () { };
+            return slice.bind(file)(start, end);
+        };
+
+        var size = file.size, filename = file.name;
+        var sliceSize = opt.sliceSize||1024;
+        var start = opt.start||0, end;
+        var data, piece, xhr;
+
+        var loop = function () {
+            end = start + sliceSize;
+            data = new FormData();
+            if (size - end < 0) {
+                end = size;
+                if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
+            }
+
+            piece = slice(file, start, end);
+            data.append('dir', dir);
+            data.append('filename', filename);
+            data.append('size', size);
+            data.append('start', start);
+            data.append('end', end);
+            data.append('file', piece);
+
+            if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
+                url: url,
+                data: data,
+                done: function (e, x) {
+                    var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+
+                    if (res.result === 'ok') {
+                        if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
+                        if (res.end < size) {
+                            start += sliceSize;
+                            setTimeout(loop, 1);
+                        } else {
+                            done.call(res);
+                        }
+                    } else {
+                        fail.call(res);
+                        g.app.msg(res);
+                    }
+                    return false;
+                },
+                fail: function (e, x) {
+                    if (typeof opt.fail === 'function') opt.fail.call(x,e);
+                    console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                }
+            }, opt));
+        };
+        if (size > 0) setTimeout(loop, 1);
+    };
+
+    /**
      * @function decoder
      * Возвращает объект (Хеш-таблица) параметров
      *
@@ -1075,39 +1433,23 @@
      * - или выполнение кода из строки в контексте
      *
      * @param str { string } Текстовая строка содержащая определение функцц или содержащий JS код
-     * @param self { Object } Контекст в котором будет выполнен код
+     * @param context { Object } Контекст в котором будет выполнен код
      * @param args { [] }Аргументы функци
      * @returns {*}
      */
-    var func = function (str, self, args) {
+    var func = function (str, context, args) {
         if (typeof str !== 'string') return console.error("func src is't a string type!\n", str);
         try {
             var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
             switch ( true ) {
-                case /^\s*function.*[}|;]*$/igm.test(s) :
-                    var $ = '$'+uuid().replace(/-/g,'');
-                    var fn = new Function('var '+$+'='+s+'; return '+$+'.apply(this, arguments)');
-                    // if (typeof args !== 'undefined')  {
-                    //     return fn.call(self || this || g, args);
-                    // } else {
-                    return fn;
-                // }
-                // var fn = new Function('return ' + s + '.apply(this, arguments)');
-                // if (typeof self !== 'undefined' && this != g)  {
-                //     return typeof fn === 'function' ? fn.call(self || this || g, args) : undefined;
-                // } else {
-                //     return fn;
-                // }
-                // return new Function('return ' + s + '.apply(this, arguments)');
+                case /^\s*function.*[}|;]*$/im.test(s) :
+                    var fn = new Function(args||[], 'var f='+s+'; return f.apply(this, arguments)');
+                    return context ? fn.bind(context) : fn;
                 default:
-                    // var fn = function (self, args) { try { return eval(s); } catch (e) {
-                    //     return console.error( 'jsRoll.func(', str, self, args, ')', e.message + "\n" );
-                    // } };
-                    // return function (self, args) { return fn.call(self||g, args||arguments||[]); };
-                    return function () { return eval(s); };
+                    return function(){ return eval(quoter(s, quoter.QOUTAS_CODE));}.apply(context||g, args||[]);
             }
         } catch( e ) {
-            return console.error( 'func ', e.message + "\n", str );
+            return console.error('func ', e.message + "\n", s );
         }
     }; g.func = func;
 
@@ -1212,8 +1554,9 @@
             }
 
             if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
-                x.withCredentials = opt.withCredentials;
                 x.open(opt.method.toUpperCase(), opt.url, opt.async, opt.username, opt.password);
+                x.withCredentials = opt.withCredentials;
+                if (x.withCredentials) x.setRequestHeader('cookies', document.cookie);
                 for (var m in rs) x.setRequestHeader(m, rs[m]);
                 x.process().send(opt.data);
             } else {
@@ -1237,16 +1580,16 @@
      * Хелпер для генерации контескта
      *
      * @param { String } str (url | html)
-     * @param { JSON } data объект с даннными
+     * @param { Object } data объект с даннными
      * @param { undefined | function } cb callback функция
      * @param { undefined | object } opt дополнительые методы и своийства
      *
      * @result { String }
      */
     var tpl = function tpl( str, data, cb, opt ) {
-        var context = this, args = arguments; args[1] = args[1] || {};
+        var ctx = this, args = arguments; var arg = args[1] || [], pig = {before: null, after:null};
         var fn, self = {
-            context: context, attr: null, cache: true, str: str, data: data, cb: cb, processing: false, timer: null,
+            context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
                 var self = this;
                 if (self.processing) { self.timer = setTimeout(function () { self.wait(after, args); }, 50); return self; }
@@ -1270,28 +1613,23 @@
         };
 
         var compile = function( str ) {
-            var $ = '$'+uuid().replace(/-/g,''),
-                source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
-            if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
-            // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
-            return source.length ? new Function($,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+$+"){p.push('"+
-                   source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("/((^|"+tag[1]+")[^\t]*)'/g"),"$1\r").replace(re("/\t=(.*?)"+tag[1]+"/g"),"',$1,'")
-                   .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
+                var f = '$'+uuid().replace(/-/g,'');
+                var source = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*|\<![\-\-\s\w\>\/]*\>/igm,'').replace(/\>\s+\</g,'><').trim(),tag = ['{%','%}'];
+                if (!source.match(/{%(.*?)%}/g) && source.match(/<%(.*?)%>/g)) tag = ['<%','%>'];
+                // source = source.replace(/"(?=[^<%]*%>)/g,'&quot;').replace(/'(?=[^<%]*%>)/g,'&#39;');
+                return source.length ? new Function(f,"var p=[], print=function(){ p.push.apply(p,arguments); }; with("+f+"){p.push('"+
+                source.replace(/[\r\t\n]/g," ").split(tag[0]).join("\t").replace(re("/((^|"+tag[1]+")[^\t]*)'/g"),"$1\r").replace(re("/\t=(.*?)"+tag[1]+"/g"),"',$1,'")
+                .split("\t").join("');").split(tag[1]).join("p.push('").split("\r").join("\\'")+"');} return p.join('');") : undefined;
             },
-            build = function( str, id, cashe ) {
-                var isId = typeof id !== 'undefined', pattern = null;
-                var dom = null, result = null, before, after, pig = g.ui.el(id);
-
+            build = function( str, id, cache ) {
+                var isId = typeof id !== 'undefined', pattern = null, dom = null;
                 try {
-                    if (pig) {
-                        self.attributes = pig.ui.attr();
-                        if (before = pig.getAttribute('before') && (typeof (fn = func(before, self, args)) === 'function')) {
-                            fn(self, args);
-                        }
+                    if (pig.before && (typeof (fn = func(pig.before, self)) === 'function')) {
+                        fn.apply(self, args);
                     }
-                    if (opt && typeof opt.before == 'object') {
-                        args[1].merge(opt.before);
-                    } else if (opt && typeof opt.before == 'function') {
+                    if (opt && typeof opt.before === 'object') {
+                        arg.merge(opt.before);
+                    } else if (opt && typeof opt.before === 'function') {
                         opt.before(self, args);
                     }
 
@@ -1299,33 +1637,44 @@
                         pattern = func(cache);
                     } else {
                         pattern = compile(str);
-                        if (isId && self.cache) g.sessionStorage.setItem(id, pattern.toString());
+                        if (isId && self.caching) g.sessionStorage.setItem(id, pattern.toString());
                     }
 
                     if (!pattern) { return self.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
 
-                    var awaiting = function (self) {
-                        if (self.processing) { self.timer = setTimeout(function () { awaiting(self); }, 50); return; }
+                    var a, awaiting = function () {
+                        if (self.processing) { self.timer = setTimeout(awaiting, 50); return; }
 
-                        result = pattern.call(self, args[1]);
-
-                        if (typeof cb == 'function') { self.tpl = cb.call(dom = g.ui.dom(result,'html/dom'), result); }
-                        else if (self.tpl instanceof HTMLElement || cb instanceof HTMLElement && (self.tpl = cb)) {
-                            self.tpl.innerHTML = result;
-                        } else if (cb instanceof Array && (self.tpl = cb)) {
-                            cb.forEach(function (i) { i.innerHTML = result;} );
+                        if ( !(cb instanceof Array) ) {
+                            a = typeof arg === 'function' ? arg.apply(self, args) : arg;
+                            self.html = pattern.call(self, a);
                         }
 
-                        if (self.tpl && pig && (after = pig.getAttribute('after')) &&
-                            (typeof (fn = func(after, self, args)) === 'function')) {
-                            self.wait(fn, args);
+                        var after = opt && typeof opt.after == 'function' ? opt.after : null;
+
+                        if (typeof cb === 'function') { self.tpl = cb.call(dom = g.ui.dom(self.html,'html/dom'), self); }
+                        else if (cb instanceof HTMLElement && (self.tpl = cb)) {
+                            self.tpl.innerHTML = self.html;
+                        } else if ( cb instanceof Array ) {
+                            self.tpl = cb;
+                            self.tpl.forEach(function (i) {
+                                a = typeof arg === 'function' ? arg.call(self, i, args) : arg;
+                                i.innerHTML = pattern.call(self, a);
+                                if (pig.after && (typeof (fn = func(pig.after, i, a)) === 'function')) {
+                                    self.wait(fn, a);
+                                }
+                                if (after) { self.wait(after, a); }
+                            });
+                            return self.tpl;
                         }
-                        if (opt && typeof opt.after == 'function') {
-                            self.wait(opt.after, args);
+
+                        if (pig.after && (typeof (fn = func(pig.after, self.tpl, a)) === 'function')) {
+                            self.wait(fn, a);
                         }
-                        return dom || result;
+                        if (after) { self.wait(after, a); }
+                        return dom || self.html;
                     };
-                    return awaiting(self);
+                    return awaiting();
                 } catch( e ) {
                     return self.onTplError('tpl-build', id, str, args, e);
                 }
@@ -1336,23 +1685,27 @@
             switch ( true ) {
                 case str.match(is_url):
                     var id = 'uri' + str.hash();
+                    self.caching = true;
                     if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
                     // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
-                    var opt = opt || {}; opt.rs = Object.assign(opt.rs|| {}, {'Content-type':'text/x-template'});
-                    return g.xhr(Object.assign({ owner: context, url: str, async: (typeof cb === 'function'),
+                    var o = opt || {}; o.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    return g.xhr(Object.assign({ owner: self, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
                         fail: function(e) { return self.onTplError('tpl-xhr', id, str, args, e); }
-                        }, opt));
+                        }, o));
                 case !/[^#*\w\-\.]/.test(str):
-                    if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
+                    self.caching = true;
                     var tmp = g.document.getElementById(str.replace(/^#/,''));
+                    pig.before = tmp && tmp.getAttribute('before');
+                    pig.after = tmp && tmp.getAttribute('after');
+                    if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
                     if (!tmp) { return self.onTplError('tpl-byId '+str+' not exist!'); }
                     return build( tmp.innerHTML, str );
                 default:
                     return build( str );
             }
         } catch ( e ) { return self.onTplError('tpl', id, str, args, e) }
-    }; tpl.cache = {}; g.tpl = tpl;
+    }; g.tpl = tpl;
 
     /**
      * @function storage

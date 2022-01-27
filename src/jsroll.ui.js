@@ -15,9 +15,7 @@ var Application = function (app) {
     if (window.addEventListener) {
         window.addEventListener('online', function (e) { return self.online(e); }, false);
         window.addEventListener('offline', function (e) { return self.offline(e); }, false);
-        document.addEventListener('DOMContentLoaded', function(event) {
-            return self.__ready__ = true;
-        }, false);
+        document.addEventListener('DOMContentLoaded', function(event) { return self.__ready__ = true; }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
             if (hash !== urn.handled.hash) {
@@ -47,16 +45,32 @@ var Application = function (app) {
         //     console.log(window.location.pathname+  window.location.search);
         // }
     }
-
+    self.merge(str2json(storage.getItem('Application')));
     // if (app && typeof app === 'object') this.merge(app);
 }; Application.prototype = {
+    __version_pool__: [],
+    $version: null,
+    get version() { return this.$version },
+    set version(s) {
+        if (this.$version !== s) {
+            var self = this, wait = function() {
+                if (self.__ready__) {
+                    if (wait.timer) clearTimeout(wait.timer);
+                    self.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
+                    self.$version = s
+                } else {
+                    return wait.timer = setTimeout( wait, 50);
+                }
+            }
+            return wait();
+        }
+    },
     __ready__: false,
     notsupport:null, //'/notsupport.html',
     url: null,
     socket: null,
     run: function () {
         if (typeof window.ui === 'undefined') return this.notsupport ? window.location.href = this.notsupport : alert('Application not supported!');
-        this.merge(str2json(decodeURIComponent(storage.getItem('Application'))));
         if (navigator.onLine) {
             this.online();
             // if (this.url) { try { this.socket = window.ws(this.url); } catch (e) { console.error(e); } }
@@ -66,24 +80,61 @@ var Application = function (app) {
     },
     online: function (e) { return console.log('app online ' + datetimer(new Date())); },
     offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
+    /**
+     *
+     * @param fn { closure }
+     * @param args { arguments }
+     * @return {*|number}
+     */
+    changeVersion: function (fn, args) { return this.__version_pool__.push({fn:fn, args:args||[]}) },
+    /**
+     *
+     * @param fn { closure }
+     * @param args { arguments }
+     * @return {*|number}
+     */
     onready: function (fn, args) {
         var self = this, wait = function(after, args) {
             if (self.__ready__) {
                 if (wait.timer) clearTimeout(wait.timer);
-                return fn.call(self, args||[]);
+                return fn.apply(self, args||[]);
             } else {
                 return wait.timer = setTimeout(function () { wait(fn, args); }, 50);
             }
         }
         return wait(fn, args);
     },
+    /**
+     *
+     * @param e { Event }
+     * @return {boolean}
+     */
     resize: function (e) { return false; },
     serialize: function (e) {
         var props = {}, self = this;
         Object.getOwnPropertyNames(self).forEach( function (i ) {
             if (i.startsWith('$')) { props[i] = self[i]; }
         });
-        return storage.setItem('Application', encodeURIComponent(JSON.stringify(props)));
+        if (Object.keys(props).length === 0) {
+            storage.removeItem('Application');
+        } else {
+            storage.setItem('Application', JSON.stringify(props));
+        }
+    },
+    confirmReload: false,
+    reload: function (e) {
+        if (e || (e = window.event)) {
+            //e.cancelBubble is supported by IE - this will kill the bubbling process.
+            e.cancelBubble = true;
+            e.returnValue = this.confirmReload; //This is displayed on the dialog
+            //e.stopPropagation works in Firefox.
+            if (e.stopPropagation) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+            return  false;
+        }
+        return this.confirmReload;
     },
     destroy: function (e) {
         this.serialize();
@@ -127,6 +178,7 @@ if (window.app === undefined ) {
     window.onload = function (event) { return app.run(event); }
     window.onunload = function (event) { return app.destroy(event); };
     window.onresize = function (event) { return app.resize(event); };
+    window.onbeforeunload = function (event) { if (app.confirmReload) return  app.reload(event); };
     // document.addEventListener('deviceready', function() {
     //     // Heavy cordova sorces redy to work (espesial for
     //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
@@ -167,7 +219,7 @@ if (window.app === undefined ) {
         },
         /**
          * @function has return [" <clssname>", ...] | null is exist Cascading Style Sheets class in HTMLelement
-         * @param c
+         * @param c {string|array}
          * @returns {Array|{index: number, input: string}}
          */
         has: function(c){
@@ -181,8 +233,8 @@ if (window.app === undefined ) {
         },
         /**
          * @function replace Repalace mephod Cascading Style Sheets class name
-         * @param r regexp|substr
-         * @param n newSubStr|function
+         * @param r {regexp|substr}
+         * @param n {newSubStr|function}
          * @param f flags
          * @returns {css}
          */
@@ -192,7 +244,7 @@ if (window.app === undefined ) {
         },
         /**
          * @function add - Add Cascading Style Sheets class to HTMLelement
-         * @param c
+         * @param c {string|array}
          * @returns {css}
          */
         add: function (c) {
@@ -204,7 +256,7 @@ if (window.app === undefined ) {
         },
         /**
          * @function del - Delete Cascading Style Sheets class from HTMLelement
-         * @param c
+         * @param c {string|array}
          * @returns {css}
          */
         del: function (c) {
@@ -221,7 +273,7 @@ if (window.app === undefined ) {
         },
         /**
          * @function tgl - Toggle Cascading Style Sheets class of HTMLelement
-         * @param c
+         * @param c {string|array}
          * @returns {css}
          */
         tgl: function (c) {
@@ -243,27 +295,29 @@ if (window.app === undefined ) {
             //     g.document.selection.createRange().text; // IE, используем объект selection
         }
     });
-
-    /**
-     * Fix native mephod selection
-     */
-    function selection() {
+    g.emptySelection = function (){
         if (g.getSelection) {
             if (g.getSelection().empty) {  // Chrome
                 g.getSelection().empty();
             } else if (g.getSelection().removeAllRanges) {  // Firefox
                 g.getSelection().removeAllRanges();
             }
-        } else if (g.document.selection) {  // IE?
-            g.document.selection.empty();
+        } else if (document.selection) {  // IE?
+            g.selection.empty();
         }
-    }; g.selection = selection;
+    }
 
     /**
      * CustomEvent
      *
      * @param event { eventinterface }
      * @param params { object }
+     * -- capture:  Boolean указывает, что события этого типа будут отправлены зарегистрированному обработчику listener
+     * перед отправкой на EventTarget, расположенный ниже в дереве DOM.
+     * -- once: Boolean указывает, что обработчик должен быть вызван не более одного раза после добавления. Если true,
+     * обработчик автоматически удаляется при вызове.
+     * -- passive:  Boolean указывает, что обработчик никогда не вызовет preventDefault(). Если всё же вызов будет
+     * произведён, браузер должен игнорировать его и генерировать консольное предупреждение.
      *  polyfill
      */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
@@ -306,22 +360,37 @@ if (window.app === undefined ) {
             }
             return el;
         },
-        el: function (s, fn) {
+        /**
+         *
+         * @param s { string }
+         * @param fn { closure }
+         * @param args { arguments }
+         * @return { null|HTMLElement }
+         */
+        el: function (s, fn, args) {
             var el = null;
             if (typeof s === 'string') {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
             } else if ( s instanceof HTMLElement) { el = s }
-            if (el) {  this.wrap(el); if (typeof fn === 'function') fn.call(el); }
+            if (el) {  this.wrap(el); if (typeof fn === 'function') fn.apply(el, args || []); }
             return el;
         },
-        els: function (s, fn) {
+        /**
+         *
+         * @param s { string }
+         * @param fn { closure }
+         * @param args { arguments }
+         * @return { null|HTMLElement }
+         */
+        els: function (s, fn, args) {
             var r = [], self = this;
             if (typeof s === 'string'|| s instanceof Array) {
                 var c = typeof s === 'string' ? s.split(/\s*,\s*/) : s;
                 c.forEach((function (x) {
                     r.push.apply(r, obj2array(self.instance.querySelectorAll(x), []).map(function (e, i, a) {
-                        if ( e instanceof HTMLElement ) self.wrap(e); if (typeof fn == 'function') fn.call(e, i, a);
+                        if ( e instanceof HTMLElement ) self.wrap(e);
+                        if (typeof fn == 'function') fn.apply(e,args?args.push(i).push(a):[i,a]);
                         return e;
                     }));
                 }).bind(self));
@@ -332,7 +401,7 @@ if (window.app === undefined ) {
             if (a === undefined) {
                 var attrs = {}, n;
                 for (var i in this.instance.attributes)
-                    attrs[(n = this.instance.attributes[i].nodeName)] = this.instance.getAttribute(n);
+                    attrs[(n = this.instance.attributes[i].nodeName)] = QueryParam(this.instance.getAttribute(n),QueryParam.STRNULL);
                 return attrs;
             } else if (typeof a === 'object' && typeof v === 'undefined') {
                 for (var i in a) if (! /\d+/.test(i)) this.instance.setAttribute(i,a[i]);
@@ -344,28 +413,23 @@ if (window.app === undefined ) {
                     obj2array(this.instance.attributes).forEach(function (e, i, a) {
                         var name = e.nodeName.toString();
                         if (mask.test(name) && (name = name.replace(mask, '')))
-                            data[name] = e.value; //.e.nodeValue
+                            data[name] = str2json(e.value, QueryParam(e.value,QueryParam.STRNULL));
                     });
                     return data;
                 } else {
-                    try {
-                        return str2json(this.instance.getAttribute(a));
-                    } catch (e) {
-                        return this.instance.getAttribute(a);
-                    }
+                    return str2json(this.instance.getAttribute(a), QueryParam(this.instance.getAttribute(a),QueryParam.STRNULL));
                 }
-            } else if (typeof a === 'string' && v) {
-                if (! /\d+/.test(a)) {
-                    if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
-                    else this.instance.setAttribute(a, v);
-                }
+            } else if (typeof a === 'string') {
+                if (v === null) this.instance.removeAttribute(a);
+                else if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
+                else this.instance.setAttribute(a, v);
             }
             return this;
         },
         tpl: function (str, data, cb, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
-            a.forEach( function (v, i) {
-                v.ui.inner = tpl(str, data instanceof Array ? data[i] : data, cb, opt);
+            a.forEach( function (v, i, a) {
+                v.ui.inner = tpl(str, data, cb, opt);
             });
             return this.instance;
         },
@@ -379,12 +443,28 @@ if (window.app === undefined ) {
             if (el instanceof HTMLElement) return this.wrap(el);
             return el;
         },
-        on: function (event, fn, opt) {
+        /**
+         * Обработчик события
+         *
+         * @param event { string }
+         * @param fn { closure }
+         * @param args { IArguments }
+         * @param opt {false|Object}
+         * -- capture:  Boolean указывает, что события этого типа будут отправлены зарегистрированному обработчику listener
+         * перед отправкой на EventTarget, расположенный ниже в дереве DOM.
+         * -- once: Boolean указывает, что обработчик должен быть вызван не более одного раза после добавления. Если true,
+         * обработчик автоматически удаляется при вызове.
+         * -- passive:  Boolean указывает, что обработчик никогда не вызовет preventDefault(). Если всё же вызов будет
+         * произведён, браузер должен игнорировать его и генерировать консольное предупреждение.
+         * @return {*|Window}
+         */
+        on: function (event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
-                a.forEach( function (i) {
-                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.addEventListener(event, fn, !!opt);
+                a.forEach(function (i) {
+                    if (!tags.length || tags.indexOf(i.tagName) >-1)
+                        i.addEventListener(event, function (e) {return fn.apply(i,args?args.unshift(e):[e])}, opt ? opt : false);
                 });
             });
             return this.instance;
@@ -394,7 +474,7 @@ if (window.app === undefined ) {
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
                 a.forEach( function (i) {
-                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.removeEventListener(event, fn, !!opt);
+                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.removeEventListener(event, fn, opt ? opt : false);
                 });
             });
             return this.instance;
@@ -403,7 +483,17 @@ if (window.app === undefined ) {
             var el = this.instance;
             return typeof s === 'string' ? s.split(/\s*,\s*/).some( function(e) { return el.matches(e); }) : false;
         },
-        dg: function (s, event, fn, opt) {
+        /**
+         * Делигировать событие
+         *
+         * @param s { string }
+         * @param event { string }
+         * @param fn { closure }
+         * @param args { IArguments }
+         * @param opt {false|Object}
+         * @return {*|Window}
+         */
+        dg: function (s, event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
@@ -411,13 +501,16 @@ if (window.app === undefined ) {
                     var self = this, found = false, el = g.ui.src(e);
                     // while (el && el.matches && el !== this && !(found = el.ui.matches(s))) el = el.parentElement;
                     while (el && el !== self && !(found = el.ui.matches(s))) el = el.parentElement;
-                    if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.call(el, e); }
+                    if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
                     return found;
-                }, !!opt); });
+                }, opt ? opt : false); });
             });
             return this.instance;
         },
         /**
+         *
+         * @param d { string }
+         * @param mime { string }
          * Default: [text/xml], результирующий объект будет типа XMLDocument (#document->...) !+ xmlns="http://www.w3.org/1999/xhtml"
          * [application/xml] возвращает Document, но не SVGDocument или HTMLDocument
          * [image/svg+xml] возвращает SVGDocument, который так же является экземпляром класса Document
@@ -454,9 +547,9 @@ if (window.app === undefined ) {
             return (this.instance instanceof Element && (this.instance === g.document.activeElement));
         },
         focus: function(s) {
-            var el = null;
-            if (s) { el = (typeof s == 'string' ? this.el(s): s); } else { el = this.instance; }
-            if (el instanceof HTMLElement) setTimeout(function(e) { el.focus(); }, 0);
+            var el = this.instance;
+            if (s) { el = (typeof s === 'string' ? this.el(s): s); }
+            setTimeout(function(e) { return el.focus(); }, 0);
             return el;
         }
     }; g.ui = new ui(document);
@@ -470,24 +563,24 @@ if (window.app === undefined ) {
      * @returns { * }
      */
     var InputHTMLElementValue = function(el, def) {
-        var n = null;
+        var v = null;
         if (el instanceof HTMLElement) {
             switch ((el.getAttribute('type') || 'text').toLowerCase()) {
                 case 'checkbox': case'radio':
-                    var on = (el.value.indexOf('on') === -1);
-                    n = el.checked ? ( on ? el.value : 1) : (on ?  '' : 0);
+                    var on = el.value.indexOf('on') >-1;
+                    v = el.checked ? ( on ? 1 : el.value) : (on ? 0 : '');
                     break;
                 default:
-                    n = el.value || def;
+                    v = el.value || def;
             }
         }
-        return QueryParam(n, QueryParam.NULLSTR);
+        return QueryParam(v, QueryParam.NULLSTR);
     };
 
     /**
      * @function getElementsValues
      *
-     * pack Element Attribute 2^0 + 2^1 + 2^2 ... 2^n values of array name bits AND in single value
+     * pack - Element Attribute 2^0 + 2^1 + 2^2 ... 2^n values of array name bits AND in single value
      * @param { InputHTMLElement [] } elements
      * @param { int } opt
      * @returns { Object }
@@ -496,16 +589,18 @@ if (window.app === undefined ) {
         var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
-                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) > -1;
-                if (f && (!grp || grp && el.checked)) {
-                    if ( d[f] === undefined || (grp && d[f] === empty)) {
+                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1;
+                if (f) {
+                    if ( d[f] === undefined || (grp && d[f] === empty) ) {
                         d[f] = InputHTMLElementValue(el);
                     } else {
                         if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
                             d[f] = Number(d[f]) | Number(el.value);
                         } else {
-                            if (!(d[f] instanceof Array)) d[f] = [d[f]];
-                            d[f].push(InputHTMLElementValue(el));
+                            if ( !grp || d[f].checked ) {
+                                if (!(d[f] instanceof Array)) d[f] = [d[f]];
+                                d[f].push(InputHTMLElementValue(el));
+                            }
                         }
                     }
                 }
@@ -554,7 +649,10 @@ if (window.app === undefined ) {
             case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
             case 'color': case 'range': case 'search':
             case 'email': case 'tel': case 'url':
-            default: el.value = QueryParam(value, QueryParam.NULLSTR);
+            default:
+                if (!(el.value = QueryParam(value, QueryParam.NULLSTR)) && el.tagName === 'SELECT') {
+                    el.selectedIndex = 0;
+                }
         }
     };
 
@@ -565,7 +663,7 @@ if (window.app === undefined ) {
      * @param { Object } v - объете данных
      * @param { Boolean } required - обязательное поле
      * @param { String } alias альтернативное имя поля в объете данных
-     * @returns { Strring 'none' 'success', 'warn', 'error' }
+     * @returns { Strring ['none', 'success', 'warn', 'error'] }
      */
     var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
@@ -599,24 +697,29 @@ if (window.app === undefined ) {
         this.index = null;
         this.meta = meta;
         this.api = api ;
+        return this;
     };
     crud.prototype = Array.prototype;
+    crud.prototype.__data__ = [];
+    crud.prototype.item = function (idx) {
+        return this.__data__[idx] || this.meta;
+    };
     Object.defineProperty(crud.prototype, 'data', {
         set: function (data) {
-            if (data instanceof Array && data.length) {
-                var self = this;
-                self.merge(data.map(function (v) {
-                    return Object.merge(self.meta, v)
-                }));
+            var self = this;
+            if (data instanceof Array) {
+                self.__data__ = data.map(function (v) {return Object.merge(self.meta, v)});
                 self.index = 0;
-            }
+            } else { self.__data__ = []; }
         },
-        get: function() { return this; },
+        get: function() { return this.__data__; },
         enumerable: true, configurable: true
     });
     ['post','put','get','del'].map(function (v) {
         crud.prototype[v] = function (data, opt) {
-        return typeof this.api === 'function' ? this.api(Object.assign(opt,{ data: data})): this.api[v](data, opt);
+        var o = Object.merge(opt,{data:data_maker(data||this.meta,opt.fields)});
+        o['method'] = {'post':'POST','put':'PUT','get':'GET','del':'DELETE'}[v];
+        return typeof this.api === 'function' ? this.api(o) : this.api[v](o);
     }});
     g.crud = crud;
 
@@ -682,14 +785,12 @@ if (window.app === undefined ) {
         before: function (e) { return true; },
         after: function (e) { this.hXHR = null; return false; },
         done: function(e) {
-            var xhr = ui.src(e), res = str2json(xhr.responseText,{result:'error', message:xhr.status + ': ' + HTTP_RESPONSE_CODE[xhr.status]});
-            if ( res.result === 'error' ) { console.warn(res.message); } else {
-                console.log('stored success!');
-            }
+            var res = g.ui.src(e).responseJSON;
+            if ( res.result === 'error' ) { console.warn(res.message); } else { console.log('stored success!'); }
             return false;
         },
-        fail: function (e) { return console.error(HTTP_RESPONSE_CODE[ui.src(e).status]); },
-        cansel: function () { if (this.hXHR) this.hXHR.halt(); },
+        fail: function (e) { return console.error(g.ui.src(e).responseJSON.message); },
+        cansel: function (e) { if (this.hXHR) this.hXHR.halt(e); },
         hXHR: null,
         crud: function (params) { return this.hXHR = xhr(params); }
     };
@@ -701,33 +802,43 @@ if (window.app === undefined ) {
      * @param { Object } opt
      */
     var group = function (els, opt) {
-        var self = this;
-        self.opt = Object.merge({srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
+        var self = this, native = true;
+        self.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
         self.__elements = typeof els === 'string' ? ui.els(els) : els;
+        self.form = {};
 
         if ( self.__elements instanceof HTMLFormElement ) {
-            self.form = self.__elements;
+            self.form = self.__elements; native = false;
             Object.defineProperty(self.opt, 'method', {
-                get: function() { return self.form.getAttribute('method') || 'post' },
-                enumerable: true,  configurable: true });
+                enumerable: true,
+                configurable: true,
+                get: function method () {
+                    return self.form.getAttribute('method') || 'get'
+                }
+            });
             self.opt.url = self.form.getAttribute('action') || self.opt.url;
             self.form.addEventListener('submit',self.onsubmit.bind(self), true);
             self.__elements = g.ui.wrap(obj2array(self.form.elements).map(function (el) { return g.ui.wrap(el);}));
         }
 
+        self.__elements.forEach(function (v){ v.group = self; if (native) self.form[v.name] = v; });
         if ( self.opt.submit ) {
             var submit = self.opt.submit instanceof Array ? self.opt.submit : [self.opt.submit];
             submit.forEach(function (v){ if (v instanceof HTMLElement) v.ui.on('click', self.onsubmit.bind(self)); });
         }
 
         self.hashing();
-        if (self.opt.change) self.elements.ui.on('change', self.opt.change.bind(self));
+        if (self.opt.change) {
+            var fieldset;
+            if (fieldset = self.querySelector('fieldset')) fieldset.ui.on('change', self.opt.change.bind(self));
+            else self.elements.ui.on('change', self.opt.change.bind(self));
+        }
     }; group.prototype = {
         form: null,
         __elements: [],
-        get elements() { return  this.__elements; },
+        get elements() { return this.__elements; },
         get length() { return this.elements.length; },
-        byName: function (n) {
+        getElementById: function (n) {
             if (typeof n === 'undefined') return this.elements;
             var r = []; for(var i = 0, l = this.length; i < l; i++) {
                 if (this.elements[i].getAttribute('name') === n || this.elements[i].getAttribute('id') === n) {
@@ -736,7 +847,7 @@ if (window.app === undefined ) {
             }
             return r.length === 0 ? null : (r.length === 1 ? r[0] : g.ui.wrap(r));
         },
-        bySelector: function (s) {
+        querySelector: function (s) {
             if (typeof s === 'undefined') return this.elements;
             var r = []; for(var i = 0, l = this.length; i < l; i++) {
                 if (this.elements[i].matches(s)) { r.push(this.elements[i]); }
@@ -745,9 +856,11 @@ if (window.app === undefined ) {
         },
         onsubmit: function(e) {
             e.stopPropagation();
+            this.opt.event = e;
             if (e instanceof MouseEvent || e instanceof KeyboardEvent && (eventCode(e) === 13 || eventCode(e) === 'Enter')) {
-               this.store(this.data);
-            } return false;
+                this.store(this.data);
+            }
+            return false;
         },
         __changed: null,
         hashing: function(s) { this.__changed = JSON.stringify(s ? s : this.data).hash(); },
@@ -800,16 +913,26 @@ if (window.app === undefined ) {
         store: function (data) {
             try {
                 if (this.opt.crud) {
-                    if (typeof this.opt.crud === 'function') { this.opt.crud(Object.assign({data: data}, this.opt)); }
-                    else { this.opt.crud[this.opt.method.toLocaleLowerCase()](data, this.opt) }
+                    if (data && this.opt.fields) data = data_maker(data, this.opt.fields);
+                    if (typeof this.opt.crud === 'function') { this.opt.crud(Object.assign( this.opt, {data: data})); }
+                    else { this.opt.crud[this.opt.method.toLocaleLowerCase()](this.opt, data) }
+                    return this;
                 }
             } catch (e) {
                 if (typeof this.opt.fail === 'function') this.opt.fail(e);
-                if (typeof this.opt.after === 'function') this.opt.after();
             }
+            if (typeof this.opt.after === 'function') this.opt.after.call(this);
             return this;
         }
     }; g.group = group;
+
+}( window ));
+
+(function ( g, ui, undefined ) {
+    'suspected';
+    'use strict';
+
+    if ( typeof ui === 'undefined' ) return false;
 
     /**
      * @function isvalid
@@ -819,7 +942,8 @@ if (window.app === undefined ) {
      */
     var isvalid = function (element) {
         var res = true, validator = null, pattern;
-        if ((element.getAttribute('required') !== null) && !element.value) res = false;
+        if (element.validity.typeMismatch) res = false;
+        else if ((element.getAttribute('required') !== null) && !element.value) res = false;
         else if ((element.getAttribute('required') === null) && !element.value) res = true;
         else if ((pattern = element.getAttribute('pattern')) === null) res = true;
         else {
@@ -948,367 +1072,7 @@ if (window.app === undefined ) {
     //     return;
     // }; g.pattern_validator = pattern_validator;
 
-}( window ));
 
-(function ( g, ui, undefined ) {
-    'suspected';
-    'use strict';
-
-    if ( typeof ui === 'undefined' ) return false;
-
-    /**
-     * mb_case_title
-     *
-     * @param s {string}
-     * @returns {string|null}
-     */
-    g.mb_case_title = function(s) {
-        return s.length ? s.replace(/(?:^\s*|\s+)(\S?)/g, function(a, b){ return a.slice(0, -1) + b.toUpperCase(); }) : null;
-    };
-
-    /**
-     * Достаём необходимые поля из объекта
-     *
-     * @param o Object
-     * @param f Array
-     * @returns Object
-     */
-    g.fields_extractor = function (o, f) {
-        if (f && f.length) {
-            var result = {};
-            for (var i in f) if (o.hasOwnProperty(f[i])) result[f[i]] = o[f[i]]; else result[f[i]] = null;
-            return result;
-        }
-        return o;
-    };
-
-    /**
-     * @function datetimer
-     *
-     * @param dt { string | Date }
-     * @param option { int }
-     * @returns {string|null}
-     */
-    g.datetimer = function(dt, option){
-        var opt = typeof option === 'undefined' ? datetimer.DATETIME: Number(option);
-        if (!dt) return null;
-        var d = typeof dt === 'string' ? new Date(dt.replace(/\s/, 'T')) : dt;
-        var date = opt & datetimer.DATE ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth()+1)).slice(-2) + "." + d.getFullYear() : null;
-        var time = opt & datetimer.TIME ? ('0' + d.getHours()).slice(-2) + ":" + ('0' + d.getMinutes()).slice(-2) : null;
-        var second = opt & datetimer.SECOND ? '.' + ('0' + d.getSeconds()).slice(-2) : '';
-        return bundler(date, time).join(' ') + second;
-    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 3; datetimer.SECOND = 4;
-
-    /**
-     * @function localISOString
-     *
-     * @param dt {String}
-     * @param Z {String}
-     * @returns {string}
-     */
-    g.localISOString = function (dt, Z) {
-        var tzoffset = (new Date()).getTimezoneOffset() * 60000; //offset in milliseconds
-        return (new Date(Date.now(dt) - tzoffset)).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
-    };
-
-    /**
-     * @function utcISOString
-     *
-     * @param dt { String }
-     * @param Z { String }
-     * @returns { String }
-     */
-    g.utcISOString = function (dt, Z) {
-        return (new Date(dt || Date.now())).toISOString().slice(0, -1) + (Z||'Z'); // + 'Z';
-    };
-
-    /**
-     * @function import from CSV
-     *
-     * @param file inpgutFomvElevent type file
-     * @param cb { Function } callback function
-     *
-     * UI Example:
-     * <div class="btn-group ml-2 pt-2 pb-2">
-     * <input type="file" id="CSVfile" name="CSVfile">
-     * </div>
-     */
-    g.importFromCSV = function (file, cb) {
-        function parseFile2Array(csv) {
-            var dataSet = [];
-            csv.split(importFromCSV.EOL).forEach(function(line) {
-                var tuple = []; line.split(",").forEach(function(cell) { tuple.push(cell); });
-                dataSet.push(tuple);
-            });
-            return dataSet;
-        }
-
-        file.ui.on('change', function (e) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-               return cb.call(this.file, parseFile2Array(g.ui.src(e).result)); //this is where the csv array will be
-            };
-            // var f = file.files[0];
-            file.files.forEach(function (f) { reader.file = f; reader.readAsText(f); });
-        });
-    }; g.importFromCSV.EOL = "\n";
-
-    /**
-     * @function exportToCSV
-     *
-     * @param { String } filename
-     * @param { Array } rows
-     */
-    g.exportToCSV = function(filename, rows) {
-        var processRow = function (row) {
-            var finalVal = '';
-            for (var j = 0, l = row.length; j < l; j++) {
-                var innerValue = row[j] === null ? '' : row[j].toString();
-                if (row[j] instanceof Date) { innerValue = row[j].toLocaleString(); }
-
-                var result = innerValue.replace(/"/g, '""');
-                if (result.search(/("|,|\n)/g) >= 0) result = '"' + result + '"';
-                if (j > 0) finalVal += ',';
-                finalVal += result;
-            }
-            return finalVal + '\n';
-        };
-
-        var csvFile = '';
-        for (var i = 0, l = rows.length; i < l; i++) {
-            csvFile += processRow(rows[i]);
-        }
-
-        dwnBlob(csvFile, filename,'text/csv;charset=utf-8;');
-    };
-
-    /**
-     * @function exportHTML2Word
-     *
-     * @param { string } innerHTML
-     * @param { string } fileName
-     */
-    g.exportHTML2Word = function (innerHTML, fileName) {
-        var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
-            "xmlns:w='urn:schemas-microsoft-com:office:word' " +
-            "xmlns='http://www.w3.org/TR/REC-html40'>" +
-            "<head><meta charset='utf-8'><title>" +(fileName||'document.doc')+ "</title></head><body>";
-        var footer = "</body></html>";
-        var sourceHTML = header+innerHTML+footer;
-
-        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
-        dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;charset=utf-8;');
-    };
-
-    /**
-     * @Helper copy2prn
-     * Подготавливает данные звёрнутые в шаблон к печати
-     *
-     * @param { String } template - DOM element Id
-     * @param { Object } data - for tpl
-     */
-    g.copy2prn = function (template, data) {
-        var print_layer = g.document.createElement('iframe');
-        print_layer.name = 'print_layer';
-        print_layer.src = 'printer';
-        print_layer.style.display = 'none';
-        g.document.body.appendChild(print_layer);
-
-        var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
-        frameDoc.document.open();
-        frameDoc.document.write(tpl(template,data||{}));
-        frameDoc.document.close(); // necessary for IE >= 10
-
-        setTimeout(function () {
-            g.frames['print_layer'].focus();// necessary for IE >= 10*/
-            g.frames['print_layer'].print();
-            g.frames['print_layer'].close();
-            g.document.body.removeChild(print_layer);
-        }, 1);
-    };
-
-    /**
-     * @function crypt
-     *
-     * @param { String } salt
-     * @param { String } text
-     */
-    g.crypt = function (salt, text){
-        var textToChars = function(text) { return text.split('').map(function (c) { return c.charCodeAt(0);})};
-        var applySaltToChar = function (code) { return textToChars(salt).reduce(function (a, b){ return a ^ b; }, code);};
-        var byteHex = function(n) { return ('00' + Number(n).toString(16)).substr(-3); };
-        return text.split('').map(textToChars).map(applySaltToChar).map(byteHex).join('');
-    };
-
-    /**
-     * @function decrypt
-     *
-     * @param { String } salt
-     * @param { String } encoded
-     */
-    g.decrypt = function (salt, encoded) {
-        var textToChars = function(text){ return text.split('').map(function (c) { return c.charCodeAt(0); }); };
-        var applySaltToChar = function (code){ return textToChars(salt).reduce(function (a, b) { return a ^ b; }, code); };
-        return encoded.match(/.{1,3}/g).map(function (hex){ return parseInt(hex, 16); })
-            .map(applySaltToChar).map(function(charCode){ return String.fromCharCode(charCode)}).join('');
-    };
-
-    /**
-     * @function base64_encode Encodes data with MIME base64
-     * original by: Tyler Akins (http://rumkin.com)
-     * improved by: Bayron Guevara
-     *
-     * @param data {string}
-     * @return {string}
-     */
-    function base64_encode( data ) {
-        var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-        var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
-
-        do { // pack three octets into four hexets
-            o1 = data.charCodeAt(i++);
-            o2 = data.charCodeAt(i++);
-            o3 = data.charCodeAt(i++);
-
-            bits = o1<<16 | o2<<8 | o3;
-
-            h1 = bits>>18 & 0x3f;
-            h2 = bits>>12 & 0x3f;
-            h3 = bits>>6 & 0x3f;
-            h4 = bits & 0x3f;
-
-            // use hexets to index into b64, and append result to encoded string
-            enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-        } while (i < data.length);
-
-        switch( data.length % 3 ){
-            case 1:
-                enc = enc.slice(0, -2) + '==';
-                break;
-            case 2:
-                enc = enc.slice(0, -1) + '=';
-                break;
-        }
-
-        return enc;
-    }; g.base64_encode = base64_encode;
-
-    /**
-     * @function download
-     *
-     * @param { HTMLElement } button
-     * @param { String } url
-     * @param { Object } opt
-     * @returns {XMLHttpRequest}
-     */
-     g.download = function(button, url, opt) {
-        return xhr(Object.assign({responseType: 'arraybuffer', url: url,
-            done: function(e, x) {
-                var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
-                if (res.result !== 'ok') {
-                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
-                    console.log('donwload - OK');
-                    return false;
-                }
-
-                try {
-                    var filename = uuid();
-                    if (opt && opt.hasOwnProperty('filename')) {
-                        filename = decodeURIComponent(quoter(opt['filename'], quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
-                    } else {
-                        var disposition = this.getResponseHeader('Content-Disposition');
-                        if (disposition && disposition.indexOf('attachment') !== -1) {
-                            var filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                            var matches = filenameRegex.exec(disposition);
-                            if (matches != null && matches[1]) filename = decodeURIComponent(quoter(matches[1],
-                                quoter.SLASHES_QOUTAS).replace(/['"]/g, ''));
-                        }
-                    }
-
-                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
-                    return g.dwnBlob(this.response, filename, this.getResponseHeader('Content-Type'));
-                } catch (e) {
-                    if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
-                    console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-                }
-            },
-            fail: opt && opt.fail || function (e) {
-                if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
-                console.error('download Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-            }
-        },opt));
-    };
-
-    /**
-     * @function upload
-     *
-     * @param stream
-     * @param url
-     * @param opt
-     */
-    g.upload = function(stream, url, opt) {
-        var file = stream.files[0];
-        var done = opt.done; delete opt['done'];
-        var fail = opt.fail; delete opt['fail'];
-        var stop = opt.stop; delete opt['stop'];
-        var dir = opt.dir || null; delete opt['dir'];
-
-        if (!file) return console.warn('File not found!');
-
-        var slice = function (file, start, end, type) {
-            var slice = file.mozSlice ? file.mozSlice : file.webkitSlice ? file.webkitSlice : file.slice ? file.slice : function () { };
-            return slice.bind(file)(start, end);
-        };
-
-        var size = file.size, filename = file.name;
-        var sliceSize = opt.sliceSize||1024;
-        var start = opt.start||0, end;
-        var data, piece, xhr;
-
-        var loop = function () {
-            end = start + sliceSize;
-            data = new FormData();
-            if (size - end < 0) {
-                end = size;
-                if (opt.extra) data.append('payload', typeof opt.extra === 'string' ? opt.extra : ( opt.extra ? JSON.stringify(opt.extra) : null ));
-            }
-
-            piece = slice(file, start, end);
-            data.append('dir', dir);
-            data.append('filename', filename);
-            data.append('size', size);
-            data.append('start', start);
-            data.append('end', end);
-            data.append('file', piece);
-
-            if (stop.call(this, xhr)) xhr = g.xhr(Object.assign({method: 'post', rs:{'Content-type': 'multipart/form-data', 'Hash': acl.user.hash},
-                url: url,
-                data: data,
-                done: function (e, x) {
-                    var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
-
-                    if (res.result === 'ok') {
-                        if (typeof opt.progress === 'function') { opt.progress.call(res,(Math.floor(res.end/size*1000)/10)); }
-                        if (res.end < size) {
-                            start += sliceSize;
-                            setTimeout(loop, 1);
-                        } else {
-                            done.call(res);
-                        }
-                    } else {
-                        fail.call(res);
-                        g.app.msg(res);
-                    }
-                    return false;
-                },
-                fail: function (e, x) {
-                    if (typeof opt.fail === 'function') opt.fail.call(x,e);
-                    console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
-                }
-            }, opt));
-        };
-        if (size > 0) setTimeout(loop, 1);
-    };
 
     /**
      * Paginator List Items View
@@ -1349,7 +1113,7 @@ if (window.app === undefined ) {
             },
             stoped: function (opt) {
                 if ( this.timer !== null ) {
-                    if (this.__xhr) this.__xhr.cancel();
+                    if (this.__xhr) this.__xhr.halt();
                     if (this.timer) { clearTimeout(this.timer); this.timer = null }
                 }
                 if (this.owner.pannel) this.owner.pannel.css.add('fade');
@@ -1461,7 +1225,7 @@ if (window.app === undefined ) {
                             before: function () { owner.status = 'spinner'; },
                             after: function () { owner.status = __status; },
                             done: function (e) {
-                                var res = str2json(this.responseText,{result: 'error', message: this.status + ': ' + HTTP_RESPONSE_CODE[this.status]});
+                                var res = ui.src(e).responseJSON;
                                 switch (res.result) {
                                     case 'ok': case 'success':
                                         th.cache[key] = (res.data||[]).map(function (v) {
@@ -1476,11 +1240,11 @@ if (window.app === undefined ) {
                                         break;
                                     case 'error':
                                         __status = 'error';
-                                        th.opt.error(res, this);
+                                        th.opt.error(res);
                                         break;
                                     case 'warn': default:
                                         __status = 'warn';
-                                        th.opt.warn(res, this);
+                                        th.opt.warn(res);
                                 }
                                 return this;
                             },
@@ -1610,10 +1374,10 @@ if (window.app === undefined ) {
             element.typeahead.opt = merge({alias:null, getEmpty:true, query: null, dbf: null,
                 fn: null, wrapper:false, skip: 0, ignore: false, rs:{},
                 up: element.hasAttribute("dropup"), tpl: 'typeahead-tpl',
-                error: function (res, xhr) {
+                error: function (res) {
                     console.error(typeof res === 'object' ? res.message : res);
                 },
-                warn: function (res, xhr) {
+                warn: function (res) {
                     console.warn(typeof res === 'object' ? res.message : res);
                 }
             }, opt);
@@ -1675,7 +1439,7 @@ if (window.app === undefined ) {
                     }
                 }
 
-                this.dispatchEvent(new Event('change'));
+                this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                 return this.selectionStart;
             };
             el.init = function (clear) {
@@ -1738,11 +1502,11 @@ if (window.app === undefined ) {
                             else this.s1 = this.e1 + 1;
                             this.selectionStart = this.selectionEnd = this.s1;
                         }
-                        this.dispatchEvent(new Event('change'));
+                        this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                         break;
                     case 13:
                     case 'Enter':
-                        this.dispatchEvent(new Event('change'));
+                        this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                         return false;
                     case 27:
                     case 'Escape':
@@ -1787,7 +1551,7 @@ if (window.app === undefined ) {
                         this.value = this.value.replace(sl, ts);
                         this.selectionStart = this.s1;
                         this.selectionEnd = this.e1;
-                        this.dispatchEvent(new Event('change'));
+                        this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                         break;
                     default:
                 }
