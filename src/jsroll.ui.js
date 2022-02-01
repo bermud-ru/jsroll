@@ -35,6 +35,33 @@ var Application = function (app) {
             // }
             // history.pushState(null, null, window.location.pathname+window.location.search);
         }, false);
+        this.events = {};
+        // var target = document.createTextNode(null);
+        var target = new EventTarget();
+        // Pass EventTarget interface calls to DOM EventTarget object
+        this.addEventListener = target.addEventListener.bind(target);
+        this.removeEventListener = target.removeEventListener.bind(target);
+        this.dispatchEvent = function (e) {
+            if (this.events.hasOwnProperty(e.type)) {
+                var self = this;
+                this.events[e.type].forEach(function (o, i) {
+                   if (o.parentNode) o.dispatchEvent(e); else self.events[e.type].splice(i,1);
+                });
+            } else {
+                target.dispatchEvent(e);
+            }
+        }
+        this.eventListener = function (el,event,fn,opt) {
+            var self = this, a = el instanceof Array ? el : [el];
+            if (this.events.hasOwnProperty(event)) {
+                a.forEach(function (o) {
+                    if ((self.events[event].indexOf(o)) === -1) { self.events[event].push(o); }
+                })
+            } else {
+                this.events[event] = a;
+            }
+            a.forEach(function (o){ o.addEventListener(event,fn,opt) });
+        }
     } else {
         document.body.ononline = function (e) { return self.online(e);  };
         document.body.onoffline = function (e) { return self.offline(e); };
@@ -128,10 +155,7 @@ var Application = function (app) {
             e.cancelBubble = true;
             e.returnValue = this.confirmReload; //This is displayed on the dialog
             //e.stopPropagation works in Firefox.
-            if (e.stopPropagation) {
-                e.stopPropagation();
-                e.preventDefault();
-            }
+            if (e.stopPropagation) {  e.stopPropagation();  e.preventDefault(); }
             return  false;
         }
         return this.confirmReload;
@@ -443,6 +467,9 @@ if (window.app === undefined ) {
             if (el instanceof HTMLElement) return this.wrap(el);
             return el;
         },
+        de: function (event, opt){
+            this.instance.dispatchEvent(new CustomEvent(event, opt||{}));
+        },
         /**
          * Обработчик события
          *
@@ -558,13 +585,13 @@ if (window.app === undefined ) {
      * @function InputHTMLElementValue
      * Хэлпер получения HTML элемента
      *
-     * @param { HTMLElement } el
+     * @param { Element } el
      * @param { * } def - Default value
      * @returns { * }
      */
     var InputHTMLElementValue = function(el, def) {
         var v = null;
-        if (el instanceof HTMLElement) {
+        if (el instanceof Element) {
             switch ((el.getAttribute('type') || 'text').toLowerCase()) {
                 case 'checkbox': case'radio':
                     var on = el.value.indexOf('on') >-1;
@@ -581,7 +608,7 @@ if (window.app === undefined ) {
      * @function getElementsValues
      *
      * pack - Element Attribute 2^0 + 2^1 + 2^2 ... 2^n values of array name bits AND in single value
-     * @param { InputHTMLElement [] } elements
+     * @param { Element [] } elements
      * @param { int } opt
      * @returns { Object }
      */
@@ -589,22 +616,20 @@ if (window.app === undefined ) {
         var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
             if (!keys || !keys.length) {
-                var grp = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1;
+                var g = ['checkbox','radio'].indexOf((el.getAttribute('type') || 'text').toLowerCase()) >-1;
                 if (f) {
-                    if ( d[f] === undefined || (grp && d[f] === empty) ) {
+                    if ( d[f] === undefined || (g && d[f] === empty) ) {
                         d[f] = InputHTMLElementValue(el);
-                    } else {
+                    } else if ( !g || el.checked ) {
                         if (!!el.getAttribute('pack') && String(Number(el.value)) === String(el.value)) {
                             d[f] = Number(d[f]) | Number(el.value);
                         } else {
-                            if ( !grp || d[f].checked ) {
-                                if (!(d[f] instanceof Array)) d[f] = [d[f]];
-                                d[f].push(InputHTMLElementValue(el));
-                            }
+                            if ( !(d[f] instanceof Array) ) d[f] = [d[f]];
+                            d[f].push(InputHTMLElementValue(el));
                         }
                     }
                 }
-                if (d[f] === undefined && grp && !el.checked) d[f] = empty;
+                if (d[f] === undefined && g && !el.checked) d[f] = empty;
                 return d;
             }
 
@@ -630,7 +655,7 @@ if (window.app === undefined ) {
     /**
      * @function setValueInputHTMLElement
      *
-     * @param { InputHTMLElement } el
+     * @param { Element } el
      * @param { * } value
      */
     var setValueInputHTMLElement = function(el, value) {
@@ -659,11 +684,11 @@ if (window.app === undefined ) {
     /**
      * @function functionsetInputHTMLElementFromObject
      *
-     * @param { InputHTMLElement }  el
+     * @param { HTMLFormElement }  el
      * @param { Object } v - объете данных
      * @param { Boolean } required - обязательное поле
-     * @param { String } alias альтернативное имя поля в объете данных
-     * @returns { Strring ['none', 'success', 'warn', 'error'] }
+     * @param { string } alias альтернативное имя поля в объете данных
+     * @returns { string ['none', 'success', 'warn', 'error'] }
      */
     var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
@@ -726,8 +751,6 @@ if (window.app === undefined ) {
     /**
      * dataObject
      *
-     * @param { Array } rows
-     * @param { Object } opt
      * @returns {function(*=): function(*=): boolean}
      */
     var dataObject = function() {
@@ -798,7 +821,7 @@ if (window.app === undefined ) {
     /**
      * @Helper group
      * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
-     * @param { InputHTMLElement [] | HTMLForm } els
+     * @param { HTMLForm | Element [] } els
      * @param { Object } opt
      */
     var group = function (els, opt) {
@@ -926,21 +949,13 @@ if (window.app === undefined ) {
         }
     }; g.group = group;
 
-}( window ));
-
-(function ( g, ui, undefined ) {
-    'suspected';
-    'use strict';
-
-    if ( typeof ui === 'undefined' ) return false;
-
     /**
      * @function isvalid
      *
-     * @param { InputHTMLElement } element
+     * @param { Element } element
      * @returns {boolean}
      */
-    var isvalid = function (element) {
+    g.isvalid = function (element) {
         var res = true, validator = null, pattern;
         if (element.validity.typeMismatch) res = false;
         else if ((element.getAttribute('required') !== null) && !element.value) res = false;
@@ -973,14 +988,14 @@ if (window.app === undefined ) {
     };
 
     /**
-     * inputer
+     * UIElementDecorator
      * bind STATUS property InputHTMLElement
      *
-     * @param { InputHTMLElement } el
+     * @param { Element } el
      * @returns {*}
      */
-    var inputer = function(el) {
-        if (el instanceof Element && g.ui.wrap(el) && !el.hasOwnProperty('status') && !el.css.has('no-status')) {
+    g.UIElementDecorator = function(el) {
+        if (el instanceof Element && !el.hasOwnProperty('status') && !el.css.has('no-status') && g.ui.wrap(el)) {
             Object.defineProperty(el, 'status', {
                 set: function status(stat) {
                     this.parentElement.css.del('has-(danger|warn|success|spinner)');
@@ -1018,20 +1033,20 @@ if (window.app === undefined ) {
             });
         }
         return el;
-    }; g.inputer = inputer;
+    };
 
     /**
      * input_validator
      *
-     * @param { InputHTMLElement } element
+     * @param { Element } element
      * @param { string } tags
      * @returns { boolean }
      */
-    var input_validator = function(element, tags) {
+    g.input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
             var res = isvalid(element) && (element.hasOwnProperty('couple') ? isvalid(element.couple) : true);
             if (element.type !== 'hidden') {
-                inputer( element );
+                UIElementDecorator( element );
                 if (res === false) {
                     element.status = 'error'
                 } else if (res === null || res === undefined) {
@@ -1043,36 +1058,37 @@ if (window.app === undefined ) {
             return res;
         }
         return true;
-    }; g.input_validator = input_validator;
+    };
 
     /**
      * @function pattern_validator
      *
-     * @param element
+     * @param element { Element }
      * @returns {*}
      */
-    // var pattern_validator = function (element) {
-    //     if (!element) return console.error('pattern_validator of null object!');
-    //
-    //     var o = typeof this === 'undefined' ? g : this, els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Element ? [element] : element);
-    //
-    //     els.forEach(function(el,i,a) {
-    //         if (el instanceof Element && ui.wrap(el)) inputer(el).ui.on('focus', function (e) {
-    //             if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
-    //             return false;
-    //         }).ui.on('input', function (e) {
-    //             if (this.tagName == 'INPUT' && this.value.length) input_validator(this); else this.status = 'none';
-    //             return false;
-    //         }).ui.on('blur', function (e) {
-    //             input_validator(this);
-    //             return false;
-    //         });
-    //     });
-    //
-    //     return;
-    // }; g.pattern_validator = pattern_validator;
+    g.pattern_validator = function (element) {
+        if (!element) return console.error('can\'t pattern_validator on null!');
 
+        var o = this,  els = typeof element === 'string' ? o.ui.els(element) : (element instanceof Array ? element:[element]);
+        return els.forEach(function(el,i,a) {
+            if (el instanceof Element) UIElementDecorator(el).ui.on('input', function (e) {
+                return ( ['INPUT','TEXTAREA'].indexOf(this.tagName) >-1 && this.value.length) ? input_validator(this) : this.status = 'none';
+            });
+            //     .ui.on('focus', function (e) {
+            //     return ( ['INPUT','TEXTAREA'].indexOf(this.tagName) >-1 && this.value.length) ? input_validator(this) : this.status = 'none';
+            // }).ui.on('blur', function (e) {
+            //     return input_validator(this);
+            // });
+        });
+    };
 
+}( window ));
+
+(function ( g, ui, undefined ) {
+    'suspected';
+    'use strict';
+
+    if ( typeof ui === 'undefined' ) return false;
 
     /**
      * Paginator List Items View
@@ -1161,15 +1177,15 @@ if (window.app === undefined ) {
 
                 if (owner.pannel) {
                     if (data.length) {
-                        tpl(th.opt.tpl, {data: data, field: owner.name}, function (cnt) {
+                        owner.pannel.ui.tpl(th.opt.tpl, {data: data, field: owner.name}, function (cnt) {
                             // var n = ui.dom(cnt);
                             // owner.pannel.innerHTML = n ? n.innerHTML : null;
-                            owner.pannel.innerHTML = cnt;
+                            owner.pannel.innerHTML = this.innerHTML;
                         });
                     }
                 } else {
                     tpl(this.opt.tpl, {data: data, field: owner.name}, function (panel) {
-                        owner.parentElement.insertAdjacentHTML('beforeend', panel);
+                        owner.parentElement.insertAdjacentHTML('beforeend', panel.html);
                         owner.parentElement.css.add(th.opt.up ? 'dropup' : 'dropdown');
                         owner.pannel = owner.parentElement.ui.el('.dropdown-menu.list');
                         owner.pannel.ui.dg('li', 'mousedown', function (e) {
@@ -1261,7 +1277,7 @@ if (window.app === undefined ) {
                         th.tpl(data);
                         if (th.index !== -1) owner.setValue(th.value);
                         if (owner.pannel) {
-                            if (!th.opt.wrapper) owner.pannel.setAttribute('style','margin-top:-'+g.getComputedStyle(owner).marginBottom+';left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
+                            // if (!th.opt.wrapper) owner.pannel.setAttribute('style','margin-top:-'+g.getComputedStyle(owner).marginBottom+';left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                             owner.pannel.css.del('fade');
                         }
                     } else if (owner.pannel ) {
@@ -1389,7 +1405,7 @@ if (window.app === undefined ) {
                 else { th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null)); }
                 return false;
             };
-            element.typeahead.owner = inputer(element);
+            element.typeahead.owner = UIElementDecorator(element);
             element.ui.on('focus', th.onFocus).ui.on('input', th.onInput).ui.on('blur', th.onBlur).ui.on('keydown', th.onKeydown).ui.on('search', th.onInput);
             if (!element.ui.attr('tabindex')) element.ui.attr('tabindex', '0');
         }
@@ -1406,7 +1422,7 @@ if (window.app === undefined ) {
      */
     var maskedigits = function(element, pattern, cleared) {
     if (element.tagName === 'INPUT') {
-        var el = inputer(element);
+        var el = UIElementDecorator(element);
         el.cleared = cleared === undefined ? true : !!cleared ;
         if (pattern) el.maxLength = el.ui.attr('placeholder', pattern || '').attr('placeholder').length;
         if (!el.ui.attr('tabindex')) el.ui.attr('tabindex', '0');

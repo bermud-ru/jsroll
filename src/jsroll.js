@@ -627,7 +627,11 @@
      * @argument { String } s - строка JSON
      * @returns {*}
      */
-    var str2json = function (s, def) { try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? null : def; }; return o; };
+    var str2json = function (s, def) {
+        if (typeof s === 'object') return s;
+        try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = s||(typeof def === 'undefined' ? null : def)};
+        return o;
+    };
     g.str2json = str2json;
 
     /**
