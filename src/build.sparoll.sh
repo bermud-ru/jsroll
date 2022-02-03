@@ -1,7 +1,7 @@
 #!/bin/sh
 
-java -jar ./yuicompressor-2.4.8.jar ./jsroll.js -o ./jsroll.min.js
-java -jar ./yuicompressor-2.4.8.jar ./jsroll.ui.js -o ./jsroll.ui.min.js
+java -jar yuicompressor-2.4.8.jar ./jsroll.js -o ./jsroll.min.js
+java -jar yuicompressor-2.4.8.jar ./jsroll.ui.js -o ./jsroll.ui.min.js
 id="\$Id: jsroll.min.js"
 version="2.1.1b"
 status="beta"

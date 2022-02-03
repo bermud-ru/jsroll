@@ -371,9 +371,14 @@ if (window.app === undefined ) {
         if (instance.hasOwnProperty('ui')) return instance;
         this.instance = instance || g;
         if (instance) {
-            if (this.instance instanceof Array) this.instance.__proto__.css = new css(this.instance);
-            else this.instance.css = new css(this.instance);
-            if (this.instance.parentElement) this.wrap(this.instance.parentElement);
+            if (this.instance instanceof Array) {
+                this.instance.__proto__.css = new css(this.instance);
+                // this.instance.forEach(function (v){ g.ui.wrap(v) });
+            } else {
+                this.instance.css = new css(this.instance);
+                if (this.instance.parentElement) this.wrap(this.instance.parentElement);
+            }
+
         }
         return this;
     }; ui.prototype = {
@@ -396,7 +401,7 @@ if (window.app === undefined ) {
             if (typeof s === 'string') {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
-            } else if ( s instanceof HTMLElement) { el = s }
+            } else if ( s instanceof Element) { el = s }
             if (el) {  this.wrap(el); if (typeof fn === 'function') fn.apply(el, args || []); }
             return el;
         },
@@ -413,8 +418,8 @@ if (window.app === undefined ) {
                 var c = typeof s === 'string' ? s.split(/\s*,\s*/) : s;
                 c.forEach((function (x) {
                     r.push.apply(r, obj2array(self.instance.querySelectorAll(x), []).map(function (e, i, a) {
-                        if ( e instanceof HTMLElement ) self.wrap(e);
-                        if (typeof fn == 'function') fn.apply(e,args?args.push(i).push(a):[i,a]);
+                        if ( e instanceof Element ) self.wrap(e);
+                        if (typeof fn == 'function') fn.apply(e, args?args.push(i).push(a):[i,a]);
                         return e;
                     }));
                 }).bind(self));
@@ -452,8 +457,8 @@ if (window.app === undefined ) {
         },
         tpl: function (str, data, cb, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
-            a.forEach( function (v, i, a) {
-                v.ui.inner = tpl(str, data, cb, opt);
+            a.forEach( function (v, i, z) {
+                v.ui.inner = tpl(str, (typeof data === 'function' ? data.call(this, v,i,z) : data), cb, opt);
             });
             return this.instance;
         },

@@ -1167,10 +1167,10 @@
     /**
      * @function download
      *
-     * @param { HTMLElement } button
+     * @param { Element } button
      * @param { String } url
      * @param { Object } opt
-     * @returns {XMLHttpRequest}
+     * @returns { XMLHttpRequest }
      */
     g.download = function(button, url, opt) {
         return xhr(Object.assign({responseType: 'arraybuffer', url: url,
@@ -1178,7 +1178,7 @@
                 var res = x.hasOwnProperty('action-status') ? str2json(decodeURIComponent(x['action-status']),{result:'ok'}) : {result:'ok'};
                 if (res.result !== 'ok') {
                     if (button.disabled) setTimeout(function () { button.disabled = false; button.css.del('spinner'); }, 1500);
-                    console.log('donwload - OK');
+                    console.log(url+' donwload - OK');
                     return false;
                 }
 
@@ -1583,17 +1583,17 @@
      * @function tpl
      * Хелпер для генерации контескта
      *
-     * @param { String } str (url | html)
-     * @param { Object } data объект с даннными
-     * @param { undefined | function } cb callback функция
-     * @param { undefined | object } opt дополнительые методы и своийства
+     * @param { string } str (url | DOM id) xtemplate
+     * @param { object | function } data объект с даннными или функуия возравщающая объкт с данными
+     * @param { closure | Element } cb callback функция, Element контейнер для кода из шаблона
+     * @param { object } opt дополнительые методы и своийства
      *
      * @result { String }
      */
     var tpl = function tpl( str, data, cb, opt ) {
         var ctx = this, args = arguments; var arg = args[1] || [], pig = {before: null, after:null};
         var fn, self = {
-            context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
+            src: null, context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
                 var self = this;
                 if (self.processing) { self.timer = setTimeout(function () { self.wait(after, args); }, 50); return self; }
@@ -1662,7 +1662,7 @@
                         } else if ( cb instanceof Array ) {
                             self.tpl = cb;
                             self.tpl.forEach(function (i) {
-                                a = typeof arg === 'function' ? arg.call(self, i, args) : arg;
+                                a = typeof arg === 'function' ? arg.call(self, i, pattern) : arg;
                                 i.innerHTML = pattern.call(self, a);
                                 if (pig.after && (typeof (fn = func(pig.after, i, a)) === 'function')) {
                                     self.wait(fn, a);
@@ -1693,18 +1693,18 @@
                     if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
                     // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
                     var o = opt || {}; o.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    return g.xhr(Object.assign({ owner: self, url: str, async: (typeof cb === 'function'),
+                    return self.src = g.xhr(Object.assign({ owner: self, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
                         fail: function(e) { return self.onTplError('tpl-xhr', id, str, args, e); }
                         }, o));
                 case !/[^#*\w\-\.]/.test(str):
                     self.caching = true;
-                    var tmp = g.document.getElementById(str.replace(/^#/,''));
-                    pig.before = tmp && tmp.getAttribute('before');
-                    pig.after = tmp && tmp.getAttribute('after');
+                    self.src = g.document.getElementById(str.replace(/^#/,''));
+                    pig.before = self.src && self.src.getAttribute('before');
+                    pig.after = self.src && self.src.getAttribute('after');
                     if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
-                    if (!tmp) { return self.onTplError('tpl-byId '+str+' not exist!'); }
-                    return build( tmp.innerHTML, str );
+                    if (!self.src) { return self.onTplError('tpl #'+str+' not exist!'); }
+                    return build( self.src.innerHTML, str );
                 default:
                     return build( str );
             }
