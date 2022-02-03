@@ -208,7 +208,7 @@ if (window.app === undefined ) {
     //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
     // }, false);
 }
-
+//+++++++++++++++++++++++++++++++++++++++++
 (function ( g, undefined ) {
     'suspected';
     'use strict';
@@ -830,13 +830,14 @@ if (window.app === undefined ) {
      * @param { Object } opt
      */
     var group = function (els, opt) {
-        var self = this, native = true;
+        var self = this, fields_set = true;
         self.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
         self.__elements = typeof els === 'string' ? ui.els(els) : els;
         self.form = {};
 
         if ( self.__elements instanceof HTMLFormElement ) {
-            self.form = self.__elements; native = false;
+            self.form = self.__elements;
+            fields_set = false;
             Object.defineProperty(self.opt, 'method', {
                 enumerable: true,
                 configurable: true,
@@ -849,16 +850,16 @@ if (window.app === undefined ) {
             self.__elements = g.ui.wrap(obj2array(self.form.elements).map(function (el) { return g.ui.wrap(el);}));
         }
 
-        self.__elements.forEach(function (v){ v.group = self; if (native) self.form[v.name] = v; });
+        self.__elements.forEach(function (v){ v.group = self; if (fields_set) self.form[v.name] = v; });
         if ( self.opt.submit ) {
             var submit = self.opt.submit instanceof Array ? self.opt.submit : [self.opt.submit];
-            submit.forEach(function (v){ if (v instanceof HTMLElement) v.ui.on('click', self.onsubmit.bind(self)); });
+            submit.forEach(function (v){ if (v instanceof Element) v.ui.on('click', self.onsubmit.bind(self)); });
         }
 
         self.hashing();
         if (self.opt.change) {
-            var fieldset;
-            if (fieldset = self.querySelector('fieldset')) fieldset.ui.on('change', self.opt.change.bind(self));
+            var fieldset = self.querySelector('fieldset');
+            if (fieldset) fieldset.ui.on('change', self.opt.change.bind(self));
             else self.elements.ui.on('change', self.opt.change.bind(self));
         }
     }; group.prototype = {
