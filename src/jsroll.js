@@ -95,12 +95,12 @@
             if (!navigator.onLine) return console.error('Browser not connected!');
             if (this.connected) return console.warn('Already connected!');
 
-            var self = this;
-            if (opt) self.opt = Object.assign(self.opt, opt);
-            self.socket = new WebSocket(self.url);
-            self.socket.binaryType = self.opt.binaryType;
-            ['error','open','message','close'].forEach(function (e) { self.socket.addEventListener(e, self[e].bind(self)); });
-            return self.socket;
+            var own = this;
+            if (opt) own.opt = Object.assign(own.opt, opt);
+            own.socket = new WebSocket(own.url);
+            own.socket.binaryType = own.opt.binaryType;
+            ['error','open','message','close'].forEach(function (e) { own.socket.addEventListener(e, own[e].bind(own)); });
+            return own.socket;
         },
         error: function(e) {
             this.connected = false;
@@ -117,11 +117,11 @@
         },
         close: function(e) {
             if (!e) return this.connected ? this.socket.close() : true;
-            var self = this;
-            self.connected = false;
+            var own = this;
+            own.connected = false;
             var fn; setTimeout(fn = function() {
-            return self.readyState === WebSocket.CONNECTING ? self.up() : setTimeout(fn, self.opt.reconnect);
-            }, self.opt.reconnect);
+            return own.readyState === WebSocket.CONNECTING ? own.up() : setTimeout(fn, own.opt.reconnect);
+            }, own.opt.reconnect);
             return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
         },
         send: function(data) {
@@ -136,13 +136,10 @@
      * @argument { Event } e - событие
      * @result { int | string }
      */
-    var eventCode = function (e) {
+    g.eventCode = function (e) {
         return e instanceof InputEvent ? e.data : e instanceof Event ?
         'key' in e ? e.key : 'keyCode' in e ? e.keyCode : 'keyIdentifier' in e ? e.keyIdentifier : e.charCode : null;
     };
-    g.eventCode = eventCode;
-
-    var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     if (!('indexedDB' in g)) {
         g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || g.shimIndexedDB || null;
@@ -165,63 +162,63 @@
      * @constructor
      */
     g.idxDB = function(name, version, opt) {
-        var self = this;
+        var own = this;
         this.name = name;
         this.version = parseInt(version);
-        Object.defineProperty(self, 'active', {
+        Object.defineProperty(own, 'active', {
             __proto__: null,
             get: function active() {
-                return self.idxDBinstance ? self.idxDBinstance.readyState === 'done' : false;
+                return own.idxDBinstance ? own.idxDBinstance.readyState === 'done' : false;
             }
         });
-        if (typeof opt === 'object') self.merge(opt);
-        return self;
+        if (typeof opt === 'object') own.merge(opt);
+        return own;
     }; g.idxDB.prototype = {
         IDBOpenDBRequest: null,
         get db() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.result : null; },
         connect: function () {
-            var self = this, max = 0, wait = function () {
+            var own = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
-                if (!self.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
+                if (!own.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
 
-                var idxDBinstance = g.indexedDB.open(self.name, self.version, function (e) {
-                    return self.build(e);
+                var idxDBinstance = g.indexedDB.open(own.name, own.version, function (e) {
+                    return own.build(e);
                 });
                 // Create schema
                 idxDBinstance.onupgradeneeded = function (e) {
-                    return self.build(e);
+                    return own.build(e);
                 };
                 // on reload, idxDBinstance up!
                 idxDBinstance.onsuccess = function (e) {
-                    return self.success(e);
+                    return own.success(e);
                 };
                 idxDBinstance.onblocked = function (e) {
-                    return self.blocked(e);
+                    return own.blocked(e);
                 };
                 // on Error
                 idxDBinstance.onerror = function (e) {
-                    return self.fail(e);
+                    return own.fail(e);
                 };
-                return self.idxDBinstance = idxDBinstance;
+                return own.idxDBinstance = idxDBinstance;
             };
             return wait();
         },
         destroy: function (event) {
-            var self = this;
-            self.idxDBinstance = null; // Дропнули всё
-            self.populate = true; // Пересоздали хранилище
-            var idxDBinstance = self.idxDBinstance = g.indexedDB.deleteDatabase(self.name, self.version);
+            var own = this;
+            own.idxDBinstance = null; // Дропнули всё
+            own.populate = true; // Пересоздали хранилище
+            var idxDBinstance = own.idxDBinstance = g.indexedDB.deleteDatabase(own.name, own.version);
             idxDBinstance.onsuccess = function (e) {
-                return self.success(e);
+                return own.success(e);
             }
             idxDBinstance.onerror = function (e) {
-                return self.fail(e);
+                return own.fail(e);
             }
             idxDBinstance.onblocked = function (e) {
-                return self.blocked(e);
+                return own.blocked(e);
             }
             idxDBinstance.onupgradeneeded = function (e) {
-                return self.build(e);
+                return own.build(e);
             }
         },
         build: function (e) {
@@ -237,9 +234,9 @@
             return this;
         },
         close: function () {
-            var self = this;
-            try { self.db.close(); } catch (e) { self.fail(e); }
-            return self;
+            var own = this;
+            try { own.db.close(); } catch (e) { own.fail(e); }
+            return own;
         },
         blocked:function (e) {
             console.warn(e);
@@ -269,7 +266,7 @@
 
     /**
      * Constant            Code    Situation
-     * UNKNOWN_ERR          0        The transaction failed for reasons unrelated to the database itself and not covered by any other error code.
+     * UNKNOWN_ERR          0        The transaction failed for reasons unrelated to the database itown and not covered by any other error code.
      * DATABASE_ERR         1        The statement failed for database reasons not covered by any other error code.
      * VERSION_ERR          2        The operation failed because the actual database version was not what it should be. For example, a statement found that the actual database version no longer matched the expected version of the Database or DatabaseSync object, or the Database.changeVersion() or DatabaseSync.changeVersion() methods were passed a version that doesn't match the actual database version.
      * TOO_LARGE_ERR        3        The statement failed because the data returned from the database was too large. The SQL "LIMIT" modifier might be useful to reduce the size of the result set.
@@ -335,20 +332,20 @@
      * @return webSQLinstance { webSQL }
      */
     var webSQL = function ( opt) {
-        var self = this;
+        var own = this;
         if ('openDatabase' in g) {
             this.webSQLinstance = openDatabase(opt.name, opt.version||'1.0', opt.displayName||"DB instace dreated at "+(new Date()), opt.estimatedSize||200000);
-            self.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
+            own.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
                 function(tx, rs) {
                     var table, tablesNumber = rs.rows.length;
                     for (var i = 0; i < tablesNumber; i++) {
                         table = rs.rows.item(i);
                         if ( table.type === 'table') {
                             tx.executeSql('SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
-                                self.tables[r.rows[0].name] = {type:'table', DDL:r.rows[0].sql};
+                                own.tables[r.rows[0].name] = {type:'table', DDL:r.rows[0].sql};
                             });
                         } else {
-                            self.tables[table.name] = {type: table.type};
+                            own.tables[table.name] = {type: table.type};
                         }
                     }
                 }
@@ -356,7 +353,7 @@
         } else {
             this.webSQLinstance = null; throw "webSQL object not exist!";
         }
-        if (opt && typeof opt === 'object') self.merge(opt);
+        if (opt && typeof opt === 'object') own.merge(opt);
     };
     webSQL.prototype = {
         opt: QueryParam.STRNULL | QueryParam.INTQOUTED,
@@ -409,33 +406,33 @@
         },
         cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
         transaction: function (proc, fail) {
-            var self = this;
-            //  self.webSQLinstance.readTransaction(function (tx) {
+            var own = this;
+            //  own.webSQLinstance.readTransaction(function (tx) {
             var wait = function() {
-                if (!self.turn || !self.runnig) {
+                if (!own.turn || !own.runnig) {
                     if (wait.timer) clearTimeout(wait.timer);
-                    return self.webSQLinstance.transaction(
-                        function (tx) { return self.proc(tx, proc);},
-                        function (error) { return self.fail(self.running, error, fail); }
+                    return own.webSQLinstance.transaction(
+                        function (tx) { return own.proc(tx, proc);},
+                        function (error) { return own.fail(own.running, error, fail); }
                     );
                 } else { return wait.timer = setTimeout(wait, 50); }
             }
             wait();
         },
         executeSql: function(tx, query, data, done, fail) {
-            var self = this, multiQuery = typeof query !== 'string' ;
+            var own = this, multiQuery = typeof query !== 'string' ;
             try {
                 return (multiQuery ? query : [query]).forEach( function(sql, i, a) {
                     return tx.executeSql( sql, (multiQuery ? data[i] : data),
                         function(tx, result) {
-                            return self.done(tx, result, done, sql, i, a);
+                            return own.done(tx, result, done, sql, i, a);
                         },
                         function(tx, error) {
-                            return self.fail(tx, error, fail, sql, i, a);
+                            return own.fail(tx, error, fail, sql, i, a);
                         });
                 });
             } catch(e) {
-                return self.fail(tx, e, fail);
+                return own.fail(tx, e, fail);
             }
         },
         /**
@@ -448,16 +445,16 @@
          * @param bulk { webSQL.BULK | webSQL.UPSERT | webSQL.DEFAULT }
          */
         stmt: function (query, data, done, fail, bulk) {
-            var self = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
-            return self.transaction(
+            var own = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
+            return own.transaction(
                 function (tx) {
                     var i = 0, count = d.length, ResultSet = [];
                     var next = function (tx, rs) {
                         if (i < count) {
                             if (typeof rs !== 'undefined' ) ResultSet[i] = rs;
-                            self.executeSql(tx, query, d[i++], next, fail)
+                            own.executeSql(tx, query, d[i++], next, fail)
                         } else {
-                            return typeof done === 'function' ? done.call(self, tx, count > 1 ? ResultSet : rs) : null;
+                            return typeof done === 'function' ? done.call(own, tx, count > 1 ? ResultSet : rs) : null;
                         }
                     };
                     return next(tx);
@@ -466,19 +463,19 @@
             );
         },
         grinder: function (o, fields, no_uppend) {
-            var res = {}, self = this; // res = Object.create(null);
+            var res = {}, own = this; // res = Object.create(null);
             if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) {
-                if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], self.opt) : null;
+                if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], own.opt) : null;
             });
             return res;
         },
         filtration: function(query, params) {
-            var self = this, m = false;
+            var own = this, m = false;
             if (/:([^\s$%\),]*)/m.test(query)) {
                 if (!Object.keys(params).length) throw 'webSQL::filter params not exist!';
                 while (m = /:([^\s$%\),]*)/gm.exec(query)) {
                     if (params.hasOwnProperty(m[1])) {
-                        query = query.replace(m[0], QueryParam(params[m[1]], self.opt));
+                        query = query.replace(m[0], QueryParam(params[m[1]], own.opt));
                     } else {
                         throw 'webSQL::filter param (' + m[1] + ') not exist!';
                     }
@@ -532,14 +529,14 @@
          * @return {*|void}
          */
         update: function (table, params, filter, done, fail) {
-            var keys = [], where = [], self = this;
+            var keys = [], where = [], own = this;
             if (typeof filter === 'string') {
                 filter = this.filtration(filter, params);
             } else if (typeof filter === 'object') {
                 if (filter instanceof Array) {
                     filter.forEach(function (v, i, a) {
                         keys.push(v);
-                        where.push(QueryParam(params[v], self.opt));
+                        where.push(QueryParam(params[v], own.opt));
                         delete params[v];
                     });
                 } else {
@@ -649,11 +646,11 @@
      * @param { string | function } glue
      * @returns { Array }
      */
-    var kv2array = function (o, glue) {
+    g.kv2array = function (o, glue) {
         return o && typeof o === 'object' ? Object.keys(o).map(function (v,i,a) {
             return typeof glue === 'function' ? glue(v, o[v]) : (v + ( glue ? glue : ' ' ) + o[v]);
         }) : [];
-    }; g.kv2array = kv2array;
+    };
 
     /**
      * @function coalesce
@@ -661,10 +658,10 @@
      *
      * @returns { variant | null }
      */
-    var coalesce = function() {
+    g.coalesce = function() {
         for (var i in arguments) { if (typeof arguments[i] !== 'undefined' && arguments[i] !== null && arguments[i] !== '') return arguments[i] };
         return undefined;
-    }; g.coalesce = coalesce;
+    };
 
     /**
      * @function quoter
@@ -699,9 +696,9 @@
      *
      * @returns { *[] }
      */
-    var bundler = function() {
+    g.bundler = function() {
         return obj2array(arguments).filter(function (v) { return (typeof v !== 'undefined' && v !== null && v !== ''); });
-    }; g.bundler = bundler;
+    };
 
     /**
      * Достаём необходимые поля из объекта
@@ -725,12 +722,12 @@
      * @param { Array } d
      * @returns { Array }
      */
-    var bitfields = function (status, d) {
+    g.bitfields = function (status, d) {
         var res = [], st = parseInt(status);
         if (!st || typeof d !== 'object' || d === null) return res;
         for (var i = 0; i < d.length; i++) { if (st & Math.pow(2,i)) res.push(d[i]); }
         return res;
-    }; g.bitfields = bitfields;
+    };
 
     /**
      * @function uuid
@@ -738,11 +735,11 @@
      *
      * @result { String }
      */
-    var uuid = function() {
+    g.uuid = function() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
-    }; g.uuid = uuid;
+    };
 
     /**
      * @function crc32
@@ -751,7 +748,7 @@
      * @param { string } str
      * @returns { number }
      */
-    var crc32 = function(str) {
+    g.crc32 = function(str) {
         var makeCRCHelper = g.makeCRCHelper || (g.makeCRCHelper = function(){
             var c;
             var makeCRCHelper = [];
@@ -772,7 +769,7 @@
         }
 
         return (crc ^ (-1)) >>> 0;
-    }; g.crc32 = crc32;
+    };
 
     /**
      * mb_case_title
@@ -963,7 +960,7 @@
      * @param data {string}
      * @return {string}
      */
-    function base64_encode( data ) {
+    g.base64_encode = function( data ) {
         var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
         var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
 
@@ -993,7 +990,7 @@
         }
 
         return enc;
-    }; g.base64_encode = base64_encode;
+    };
 
     /**
      * Object extension
@@ -1043,48 +1040,49 @@
 
     /**
      * Object extension
-     * @function __parent__ (...)
+     * @function createChild (...)
+     *
      * @argument { Object } родитель
      * @argument { Object | Function (Class) | undefined } свойства и методы для объявления объекта
      * Диинамическое связывание объектов родитель - потомок, изменение раодителя изменяет наследуемы свойства потомков
      */
-    Object.defineProperty(Object.prototype, '__parent__', {
+    Object.defineProperty(Object.prototype, 'createChild', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var self = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            var own = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
             var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
                     var fn = arguments[1];
-                    self = new fn;
-                    if (self.__proto__) {
-                        self.__proto__ = Object.merge(self.__proto__, owner);
-                        self.__proto__.constructor = fn;
+                    own = new fn;
+                    if (own.__proto__) {
+                        own.__proto__ = Object.merge(own.__proto__, owner);
+                        own.__proto__.constructor = fn;
                     } else  {
-                        self.prototype = Object.merge(fn.prototype, owner);
+                        own.prototype = Object.merge(fn.prototype, owner);
                     }
                     break;
                 case 'object':
-                    self = Object.merge(arguments[1]);
+                    own = Object.merge(arguments[1]);
                 case 'undefined':
                 default:
-                    if (self.__proto__) self.__proto__ = owner; else self.prototype = owner;
+                    if (own.__proto__) own.__proto__ = owner; else own.prototype = owner;
             }
-            self['owner'] = owner;
+            own['owner'] = owner;
             if (owner.hasOwnProperty('heirs')) {
                 if (owner.heirs instanceof Array) {
-                    owner.heirs.push(self);
+                    owner.heirs.push(own);
                 } else {
-                    owner.heirs[self.hasOwnProperty('childIndex') ? self.childIndex : Object.keys(owner.heirs).length] = self
+                    owner.heirs[own.hasOwnProperty('childIndex') ? own.childIndex : Object.keys(owner.heirs).length] = own
                 }
             } else {
-                if (self.hasOwnProperty('childIndex')) {
-                    owner.heirs = {}; owner.heirs[self.childIndex] = self;
+                if (own.hasOwnProperty('childIndex')) {
+                    owner.heirs = {}; owner.heirs[own.childIndex] = own;
                 } else {
-                    owner.heirs = []; owner.heirs.push(self)
+                    owner.heirs = []; owner.heirs.push(own)
                 }
             }
-            return self;
+            return own;
         },
         enumerable: false
     });
@@ -1112,7 +1110,7 @@
      * @param { Object } option параметры формирвания контейнера Blob mime-type etc
      * @returns {*}
      */
-    var bb = function(blobParts, option) {
+    g.bb = function(blobParts, option) {
     	var opt = Object.assign({type:'application/x-www-form-urlencoded'}, option);
         var BlobBuilder = ('MozBlobBuilder' in g ? g.MozBlobBuilder : ('WebKitBlobBuilder' in g ? g.WebKitBlobBuilder : g.BlobBuilder));
         if (BlobBuilder) {
@@ -1121,7 +1119,7 @@
 		 	return bb.getBlob(opt.type);
 		}
         return new Blob([blobParts], opt);
-    }; g.bb = bb;
+    };
 
     /**
      * @function dwnBlob
@@ -1131,7 +1129,7 @@
      * @param { String } type
      * @returns {boolean}
      */
-    var dwnBlob = function (src, filename, type) {
+    g.dwnBlob = function (src, filename, type) {
         var blob = g.bb(src, type);
 
         if (typeof g.navigator.msSaveBlob !== 'undefined') {
@@ -1162,7 +1160,7 @@
             setTimeout(function () { g.URL.revokeObjectURL(downloadUrl); }, 100); // cleanup
         }
         return false;
-    }; g.dwnBlob = dwnBlob;
+    };
 
     /**
      * @function download
@@ -1290,7 +1288,7 @@
      *
      * @result { Object }
      */
-    var decoder = function(search, regex) {
+    g.location.decoder = function(search, regex) {
         var re = regex || /[?&]([^=#]+)=([^&#]*)/g, p={}, m; // {}
         try {
             while (m = re.exec((search || g.location.search))) {
@@ -1298,7 +1296,7 @@
             }
         } catch(e) { return null }
         return p;
-    }; g.location.decoder = decoder;
+    };
 
     /**
      * @function encoder
@@ -1309,13 +1307,13 @@
      *
      * @result { String }
      */
-    var encoder = function(params, divider) {
+    g.location.encoder = function(params, divider) {
         if (params && typeof params === 'object')
             return String(Object.keys(params).map(function(e,i,a) {
             return encodeURIComponent(e) + '=' + encodeURIComponent(QueryParam(params[e], QueryParam.NULLSTR))
         }).join(divider || '&'));
         return params;
-    }; g.location.encoder = encoder;
+    };
 
     /**
      * @function update
@@ -1326,7 +1324,7 @@
      *
      * @result { String }
      */
-    var update = function(search, params) {
+    g.location.update = function(search, params) {
         var u = [], h = [], url = g.location.search, kv = params || {};
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
@@ -1339,7 +1337,7 @@
             return prefix + res.join('&') + sufix;
         }
         return url;
-    }; g.location.update = update;
+    };
 
     /**
      * @function browser URL params
@@ -1352,10 +1350,10 @@
      * @param def { * }
      * @returns {{}|*|null}
      */
-    var params = function (id, def) {
+    g.location.params = function (id, def) {
         if (typeof id === 'string') return g.location.decoder()[id] || def || null;
         return g.location.decoder();
-    }; g.location.params = params;
+    };
 
     /**
      * @function urn
@@ -1441,7 +1439,7 @@
      * @param args { [] }Аргументы функци
      * @returns {*}
      */
-    var func = function (str, context, args) {
+    g.func = function (str, context, args) {
         if (typeof str !== 'string') return console.error("func src is't a string type!\n", str);
         try {
             var s = str.replace(/\/\*([^*]|[\r\n]|(\*+([^*\/]|[\r\n])))*\*+\/|\/\/[^\r\n]*/igm,'');
@@ -1455,7 +1453,7 @@
         } catch( e ) {
             return console.error('func ', e.message + "\n", s );
         }
-    }; g.func = func;
+    };
 
     /**
      * @function js
@@ -1468,7 +1466,7 @@
      *    head[0].appendChild(s); // записываем в <head></head>
      * 2. g.document.body.appendChild(s); // записываем в <body></body>
      */
-    function js(src, params) {
+    g.js = function(src, params) {
         if (!src) return null;
 
         var opt = Object.assign({async:false, type:'text/javascript', container:g.document.body}, params);
@@ -1477,13 +1475,15 @@
         s.async = opt.async; // дождаться заргрузки или нет
         if (opt.hasOwnProperty('id')) s.id = opt.id;
         if (src.match(is_url)) { s.src = src; } else { s.text = src; }
-        if (typeof opt.onload === 'funciton') s.onload = onload;
-        if (typeof opt.onreadystatechange === 'funciton') s.onreadystatechange = onreadystatechange;
+        if (typeof opt.onload === 'function') s.onload = onload;
+        if (typeof opt.onreadystatechange === 'function') s.onreadystatechange = onreadystatechange;
 
         if (typeof opt.container.appendChild === 'function') opt.container.appendChild(s);
         else console.error('jsRoll::js() Не существущий контейнер', opt.container);
         return s;
-    }; g.js = js;
+    };
+
+    var xmlHttpRequest = ('XMLHttpRequest' in g ? g.XMLHttpRequest : ('ActiveXObject' in g ? g.ActiveXObject('Microsoft.XMLHTTP') : g.XDomainRequest));
 
     /**
      * @function xhr
@@ -1502,7 +1502,7 @@
      *
      * @result { Object }
      */
-    function xhr(params){
+    g.xhr = function(params){
         var x = new xmlHttpRequest(); if (!x) return null;
         Object.defineProperty(x, 'responseJSON', {
             __proto__: null,
@@ -1520,33 +1520,41 @@
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params || {}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() === 'multipart/form-data') delete rs['Content-type'];
 
+        /**
+        * @event { ProgressEvent } e
+        */
+        x.cancel = function(e) {
+            x.abort();
+            if ((typeof opt.cancel === 'function')) opt.cancel(e);
+            if (typeof opt.after === 'function') opt.after(e);
+            g.removeEventListener('offline', function (e) { return x.cancel(e); });
+        }
+
         x.process = function() {
-            g.addEventListener('offline', x.onerror);
+            g.addEventListener('offline', function (e) { return x.cancel(e); });
             x.timeout = opt.timeout;
             x.onreadystatechange = function(e) {
                 if (typeof opt.process === 'function') return opt.process(e);
                 else if (x.readyState === g.xhr.DONE && x.status >= 400) return x.halt(e);
                 return x;
             };
-            x.ontimeout = function (e) { return x.halt({srcElement: x, status:408}); };
+            x.ontimeout = function (e) { return x.cancel(e); }
             return x;
         };
 
         x.halt = function(e) {
             x.abort();
-            g.removeEventListener('offline', x.onerror);
-            if (e instanceof Event && (typeof opt.fail === 'function')) opt.fail(e);
-            else if (typeof opt.cancel === 'function') opt.cancel(e||x);
-            if (typeof opt.after === 'function') opt.after(e||x);
+            if (typeof opt.fail === 'function') opt.fail(e);
+            if (typeof opt.after === 'function') opt.after(e);
+            g.removeEventListener('offline', function (e) { return x.cancel(e); });
             return x;
         };
 
-        x.onerror = function (e) { return x.halt(e); };
-
+        x.onerror = function (e) { return  x.halt(e); }
         x.onload = function(e) {
             if (typeof opt.done === 'function') opt.done(e);
             if (typeof opt.after === 'function') opt.after(e);
-            g.removeEventListener('offline', x.onerror);
+            g.removeEventListener('offline', function (e) { return x.cancel(e); });
             return x;
         };
 
@@ -1564,15 +1572,14 @@
                 for (var m in rs) x.setRequestHeader(m, rs[m]);
                 x.process().send(opt.data);
             } else {
-                x.halt({srcElement: x, status:401});
+                x.cancel({srcElement: x, status:401});
             }
         } catch (e) {
             x.halt(e);
         }
 
         return x;
-    }; g.xhr = xhr;
-
+    };
     g.xhr.UNSENT = 0; // исходное состояние
     g.xhr.OPENED = 1; // вызван метод open
     g.xhr.HEADERS_RECEIVED = 2; // получены заголовки ответа
@@ -1590,21 +1597,21 @@
      *
      * @result { String }
      */
-    var tpl = function tpl( str, data, cb, opt ) {
+    g.tpl = function tpl( str, data, cb, opt ) {
         var ctx = this, args = arguments; var arg = args[1] || [], pig = {before: null, after:null};
-        var fn, self = {
+        var fn, own = {
             src: null, context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
-                var self = this;
-                if (self.processing) { self.timer = setTimeout(function () { self.wait(after, args); }, 50); return self; }
-                else if (typeof after == 'function') { after.apply(self.tpl, args); }
-                else if (after && (typeof (fn = func(after, self.tpl, args)) === 'function')) { fn.apply(self.tpl, args); }
-                return self;
+                var own = this;
+                if (own.processing) { own.timer = setTimeout(function () { own.wait(after, args); }, 50); return own; }
+                else if (typeof after == 'function') { after.apply(own.tpl, args); }
+                else if (after && (typeof (fn = func(after, own.tpl, args)) === 'function')) { fn.apply(own.tpl, args); }
+                return own;
             },
             response_header: null,
             __tpl__: undefined,
             get tpl() {
-                if (this.__tpl__) this.__tpl__.owner = self;
+                if (this.__tpl__) this.__tpl__.owner = own;
                 return this.__tpl__;
             },
             set tpl(v) {
@@ -1628,59 +1635,59 @@
             build = function( str, id, cache ) {
                 var isId = typeof id !== 'undefined', pattern = null, dom = null;
                 try {
-                    if (pig.before && (typeof (fn = func(pig.before, self)) === 'function')) {
-                        fn.apply(self, args);
+                    if (pig.before && (typeof (fn = func(pig.before, own)) === 'function')) {
+                        fn.apply(own, args);
                     }
                     if (opt && typeof opt.before === 'object') {
                         arg.merge(opt.before);
                     } else if (opt && typeof opt.before === 'function') {
-                        opt.before(self, args);
+                        opt.before(own, args);
                     }
 
                     if ( cache ) {
                         pattern = func(cache);
                     } else {
                         pattern = compile(str);
-                        if (isId && self.caching) g.sessionStorage.setItem(id, pattern.toString());
+                        if (isId && own.caching) g.sessionStorage.setItem(id, pattern.toString());
                     }
 
-                    if (!pattern) { return self.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
+                    if (!pattern) { return own.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
 
                     var a, awaiting = function () {
-                        if (self.processing) { self.timer = setTimeout(awaiting, 50); return; }
+                        if (own.processing) { own.timer = setTimeout(awaiting, 50); return; }
 
                         if ( !(cb instanceof Array) ) {
-                            a = typeof arg === 'function' ? arg.apply(self, args) : arg;
-                            self.html = pattern.call(self, a);
+                            a = typeof arg === 'function' ? arg.apply(own, args) : arg;
+                            own.html = pattern.call(own, a);
                         }
 
                         var after = opt && typeof opt.after == 'function' ? opt.after : null;
 
-                        if (typeof cb === 'function') { self.tpl = cb.call(dom = g.ui.dom(self.html,'html/dom'), self); }
-                        else if (cb instanceof HTMLElement && (self.tpl = cb)) {
-                            self.tpl.innerHTML = self.html;
+                        if (typeof cb === 'function') { own.tpl = cb.call(dom = ui.dom(own.html,'html/dom'), own); }
+                        else if (cb instanceof HTMLElement && (own.tpl = cb)) {
+                            own.tpl.innerHTML = own.html;
                         } else if ( cb instanceof Array ) {
-                            self.tpl = cb;
-                            self.tpl.forEach(function (i) {
-                                a = typeof arg === 'function' ? arg.call(self, i, pattern) : arg;
-                                i.innerHTML = pattern.call(self, a);
+                            own.tpl = cb;
+                            own.tpl.forEach(function (i) {
+                                a = typeof arg === 'function' ? arg.call(own, i, pattern) : arg;
+                                i.innerHTML = pattern.call(own, a);
                                 if (pig.after && (typeof (fn = func(pig.after, i, a)) === 'function')) {
-                                    self.wait(fn, a);
+                                    own.wait(fn, a);
                                 }
-                                if (after) { self.wait(after, a); }
+                                if (after) { own.wait(after, a); }
                             });
-                            return self.tpl;
+                            return own.tpl;
                         }
 
-                        if (pig.after && (typeof (fn = func(pig.after, self.tpl, a)) === 'function')) {
-                            self.wait(fn, a);
+                        if (pig.after && (typeof (fn = func(pig.after, own.tpl, a)) === 'function')) {
+                            own.wait(fn, a);
                         }
-                        if (after) { self.wait(after, a); }
-                        return dom || self.html;
+                        if (after) { own.wait(after, a); }
+                        return dom || own.html;
                     };
                     return awaiting();
                 } catch( e ) {
-                    return self.onTplError('tpl-build', id, str, args, e);
+                    return own.onTplError('tpl-build', id, str, args, e);
                 }
             };
 
@@ -1689,67 +1696,27 @@
             switch ( true ) {
                 case str.match(is_url):
                     var id = 'uri' + str.hash();
-                    self.caching = true;
+                    own.caching = true;
                     if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
                     // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
                     var o = opt || {}; o.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    return self.src = g.xhr(Object.assign({ owner: self, url: str, async: (typeof cb === 'function'),
+                    return own.src = g.xhr(Object.assign({ owner: own, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
-                        fail: function(e) { return self.onTplError('tpl-xhr', id, str, args, e); }
+                        fail: function(e) { return own.onTplError('tpl-xhr', id, str, args, e); }
                         }, o));
                 case !/[^#*\w\-\.]/.test(str):
-                    self.caching = true;
-                    self.src = g.document.getElementById(str.replace(/^#/,''));
-                    pig.before = self.src && self.src.getAttribute('before');
-                    pig.after = self.src && self.src.getAttribute('after');
+                    own.caching = true;
+                    own.src = g.document.getElementById(str.replace(/^#/,''));
+                    pig.before = own.src && own.src.getAttribute('before');
+                    pig.after = own.src && own.src.getAttribute('after');
                     if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
-                    if (!self.src) { return self.onTplError('tpl #'+str+' not exist!'); }
-                    return build( self.src.innerHTML, str );
+                    if (!own.src) { return own.onTplError('tpl #'+str+' not exist!'); }
+                    return build( own.src.innerHTML, str );
                 default:
                     return build( str );
             }
-        } catch ( e ) { return self.onTplError('tpl', id, str, args, e) }
-    }; g.tpl = tpl;
-
-    /**
-     * @function storage
-     * Хелпер для работы window.localStorage
-     * Fix for "QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota."
-     *
-     * @argument { undefined | Object } s инстанс
-     *
-     * @result { Object }
-     */
-    var storage = function(s) {
-        try {
-            var s = s || g.localStorage;
-            s.setItem('test', '1');
-            s.removeItem('test');
-        } catch (e) {
-            return {
-                p: [],
-                setItem:function(key, value){
-                    this.p.push(key);
-                    this[key] = value;
-                },
-                getItem:function(key){
-                    if (this.hasOwnProperty(key)) return this[key];
-                    return null;
-                },
-                removeItem: function(key){
-                    if (this.hasOwnProperty(key)){
-                        delete this.p[key];
-                        delete this[key];
-                    }
-                },
-                clear:function(){
-                    this.p.forEach(function(item){delete this[item];});
-                    this.p = [];
-                }
-            };
-        }
-        return s;
-    }; g.storage = storage();
+        } catch ( e ) { return own.onTplError('tpl', id, str, args, e) }
+    };
 
     /**
      * @function dom

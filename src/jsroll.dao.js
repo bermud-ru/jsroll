@@ -10,7 +10,7 @@
  * @revision $Id: jsroll.dao.js 2.1.1b 2020-04-16 10:10:01Z $
  */
 
-(function ( g, undefined ) {
+(function ( g, ui, undefined ) {
 'suspected';
 'use strict';
 
@@ -32,12 +32,12 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
         init: init,
         build: build,
         get: function (id, opt) {
-            var self = this;
-            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail, close: self.owner.close}, opt);
+            var own = this;
+            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             if (id && typeof handler.done === 'function') {
                 try {
-                    var tx = self.owner.db.transaction(self.tables, 'readonly');
-                    var store = tx.objectStore(self.tables);
+                    var tx = own.owner.db.transaction(own.tables, 'readonly');
+                    var store = tx.objectStore(own.tables);
                     tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
                     // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                     return store.get(id).onsuccess = function (e) { return handler.done(e, store, tx); };
@@ -47,39 +47,39 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             }
         },
         getAll: function (done) {
-            var self = this;
+            var own = this;
             if (typeof done === 'function') {
                 try {
                     if (typeof done === 'function') {
-                        var tx = self.owner.db.transaction(self.tables, 'readonly');
-                        tx.onerror = tx.onabort = function (e) { return  self.fail(e, tx); };
+                        var tx = own.owner.db.transaction(own.tables, 'readonly');
+                        tx.onerror = tx.onabort = function (e) { return  own.fail(e, tx); };
                         // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                        var store = tx.objectStore(self.tables);
+                        var store = tx.objectStore(own.tables);
                         return store.getAll().onsuccess = function (e) { return done(e, store, tx); };
                     }
                 } catch (e) {
-                    self.owner.fail(e);
+                    own.owner.fail(e);
                 }
             }
         },
         add: function (data, opt) {
-            var self = this, row = self.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail, close: self.owner.close}, opt);
+            var own = this, row = own.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             try {
-                console.log('db', self.owner.db);
-                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                console.log('db', own.owner.db);
+                var tx = own.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = function (e) { return  handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(self.tables[0]);
+                var store = tx.objectStore(own.tables[0]);
                 console.log('store', store);
-                if (self.primaryKey && row.hasOwnProperty(self.primaryKey)) {
-                    if (row[self.primaryKey] === null) {
-                        delete row[self.primaryKey];
+                if (own.primaryKey && row.hasOwnProperty(own.primaryKey)) {
+                    if (row[own.primaryKey] === null) {
+                        delete row[own.primaryKey];
                     }
                 }
                 tx.onabort = function (e) {
-                    if (self.primaryKey && row.hasOwnProperty(self.primaryKey))
-                        console.error('row PrimaryKey[' + self.primaryKey + '] = ' + row[self.primaryKey] + ' in ' + JSON.stringify(self.tables) + 'already has!');
+                    if (own.primaryKey && row.hasOwnProperty(own.primaryKey))
+                        console.error('row PrimaryKey[' + own.primaryKey + '] = ' + row[own.primaryKey] + ' in ' + JSON.stringify(own.tables) + 'already has!');
                 };
                 if (typeof handler.done === 'function') store.add(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.add(row);
             } catch (e) {
@@ -87,27 +87,27 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             }
         },
         put: function (data, opt) {
-            var self = this, row = self.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail, close: self.owner.close}, opt);
+            var own = this, row = own.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             try {
-                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                var tx = own.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(self.tablelName);
-                if (!self.primaryKey || row[self.primaryKey] === null) throw 'PrimaryKey is not set!';
+                var store = tx.objectStore(own.tablelName);
+                if (!own.primaryKey || row[own.primaryKey] === null) throw 'PrimaryKey is not set!';
                 if (typeof handler.done === 'function') store.put(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.put(row);
             } catch (e) {
                 handler.fail(e);
             }
         },
         del: function (idx, opt) {
-            var self = this;
-            var handler = Object.assign({done: self.owner.done, fail: self.owner.fail, close: self.owner.close}, opt);
+            var own = this;
+            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             try {
-                var tx = self.owner.db.transaction(self.tables, 'readwrite');
+                var tx = own.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(self.tables);
+                var store = tx.objectStore(own.tables);
                 if (typeof handler.done === 'function') store.delete(idx).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.delete(idx);
             } catch (e) {
                 handler.fail(e);
@@ -255,9 +255,9 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
 //                 }
 //             },
 //             fail: function (e) {
-//                 var self = this;
-//                 self.xhrCount++;
-//                 console.error('Model[' + self.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
+//                 var own = this;
+//                 own.xhrCount++;
+//                 console.error('Model[' + own.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
 //             }
 //         });
 //     },

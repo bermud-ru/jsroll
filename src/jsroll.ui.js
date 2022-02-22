@@ -10,17 +10,59 @@
  * @revision $Id: jsroll.ui.js 2.1.1b 2018-04-16 10:10:01Z $
  */
 
+/**
+ * @function storage
+ * Хелпер для работы window.localStorage
+ * Fix for "QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota."
+ *
+ * @argument { undefined | Object } s инстанс
+ *
+ * @result { Object }
+ */
+var storage = function() {
+    try {
+        localStorage.setItem('test', '1');
+        localStorage.removeItem('test');
+    } catch (e) {
+        return {
+            p: [],
+            setItem:function(key, value){
+                this.p.push(key);
+                this[key] = value;
+            },
+            getItem:function(key){
+                if (this.hasOwnProperty(key)) return this[key];
+                return null;
+            },
+            removeItem: function(key){
+                if (this.hasOwnProperty(key)){
+                    delete this.p[key];
+                    delete this[key];
+                }
+            },
+            clear:function(){
+                this.p.forEach(function(item){delete this[item];});
+                this.p = [];
+            }
+        };
+    }
+    return localStorage;
+};
+
 var Application = function (app) {
-    var self = this;
+    var own = this;
+    own.localStorage = storage();
+    own.sessionStorage = sessionStorage;
+
     if (window.addEventListener) {
-        window.addEventListener('online', function (e) { return self.online(e); }, false);
-        window.addEventListener('offline', function (e) { return self.offline(e); }, false);
-        document.addEventListener('DOMContentLoaded', function(event) { return self.__ready__ = true; }, false);
+        window.addEventListener('online', function (e) { return own.online(e); }, false);
+        window.addEventListener('offline', function (e) { return own.offline(e); }, false);
+        document.addEventListener('DOMContentLoaded', function(event) { return own.__ready__ = true; }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
             if (hash !== urn.handled.hash) {
                 urn.handled.hash = hash;
-                if (typeof urn.handled.handler === 'function') urn.handled.handler.call(self, location.pathname, location.search, false);
+                if (typeof urn.handled.handler === 'function') urn.handled.handler.call(own, location.pathname, location.search, false);
             }
             return false;
             // var r = confirm("You pressed a Back button! Are you sure?!");
@@ -43,19 +85,19 @@ var Application = function (app) {
         this.removeEventListener = target.removeEventListener.bind(target);
         this.dispatchEvent = function (e) {
             if (this.events.hasOwnProperty(e.type)) {
-                var self = this;
+                var own = this;
                 this.events[e.type].forEach(function (o, i) {
-                   if (o.parentNode) o.dispatchEvent(e); else self.events[e.type].splice(i,1);
+                   if (o.parentNode) o.dispatchEvent(e); else own.events[e.type].splice(i,1);
                 });
             } else {
                 target.dispatchEvent(e);
             }
         }
         this.eventListener = function (el,event,fn,opt) {
-            var self = this, a = el instanceof Array ? el : [el];
+            var own = this, a = el instanceof Array ? el : [el];
             if (this.events.hasOwnProperty(event)) {
                 a.forEach(function (o) {
-                    if ((self.events[event].indexOf(o)) === -1) { self.events[event].push(o); }
+                    if ((own.events[event].indexOf(o)) === -1) { own.events[event].push(o); }
                 })
             } else {
                 this.events[event] = a;
@@ -63,16 +105,16 @@ var Application = function (app) {
             a.forEach(function (o){ o.addEventListener(event,fn,opt) });
         }
     } else {
-        document.body.ononline = function (e) { return self.online(e);  };
-        document.body.onoffline = function (e) { return self.offline(e); };
+        document.body.ononline = function (e) { return own.online(e);  };
+        document.body.onoffline = function (e) { return own.offline(e); };
         document.onreadystatechange = function (e) {
-            if (document.readyState === "complete") { return self.ready(e); }
+            if (document.readyState === "complete") { return own.ready(e); }
         }
         // window.onhashchange = function() {
         //     console.log(window.location.pathname+  window.location.search);
         // }
     }
-    self.merge(str2json(storage.getItem('Application')));
+    own.merge(str2json(own.localStorage.getItem('Application')));
     // if (app && typeof app === 'object') this.merge(app);
 }; Application.prototype = {
     __version_pool__: [],
@@ -80,11 +122,11 @@ var Application = function (app) {
     get version() { return this.$version },
     set version(s) {
         if (this.$version !== s) {
-            var self = this, wait = function() {
-                if (self.__ready__) {
+            var own = this, wait = function() {
+                if (own.__ready__) {
                     if (wait.timer) clearTimeout(wait.timer);
-                    self.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
-                    self.$version = s
+                    own.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
+                    own.$version = s
                 } else {
                     return wait.timer = setTimeout( wait, 50);
                 }
@@ -121,15 +163,15 @@ var Application = function (app) {
      * @return {*|number}
      */
     onready: function (fn, args) {
-        var self = this, wait = function(after, args) {
-            if (self.__ready__) {
-                if (wait.timer) clearTimeout(wait.timer);
-                return fn.apply(self, args||[]);
+        var wait = function(cb, a) {
+            if (app.__ready__) {
+                if (this.timer) clearTimeout(this.timer);
+                return cb.apply(app, a);
             } else {
-                return wait.timer = setTimeout(function () { wait(fn, args); }, 50);
+                return this.timer = setTimeout(function () { return new wait(cb, a); }, 50);
             }
         }
-        return wait(fn, args);
+        return new wait(fn, args||[]);
     },
     /**
      *
@@ -138,14 +180,14 @@ var Application = function (app) {
      */
     resize: function (e) { return false; },
     serialize: function (e) {
-        var props = {}, self = this;
-        Object.getOwnPropertyNames(self).forEach( function (i ) {
-            if (i.startsWith('$')) { props[i] = self[i]; }
+        var props = {}, own = this;
+        Object.getOwnPropertyNames(own).forEach( function (i ) {
+            if (i.startsWith('$')) { props[i] = own[i]; }
         });
         if (Object.keys(props).length === 0) {
-            storage.removeItem('Application');
+            this.localStorage.removeItem('Application');
         } else {
-            storage.setItem('Application', JSON.stringify(props));
+            this.localStorage.setItem('Application', JSON.stringify(props));
         }
     },
     confirmReload: false,
@@ -208,7 +250,8 @@ if (window.app === undefined ) {
     //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
     // }, false);
 }
-//+++++++++++++++++++++++++++++++++++++++++
+
+//======================================================================================================================
 (function ( g, undefined ) {
     'suspected';
     'use strict';
@@ -272,9 +315,9 @@ if (window.app === undefined ) {
          * @returns {css}
          */
         add: function (c) {
-            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, self = this;
+            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, own = this;
             a.forEach(function (v,i,a) {
-                if (self.instance && !self.has(v)) self.instance.className += ' ' + v;
+                if (own.instance && !own.has(v)) own.instance.className += ' ' + v;
             });
             return this;
         },
@@ -345,9 +388,9 @@ if (window.app === undefined ) {
      *  polyfill
      */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
-        function CustomEvent ( event, params ) {
+        function CustomEvent ( e, params ) {
             var opt = Object.assign({ bubbles: false, cancelable: false, detail: undefined }, params);
-            var event = g.document.createEvent( 'CustomEvent' );
+            var event = g.document.createEvent(e);
             event.initCustomEvent( event, opt.bubbles, opt.cancelable, opt.detail );
             return event;
         }
@@ -368,26 +411,16 @@ if (window.app === undefined ) {
      * @returns {*}
      */
     var ui = function(instance) {
-        if (instance.hasOwnProperty('ui')) return instance;
+        if (instance.parentElement) this.wrap(instance.parentElement);
         this.instance = instance || g;
-        if (instance) {
-            if (this.instance instanceof Array) {
-                this.instance.__proto__.css = new css(this.instance);
-                // this.instance.forEach(function (v){ g.ui.wrap(v) });
-            } else {
-                this.instance.css = new css(this.instance);
-                if (this.instance.parentElement) this.wrap(this.instance.parentElement);
-            }
-
-        }
-        return this;
     }; ui.prototype = {
-        wrap:function(el, v){
-            if (el && !el.hasOwnProperty('ui')) {
-                if (el instanceof Array) el.__proto__.ui = new ui(el); else el.ui = new ui(el);
-                if (typeof v == 'string') g[v]=el;
+        wrap:function(i, v){
+            if (i && !i.hasOwnProperty('ui')) {
+                Object.defineProperty(i, 'ui', { value: new ui(i), writable: false, configurable: false });
+                Object.defineProperty(i, 'css', { value: new css(i), writable: false, configurable: false });
+                if (typeof v === 'string') g[v]=i;
             }
-            return el;
+            return i;
         },
         /**
          *
@@ -402,7 +435,7 @@ if (window.app === undefined ) {
                 if (!s.match(/^#*/)) el = g.document.getElementById(s.replace(/^#/, ''));
                 else el = this.instance.querySelector(s);
             } else if ( s instanceof Element) { el = s }
-            if (el) {  this.wrap(el); if (typeof fn === 'function') fn.apply(el, args || []); }
+            if (el) { this.wrap(el); if (typeof fn === 'function') fn.apply(el, args || []); }
             return el;
         },
         /**
@@ -413,18 +446,20 @@ if (window.app === undefined ) {
          * @return { null|HTMLElement }
          */
         els: function (s, fn, args) {
-            var r = [], self = this;
+            var r = new Array(0), own = this;
             if (typeof s === 'string'|| s instanceof Array) {
                 var c = typeof s === 'string' ? s.split(/\s*,\s*/) : s;
                 c.forEach((function (x) {
-                    r.push.apply(r, obj2array(self.instance.querySelectorAll(x), []).map(function (e, i, a) {
-                        if ( e instanceof Element ) self.wrap(e);
-                        if (typeof fn == 'function') fn.apply(e, args?args.push(i).push(a):[i,a]);
-                        return e;
+                    r.push.apply(r, obj2array(own.instance.querySelectorAll(x), []).map(function (e, i, a) {
+                        if ( e instanceof Element ) {
+                            own.wrap(e);
+                            if (typeof fn == 'function') fn.apply(e, args ? args.push(i).push(a) : [i, a]);
+                            return e;
+                        }
                     }));
-                }).bind(self));
+                }).bind(own));
             }
-            return self.wrap(r);
+            return own.wrap(r);
         },
         attr: function (a, v) {
             if (a === undefined) {
@@ -530,9 +565,9 @@ if (window.app === undefined ) {
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
                 a.forEach( function (i) { i.addEventListener(event, function(e) {
-                    var self = this, found = false, el = g.ui.src(e);
+                    var own = this, found = false, el = g.ui.src(e);
                     // while (el && el.matches && el !== this && !(found = el.ui.matches(s))) el = el.parentElement;
-                    while (el && el !== self && !(found = el.ui.matches(s))) el = el.parentElement;
+                    while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
                     if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
                     return found;
                 }, opt ? opt : false); });
@@ -552,7 +587,7 @@ if (window.app === undefined ) {
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
             var nodes = mime === 'html/dom' ? g.ui.wrap(dom(d, 'text/html')).ui.el('body') : dom(d, mime);
-            return g.ui.wrap(nodes.childNodes.length > 1 ? nodes.childNodes : nodes.childNodes[0]);
+            return this.wrap(nodes.childNodes.length > 1 ? nodes.childNodes : nodes.childNodes[0]);
         },
         set inner(s) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
@@ -720,27 +755,27 @@ if (window.app === undefined ) {
     /**
      * @function crud - Create Read Update Delete interface
      *
-     * @param meta { Object }
      * @param api { Object } provide interface GET,DEL,POST,PUT
+     * @param meta { Object }
      */
-    var crud = function (meta, api) {
+    var crud = function ( api, meta) {
         this.index = null;
         this.meta = meta;
         this.api = api ;
         return this;
     };
-    crud.prototype = Array.prototype;
+    // crud.prototype = new Array;
     crud.prototype.__data__ = [];
     crud.prototype.item = function (idx) {
         return this.__data__[idx] || this.meta;
     };
     Object.defineProperty(crud.prototype, 'data', {
         set: function (data) {
-            var self = this;
+            var own = this;
             if (data instanceof Array) {
-                self.__data__ = data.map(function (v) {return Object.merge(self.meta, v)});
-                self.index = 0;
-            } else { self.__data__ = []; }
+                own.__data__ = data.map(function (v) {return Object.merge(own.meta, v)});
+                own.index = 0;
+            } else { own.__data__ = []; }
         },
         get: function() { return this.__data__; },
         enumerable: true, configurable: true
@@ -818,7 +853,7 @@ if (window.app === undefined ) {
             return false;
         },
         fail: function (e) { return console.error(g.ui.src(e).responseJSON.message); },
-        cansel: function (e) { if (this.hXHR) this.hXHR.halt(e); },
+        cansel: function (e) { if (this.hXHR) this.hXHR.cancel(e); },
         hXHR: null,
         crud: function (params) { return this.hXHR = xhr(params); }
     };
@@ -830,37 +865,37 @@ if (window.app === undefined ) {
      * @param { Object } opt
      */
     var group = function (els, opt) {
-        var self = this, fields_set = true;
-        self.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
-        self.__elements = typeof els === 'string' ? ui.els(els) : els;
-        self.form = {};
+        var own = this, fields_set = true;
+        own.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
+        own.__elements = typeof els === 'string' ? ui.els(els) : els;
+        own.form = {};
 
-        if ( self.__elements instanceof HTMLFormElement ) {
-            self.form = self.__elements;
+        if ( own.__elements instanceof HTMLFormElement ) {
+            own.form = own.__elements;
             fields_set = false;
-            Object.defineProperty(self.opt, 'method', {
+            Object.defineProperty(own.opt, 'method', {
                 enumerable: true,
                 configurable: true,
                 get: function method () {
-                    return self.form.getAttribute('method') || 'get'
+                    return own.form.getAttribute('method') || 'get'
                 }
             });
-            self.opt.url = self.form.getAttribute('action') || self.opt.url;
-            self.form.addEventListener('submit',self.onsubmit.bind(self), true);
-            self.__elements = g.ui.wrap(obj2array(self.form.elements).map(function (el) { return g.ui.wrap(el);}));
+            own.opt.url = own.form.getAttribute('action') || own.opt.url;
+            own.form.addEventListener('submit',own.onsubmit.bind(own), true);
+            own.__elements = g.ui.wrap(obj2array(own.form.elements).map(function (el) { return g.ui.wrap(el);}));
         }
 
-        self.__elements.forEach(function (v){ v.group = self; if (fields_set) self.form[v.name] = v; });
-        if ( self.opt.submit ) {
-            var submit = self.opt.submit instanceof Array ? self.opt.submit : [self.opt.submit];
-            submit.forEach(function (v){ if (v instanceof Element) v.ui.on('click', self.onsubmit.bind(self)); });
+        own.__elements.forEach(function (v){ v.group = own; if (fields_set) own.form[v.name] = v; });
+        if ( own.opt.submit ) {
+            var submit = own.opt.submit instanceof Array ? own.opt.submit : [own.opt.submit];
+            submit.forEach(function (v){ if (v instanceof Element) v.ui.on('click', own.onsubmit.bind(own)); });
         }
 
-        self.hashing();
-        if (self.opt.change) {
-            var fieldset = self.querySelector('fieldset');
-            if (fieldset) fieldset.ui.on('change', self.opt.change.bind(self));
-            else self.elements.ui.on('change', self.opt.change.bind(self));
+        own.hashing();
+        if (own.opt.change) {
+            var fieldset = own.querySelector('fieldset');
+            if (fieldset) fieldset.ui.on('change', own.opt.change.bind(own));
+            else own.elements.ui.on('change', own.opt.change.bind(own));
         }
     }; group.prototype = {
         form: null,
@@ -909,8 +944,8 @@ if (window.app === undefined ) {
             }
         },
         get valid () {
-            this.__valid = []; var self = this;
-            this.elements.forEach(function (e,i,a) { if (!input_validator(e)) self.__valid.push(e); });
+            this.__valid = []; var own = this;
+            this.elements.forEach(function (e,i,a) { if (!input_validator(e)) own.__valid.push(e); });
             return !this.__valid.length ;
         },
         reset: function (attr) {
