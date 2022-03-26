@@ -1266,7 +1266,7 @@
                         }
                     } else {
                         fail.call(res);
-                        g.app.msg(res);
+                        // g.app.msg(res);
                     }
                     return false;
                 },
@@ -1502,14 +1502,20 @@
      *
      * @result { Object }
      */
-    g.xhr = function(params){
-        var x = new xmlHttpRequest(); if (!x) return null;
+    g.xhr = function(params) {
+        if (!navigator.onLine && params && !!params.local) {
+            if (typeof params.cancel === 'function') params.cancel(false);
+            if (typeof params.after === 'function') params.after(false);
+            return null;
+        }
+        var x = new xmlHttpRequest();
         Object.defineProperty(x, 'responseJSON', {
             __proto__: null,
             get: function responseJSON() {
                 return str2json(this.responseText,{result:'error', message:  this.status + ': ' + HTTP_RESPONSE_CODE[parseInt(this.status)]});
             }
         });
+
         if (params && params.hasOwnProperty('responseType')) x.responseType = params['responseType'];
         // x.responseType = 'arraybuffer'; // 'text', 'arraybuffer', 'blob' или 'document' (по умолчанию 'text').
         // x.response - После выполнения удачного запроса свойство response будет содержать запрошенные данные в формате
@@ -1520,47 +1526,37 @@
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params || {}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() === 'multipart/form-data') delete rs['Content-type'];
 
-        /**
-        * @event { ProgressEvent } e
-        */
         x.cancel = function(e) {
             x.abort();
+            g.removeEventListener('offline', x.cancel);
             if ((typeof opt.cancel === 'function')) opt.cancel(e);
             if (typeof opt.after === 'function') opt.after(e);
-            g.removeEventListener('offline', function (e) { return x.cancel(e); });
-        }
-
-        x.process = function() {
-            g.addEventListener('offline', function (e) { return x.cancel(e); });
-            x.timeout = opt.timeout;
-            x.onreadystatechange = function(e) {
-                if (typeof opt.process === 'function') return opt.process(e);
-                else if (x.readyState === g.xhr.DONE && x.status >= 400) return x.halt(e);
-                return x;
-            };
-            x.ontimeout = function (e) { return x.cancel(e); }
-            return x;
         };
-
         x.halt = function(e) {
-            x.abort();
+            g.removeEventListener('offline', x.cancel);
             if (typeof opt.fail === 'function') opt.fail(e);
             if (typeof opt.after === 'function') opt.after(e);
-            g.removeEventListener('offline', function (e) { return x.cancel(e); });
+        };
+
+        x.process = function() {
+            g.addEventListener('offline', x.cancel);
+            x.timeout = opt.timeout;
+            x.ontimeout = x.cancel;
+            x.onreadystatechange = (typeof opt.process === 'function') ? opt.process :
+            function(e) { return (x.readyState === g.xhr.DONE && x.status >= 400) ? x.halt(e) : false };
             return x;
         };
 
-        x.onerror = function (e) { return  x.halt(e); }
+        x.onerror = x.halt;
         x.onload = function(e) {
+            g.removeEventListener('offline', x.cancel);
             if (typeof opt.done === 'function') opt.done(e);
             if (typeof opt.after === 'function') opt.after(e);
-            g.removeEventListener('offline', function (e) { return x.cancel(e); });
-            return x;
         };
 
         try {
             if (typeof opt.data === 'object') opt.data = g.location.encoder(opt.data);
-            if ( (['GET', 'DELETE'].indexOf(opt.method) >-1 ) && opt.data) {
+            if ( (['GET','DELETE'].indexOf(opt.method) >-1 ) && opt.data) {
                 opt.url += (opt.url.indexOf('?') >-1 ? '&':'?') + opt.data;
                 opt.data = null;
             }
@@ -1572,12 +1568,11 @@
                 for (var m in rs) x.setRequestHeader(m, rs[m]);
                 x.process().send(opt.data);
             } else {
-                x.cancel({srcElement: x, status:401});
+                x.cancel({srcElement:x});
             }
         } catch (e) {
             x.halt(e);
         }
-
         return x;
     };
     g.xhr.UNSENT = 0; // исходное состояние

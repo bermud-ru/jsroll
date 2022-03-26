@@ -49,14 +49,25 @@ var storage = function() {
     return localStorage;
 };
 
-var Application = function (app) {
+var Application = function (ver) {
     var own = this;
     own.localStorage = storage();
+    own.merge(str2json(own.localStorage.getItem('Application')));
     own.sessionStorage = sessionStorage;
+    own.version = ver || new Date();
+
+    window.onload = own.run.bind(own);
+    window.onunload = own.destroy.bind(own);
+    window.onresize = own.resize.bind(own);
+    window.onbeforeunload = function (event) { if (own.confirmReload) return own.reload(event); };
+    // document.addEventListener('deviceready', function() {
+    //     // Heavy cordova sorces redy to work (espesial for
+    //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
+    // }, false);
 
     if (window.addEventListener) {
-        window.addEventListener('online', function (e) { return own.online(e); }, false);
-        window.addEventListener('offline', function (e) { return own.offline(e); }, false);
+        window.addEventListener('online', own.online.bind(own), false);
+        window.addEventListener('offline', own.offline.bind(own), false);
         document.addEventListener('DOMContentLoaded', function(event) { return own.__ready__ = true; }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
@@ -105,8 +116,8 @@ var Application = function (app) {
             a.forEach(function (o){ o.addEventListener(event,fn,opt) });
         }
     } else {
-        document.body.ononline = function (e) { return own.online(e);  };
-        document.body.onoffline = function (e) { return own.offline(e); };
+        document.body.ononline = own.online.bind(own);
+        document.body.onoffline = own.offline.bind(own);
         document.onreadystatechange = function (e) {
             if (document.readyState === "complete") { return own.ready(e); }
         }
@@ -114,15 +125,14 @@ var Application = function (app) {
         //     console.log(window.location.pathname+  window.location.search);
         // }
     }
-    own.merge(str2json(own.localStorage.getItem('Application')));
-    // if (app && typeof app === 'object') this.merge(app);
 }; Application.prototype = {
     __version_pool__: [],
     $version: null,
     get version() { return this.$version },
     set version(s) {
-        if (this.$version !== s) {
-            var own = this, wait = function() {
+        var own = this;
+        if (own.$version !== s) {
+            var wait = function() {
                 if (own.__ready__) {
                     if (wait.timer) clearTimeout(wait.timer);
                     own.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
@@ -140,12 +150,7 @@ var Application = function (app) {
     socket: null,
     run: function () {
         if (typeof window.ui === 'undefined') return this.notsupport ? window.location.href = this.notsupport : alert('Application not supported!');
-        if (navigator.onLine) {
-            this.online();
-            // if (this.url) { try { this.socket = window.ws(this.url); } catch (e) { console.error(e); } }
-        } else {
-            this.offline();
-        }
+        return  navigator.onLine ? this.online() : this.offline();
     },
     online: function (e) { return console.log('app online ' + datetimer(new Date())); },
     offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
@@ -163,10 +168,10 @@ var Application = function (app) {
      * @return {*|number}
      */
     onready: function (fn, args) {
-        var wait = function(cb, a) {
-            if (app.__ready__) {
+        var own = this, wait = function(cb, a) {
+            if (own.__ready__) {
                 if (this.timer) clearTimeout(this.timer);
-                return cb.apply(app, a);
+                return cb.apply(own, a);
             } else {
                 return this.timer = setTimeout(function () { return new wait(cb, a); }, 50);
             }
@@ -238,18 +243,6 @@ var Application = function (app) {
         if (typeof name === 'string') document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
     }
 };
-
-if (window.app === undefined ) {
-    window.app = new Application();
-    window.onload = function (event) { return app.run(event); }
-    window.onunload = function (event) { return app.destroy(event); };
-    window.onresize = function (event) { return app.resize(event); };
-    window.onbeforeunload = function (event) { if (app.confirmReload) return  app.reload(event); };
-    // document.addEventListener('deviceready', function() {
-    //     // Heavy cordova sorces redy to work (espesial for
-    //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
-    // }, false);
-}
 
 //======================================================================================================================
 (function ( g, undefined ) {
@@ -846,16 +839,16 @@ if (window.app === undefined ) {
         method: 'post',
         url: location.pathname, //location.href,
         before: function (e) { return true; },
-        after: function (e) { this.hXHR = null; return false; },
+        after: function (e) { return false; },
         done: function(e) {
             var res = g.ui.src(e).responseJSON;
             if ( res.result === 'error' ) { console.warn(res.message); } else { console.log('stored success!'); }
             return false;
         },
         fail: function (e) { return console.error(g.ui.src(e).responseJSON.message); },
-        cansel: function (e) { if (this.hXHR) this.hXHR.cancel(e); },
+        close: function () { return this.hXHR && this.hXHR.readyState < xhr.DONE ? this.hXHR.abort() : false; },
         hXHR: null,
-        crud: function (params) { return this.hXHR = xhr(params); }
+        crud: function (p) { return this.hXHR = xhr(p); }
     };
 
     /**
