@@ -398,6 +398,29 @@ var Application = function (ver) {
             return !!nodes[i];
     };
 
+    var he = function () { clearTimeout(he.timer); };
+    /**
+     * Extra pathc for mubile devices
+     * Double Tab Event Handker
+     *
+     * @param el { HTMLElement }
+     * @param e { Event }
+     * @param fn { function }
+     * @param i { HTMLElement }
+     * @param args { arguments }
+     * @return {*}
+     */
+    var dbltap = function (el, e, fn, i, args) {
+        if (!he.timer || he.element !== el) {
+            he.timer = setTimeout(he, g.ui.DOUBLE_TIMEOUT);
+            return he.element = el;
+        } else {
+            clearTimeout(he.timer);
+            he.element = null;
+            return fn.apply(i,args?args.unshift(e):[e]);
+        }
+    }
+
     /**
      * @class ui - HTML elements Extention
      * @param instance
@@ -523,8 +546,15 @@ var Application = function (ver) {
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
                 a.forEach(function (i) {
-                    if (!tags.length || tags.indexOf(i.tagName) >-1)
-                        i.addEventListener(event, function (e) {return fn.apply(i,args?args.unshift(e):[e])}, opt ? opt : false);
+                    if (!tags.length || tags.indexOf(i.tagName) >-1) switch (event) {
+                        case 'dbltap': i.addEventListener('touchend', function (e) {
+                               return dbltap(g.ui.src(e),e,fn,i,args);
+                            }, opt ? opt : false);
+                            break;
+                        default: i.addEventListener(event, function (e) {
+                            return fn.apply(i,args?args.unshift(e):[e])
+                        }, opt ? opt : false);
+                    }
                 });
             });
             return this.instance;
@@ -557,13 +587,23 @@ var Application = function (ver) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split(':'), event = tags.pop();
-                a.forEach( function (i) { i.addEventListener(event, function(e) {
-                    var own = this, found = false, el = g.ui.src(e);
-                    // while (el && el.matches && el !== this && !(found = el.ui.matches(s))) el = el.parentElement;
-                    while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                    if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
-                    return found;
-                }, opt ? opt : false); });
+                a.forEach( function (i) {
+                switch (event) {
+                    case 'dbltap': i.addEventListener('touchend', function (e) {
+                            var own = this, found = false, el = g.ui.src(e);
+                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
+                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return dbltap(el,e,fn,el,args); }
+                            return found;
+                        });
+                        break;
+                    default: i.addEventListener(event, function(e) {
+                            var own = this, found = false, el = g.ui.src(e);
+                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
+                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
+                            return found;
+                        }, opt ? opt : false);
+                }
+                });
             });
             return this.instance;
         },
@@ -613,6 +653,7 @@ var Application = function (ver) {
             return el;
         }
     }; g.ui = new ui(document);
+    g.ui.DOUBLE_TIMEOUT = 300;
 
     /**
      * @function InputHTMLElementValue

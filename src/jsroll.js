@@ -1272,7 +1272,7 @@
                 },
                 fail: function (e, x) {
                     if (typeof opt.fail === 'function') opt.fail.call(x,e);
-                    console.error('app::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
+                    console.error('::upload Error ' + this.status + ': '+ HTTP_RESPONSE_CODE[this.status], this);
                 }
             }, opt));
         };
