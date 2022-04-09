@@ -468,8 +468,7 @@ var Application = function (ver) {
                 c.forEach((function (x) {
                     r.push.apply(r, obj2array(own.instance.querySelectorAll(x), []).map(function (e, i, a) {
                         if ( e instanceof Element ) {
-                            own.wrap(e);
-                            if (typeof fn == 'function') fn.apply(e, args ? args.push(i).push(a) : [i, a]);
+                            own.wrap(e); if (typeof fn == 'function') fn.apply(e, args ? args.push(i,a) && args:[i, a]);
                             return e;
                         }
                     }));
@@ -479,14 +478,19 @@ var Application = function (ver) {
         },
         attr: function (a, v) {
             if (a === undefined) {
-                var attrs = {}, n;
-                for (var i in this.instance.attributes)
-                    attrs[(n = this.instance.attributes[i].nodeName)] = QueryParam(this.instance.getAttribute(n),QueryParam.STRNULL);
-                return attrs;
-            } else if (typeof a === 'object' && typeof v === 'undefined') {
-                for (var i in a) if (! /\d+/.test(i)) this.instance.setAttribute(i,a[i]);
+                var r = {}, attributes = this.instance.attributes, len = attributes.length;
+                for (var i=0; i<len; i++) r[attributes[i].nodeName] = QueryParam(attributes[i].nodeValue, QueryParam.STRNULL);
+                return r;
+            } else if ( a instanceof HTMLElement && v === undefined ) {
+                var m = this.instance instanceof Array ? this.instance : [this.instance];
+                var atts = a.attributes, l = atts.length;
+                m.forEach( function (v, i, z) {
+                    for (var y=0; y<l; y++) v.setAttribute(atts[y].nodeName,atts[y].nodeValue);
+                });
+            } else if ( typeof a === 'object' && v === undefined ) {
+                for (var z in a) if (z && !/^\d+$/.test(z)) this.instance.setAttribute(z, a[z]);
                 return this;
-            } else if (typeof a === 'string' && typeof v === 'undefined') {
+            } else if (typeof a === 'string' && v === undefined) {
                 var mask = a.indexOf('*') !== -1 ? re('/'+a.split('*')[0]+'/i') : null;
                 if (mask) {
                     var data = {};
@@ -544,7 +548,7 @@ var Application = function (ver) {
         on: function (event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
-                var tags = e.split(':'), event = tags.pop();
+                var tags = e.split('|'), event = tags.pop();
                 a.forEach(function (i) {
                     if (!tags.length || tags.indexOf(i.tagName) >-1) switch (event) {
                         case 'dbltap': i.addEventListener('touchend', function (e) {
@@ -553,6 +557,30 @@ var Application = function (ver) {
                             break;
                         default: i.addEventListener(event, function (e) {
                             return fn.apply(i,args?args.unshift(e):[e])
+                        }, opt ? opt : false);
+                    }
+                });
+            });
+            return this.instance;
+        },
+        dg: function (s, event, fn, args, opt) {
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            event.split(/\s*,\s*/).forEach( function(e) {
+                var tags = e.split('|'), event = tags.pop();
+                a.forEach( function (i) {
+                    switch (event) {
+                        case 'dbltap': i.addEventListener('touchend', function (e) {
+                                var own = this, found = false, el = g.ui.src(e);
+                                while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
+                                if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return dbltap(el,e,fn,el,args); }
+                                return found;
+                            });
+                            break;
+                        default: i.addEventListener(event, function(e) {
+                            var own = this, found = false, el = g.ui.src(e);
+                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
+                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
+                            return found;
                         }, opt ? opt : false);
                     }
                 });
@@ -572,40 +600,6 @@ var Application = function (ver) {
         matches: function (s) {
             var el = this.instance;
             return typeof s === 'string' ? s.split(/\s*,\s*/).some( function(e) { return el.matches(e); }) : false;
-        },
-        /**
-         * Делигировать событие
-         *
-         * @param s { string }
-         * @param event { string }
-         * @param fn { closure }
-         * @param args { IArguments }
-         * @param opt {false|Object}
-         * @return {*|Window}
-         */
-        dg: function (s, event, fn, args, opt) {
-            var a = this.instance instanceof Array ? this.instance : [this.instance];
-            event.split(/\s*,\s*/).forEach( function(e) {
-                var tags = e.split(':'), event = tags.pop();
-                a.forEach( function (i) {
-                switch (event) {
-                    case 'dbltap': i.addEventListener('touchend', function (e) {
-                            var own = this, found = false, el = g.ui.src(e);
-                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return dbltap(el,e,fn,el,args); }
-                            return found;
-                        });
-                        break;
-                    default: i.addEventListener(event, function(e) {
-                            var own = this, found = false, el = g.ui.src(e);
-                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
-                            return found;
-                        }, opt ? opt : false);
-                }
-                });
-            });
-            return this.instance;
         },
         /**
          *
@@ -672,7 +666,14 @@ var Application = function (ver) {
                     v = el.checked ? ( on ? 1 : el.value) : (on ? 0 : '');
                     break;
                 default:
-                    v = el.value || def;
+                    var attr;
+                    if (attr = el.getAttribute('@')) {
+                        var o = function (el) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(g, el);
+                        v = o && o.hasOwnProperty('value') ? o.value : null;
+                        break;
+                    } else {
+                        v = el.value || def;
+                    }
             }
         }
         return QueryParam(v, QueryParam.NULLSTR);
@@ -744,7 +745,18 @@ var Application = function (ver) {
             case 'number':
                 el.value = Number(value);
                 break;
-            case 'text': case 'textarea': case 'hidden': case 'password':
+            case 'hidden':
+                var attr;
+                try {
+                    if (attr = el.getAttribute('@')) {
+                        var o = function (el) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(g, el);
+                        if (o && o.hasOwnProperty('value')) o.value = el;
+                        break;
+                    }
+                } catch (e) {
+                    console.warn(e);
+                }
+            case 'text': case 'textarea':  case 'password':
             case 'date': case 'time': case 'datetime-local': case 'month': case 'week':
             case 'color': case 'range': case 'search':
             case 'email': case 'tel': case 'url':
@@ -1157,6 +1169,45 @@ var Application = function (ver) {
         });
     };
 
+    /**
+     * @class tabpanel
+     *
+     * @param tabs { HTMLElement[] } Вкладки
+     * @param panels { HTMLElement[] } Панели
+     * @param fn { function } @return { Object } Callback после создания группы вкладок
+     * @param cb { function } @return { Object } Callback при инициализизации связки закладка-панель
+     * @param active { function } @return { Object } Обработка при активации закладки
+     * @return { Object }
+     */
+    g.tabpanel = function ( tabs, panels, fn, cb, active ) {
+        var nav = {
+            tabs: tabs||[], panels: panels||[], current: 0,
+            show: function(index, e) {
+                if (typeof active === 'function') active.call(nav, index, e);
+                this.current = index;
+                if (this.tab) {
+                    this.tab.css.add('active');
+                    this.tab.ui.focus();
+                }
+                if (this.panel) this.panel.css.add(['show','active']);
+                return this;
+            },
+            hide: function(e) {
+                if (this.tab) this.tab.css.del('active');
+                if (this.panel) this.panel.css.del(['show','active']);
+                return this;
+            },
+            get panel() { return this.panels[this.current]; },
+            get tab() { return this.tabs[this.current]; }
+        };
+        nav.tabs.map(function (v, i, a) {
+            v.tabIndex = i;
+            v.ui.on('click', function (e) { nav.hide(e).show(this.tabIndex, e); });
+            return (typeof cb === 'function') ? cb.call(v, i, nav) : v;
+        });
+        return (typeof fn === 'function') ? fn(nav, tabs, panels) : nav;
+    };
+
 }( window ));
 
 (function ( g, ui, undefined ) {
@@ -1204,11 +1255,11 @@ var Application = function (ver) {
             },
             stoped: function (opt) {
                 if ( this.timer !== null ) {
-                    if (this.__xhr) this.__xhr.halt();
+                    if (this.__xhr) this.__xhr.ontimeout();
                     if (this.timer) { clearTimeout(this.timer); this.timer = null }
                 }
                 if (this.owner.pannel) this.owner.pannel.css.add('fade');
-                return;
+                return false;
             },
             delayed: function () {
                 var th = this, key = th.owner.__key__;
@@ -1551,10 +1602,10 @@ var Application = function (ver) {
                     if (!clear) this.value = this.ui.attr('placeholder');
                     pos = this.ui.attr('placeholder').indexOf('_');
                 }
-                if (clear) this.value = this.value.replace(/\_/g, '');
+                if (clear) this.value = this.value.replace(/_/g, '');
                 return this.e1 = this.selectionEnd = this.selectionStart = this.s1 = (pos > -1 ? pos : this.value.length);
             };
-        };
+        }
 
         el.init(true);
         el.ui.on('keydown', function (e) {
@@ -1573,8 +1624,7 @@ var Application = function (ver) {
                     this.s1 = this.selectionStart; this.e1 = this.selectionEnd;
                 }
                 switch (key) {
-                    case 8:
-                    case 'Backspace':
+                    case 'Backspace': case 8:
                         if (selected) {
                             var pos = this.value.indexOf(selected);
                             this.value = this.value.substr(0, pos) + this.ui.attr('placeholder').substr(pos, selected.length) +
@@ -1595,16 +1645,13 @@ var Application = function (ver) {
                         }
                         this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                         break;
-                    case 13:
-                    case 'Enter':
+                    case 'Enter': case 13:
                         this.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
                         return false;
-                    case 27:
-                    case 'Escape':
+                    case 'Escape': case 27:
                         this.dispatchEvent(new Event('blur'));
                         return false;
-                    case 9:
-                    case 'Tab':
+                    case 'Tab': case 9:
                         var el = null;
                         var way = e.shiftKey ? -1 : 1;
                         var index = parseInt(this.ui.attr('tabindex')) + way;
@@ -1617,19 +1664,16 @@ var Application = function (ver) {
                             }
                         if (index <= 1 && way < 0) return e.preventDefault();
                         break;
-                    case 37:
-                    case 'ArrowLeft':
+                    case 'ArrowLeft': case 37:
                         if (this.selectionStart > 0) {
                             this.s1 = --this.selectionStart;
                             this.e1 = --this.selectionEnd;
                         }
                         break;
-                    case 39:
-                    case 'ArrowRight':
+                    case 'ArrowRight': case 39:
                         this.s1 = ++this.selectionStart;
                         break;
-                    case 46:
-                    case 'Delete':
+                    case 'Delete': case 46:
                         var sl = this.value.slice(this.selectionStart),
                             tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
                         if (selected) {

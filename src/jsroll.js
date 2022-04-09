@@ -296,6 +296,7 @@
      */
     var QueryParam = function (v, o) {
         var opt = typeof o === 'undefined' ? QueryParam.NATIVE : Number(o);
+        if (v instanceof HTMLElement) v = v.innerHTML;
         if (typeof v === 'undefined' || v === null) {
             return !(opt & QueryParam.NULLSTR) && opt & QueryParam.QOUTED | QueryParam.STRNULL ? (opt & QueryParam.NULLSQL ? 'NULL' : null) : '';
         } else if (typeof v === 'object') {
@@ -772,6 +773,53 @@
     };
 
     /**
+     * @function base64
+     * @param s { string | HTMLElement }
+     * @return {string}
+     */
+    g.base64 = function(s) { return g.btoa(unescape(encodeURIComponent(s instanceof HTMLElement ? s.innerHTML : s))); };
+
+    /**
+     * @function base64_encode Encodes data with MIME base64
+     * original by: Tyler Akins (http://rumkin.com)
+     * improved by: Bayron Guevara
+     *
+     * @param data {string}
+     * @return {string}
+     */
+    // g.base64_encode = function( data ) {
+    //     var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    //     var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
+    //
+    //     do { // pack three octets into four hexets
+    //         o1 = data.charCodeAt(i++);
+    //         o2 = data.charCodeAt(i++);
+    //         o3 = data.charCodeAt(i++);
+    //
+    //         bits = o1<<16 | o2<<8 | o3;
+    //
+    //         h1 = bits>>18 & 0x3f;
+    //         h2 = bits>>12 & 0x3f;
+    //         h3 = bits>>6 & 0x3f;
+    //         h4 = bits & 0x3f;
+    //
+    //         // use hexets to index into b64, and append result to encoded string
+    //         enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
+    //     } while (i < data.length);
+    //
+    //     switch( data.length % 3 ){
+    //         case 1:
+    //             enc = enc.slice(0, -2) + '==';
+    //             break;
+    //         case 2:
+    //             enc = enc.slice(0, -1) + '=';
+    //             break;
+    //     }
+    //
+    //     return enc;
+    // };
+
+    /**
      * mb_case_title
      *
      * @param s {string}
@@ -824,20 +872,26 @@
     /**
      * @function import from CSV
      *
-     * @param file inpgutFomvElevent type file
-     * @param cb { Function } callback function
+     * @param file { HTMLFormElement } type file
+     * @param cb { function } callback function
+     * @param d { string } divider
      *
      * UI Example:
-     * <div class="btn-group ml-2 pt-2 pb-2">
-     * <input type="file" id="CSVfile" name="CSVfile">
-     * </div>
+     * <label class="btn btn-outline-secondary"><i class="fa fa-folder-open-o"></i>
+     * <input type="file" id="CSVfile" name="CSVfile" accept="text/csv,.csv" hidden>
+     * </label>
      */
-    g.importFromCSV = function (file, cb) {
+    g.importFromCSV = function (file, cb, d) {
+        // var tuple = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g);
+        var divider = re('/'+(d ? d : importFromCSV.DIVIDER)+'(?=(?:(?:[^"]*"){2})*[^"]*$)/');
         function parseFile2Array(csv) {
             var dataSet = [];
-            csv.split(importFromCSV.EOL).forEach(function(line) {
-                var tuple = []; line.split(",").forEach(function(cell) { tuple.push(cell); });
-                dataSet.push(tuple);
+            csv.split(importFromCSV.LF).forEach(function(line) {
+                if (line.trim()) {
+                    var tuple = [];
+                    line.split(divider).forEach(function(cell) { tuple.push(quoter(cell.replace(/^\"(.+)\"$/,"$1"), quoter.CODE_QOUTAS)); });
+                    dataSet.push(tuple);
+                }
             });
             return dataSet;
         }
@@ -847,75 +901,102 @@
             reader.onload = function (e) {
                 return cb.call(this.file, parseFile2Array(g.ui.src(e).result)); //this is where the csv array will be
             };
-            // var f = file.files[0];
-            file.files.forEach(function (f) { reader.file = f; reader.readAsText(f); });
+            obj2array(file.files).forEach(function (f) { reader.file = f; reader.readAsText(f); });
         });
-    }; g.importFromCSV.EOL = "\n";
+    };
+    g.importFromCSV.EOL = /\n/; // End of line
+    g.importFromCSV.CR = /\r/; // Carriage Return
+    g.importFromCSV.LF = /\r?\n|\r/; // \n Unices incl. Linux; \r\n on WinDOS
+    g.importFromCSV.DIVIDER = ',';
 
     /**
      * @function exportToCSV
      *
      * @param { String } filename
-     * @param { Array } rows
+     * @param { Array | HTMLElement } data
+     * @param { string } d
      */
-    g.exportToCSV = function(filename, rows) {
+    g.exportToCSV = function(filename, data, d) {
+        var divider = d ? d : importFromCSV.DIVIDER;
+        var src = re('/("|'+divider+'|\n)/', 'g');
+        var offset = data.hasOwnProperty('rowNumber') ? 1 : 0;
         var processRow = function (row) {
             var finalVal = '';
-            for (var j = 0, l = row.length; j < l; j++) {
-                var innerValue = row[j] === null ? '' : row[j].toString();
-                if (row[j] instanceof Date) { innerValue = row[j].toLocaleString(); }
-
+            for (var j=offset, z=row.length; j<z; j++) {
+                var innerValue = row[j] ? QueryParam(row[j], QueryParam.INTQOUTED) : '';
+                if (row[j] instanceof Date) innerValue = row[j].toLocaleString();
                 var result = innerValue.replace(/"/g, '""');
-                if (result.search(/("|,|\n)/g) >= 0) result = '"' + result + '"';
-                if (j > 0) finalVal += ',';
+                if (result.search(src) >= 0) result = '"' + result + '"';
+                if (j-offset) finalVal += divider;
                 finalVal += result;
             }
             return finalVal + '\n';
         };
 
         var csvFile = '';
-        for (var i = 0, l = rows.length; i < l; i++) {
-            csvFile += processRow(rows[i]);
+        if (data instanceof Array) {
+            for (var i=0,l=data.length; i<l; i++) csvFile += processRow(data[i]);
+        } else {
+            for (var x=0,y=data.rows.length; x<y; x++) {
+                csvFile += processRow(data.rows[x].cells);
+            }
         }
-
         dwnBlob(csvFile, filename,'text/csv;charset=utf-8;');
     };
 
     /**
      * @function exportHTML2Word
      *
-     * @param { string } innerHTML
+     * @param { string | HTMLElement } ctx
      * @param { string } fileName
      */
-    g.exportHTML2Word = function (innerHTML, fileName) {
+    g.exportHTML2Word = function (ctx, fileName) {
         var header = "<html xmlns:o='urn:schemas-microsoft-com:office:office' " +
             "xmlns:w='urn:schemas-microsoft-com:office:word' " +
             "xmlns='http://www.w3.org/TR/REC-html40'>" +
             "<head><meta charset='utf-8'><title>" +(fileName||'document.doc')+ "</title></head><body>";
         var footer = "</body></html>";
-        var sourceHTML = header+innerHTML+footer;
+        var sourceHTML = header+(ctx instanceof HTMLElement ? ctx.innerHTML : ctx)+footer;
 
-        var source = 'data:application/vnd.ms-word;charset=utf-8,' + encodeURIComponent(sourceHTML);
+        var source = 'data:application/vnd.ms-word;charset=utf-8,' + base64(sourceHTML);
         dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;charset=utf-8;');
     };
+
+    /**
+     * @function exportHTML2Excel
+     * @param ctx { string | HTMLElement }
+     * @param fileName { string }
+     * @param worksheet { string }
+     */
+    g.exportHTML2Excel = function(ctx, fileName, worksheet) {
+        var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" ' +
+            'xmlns="http://www.w3.org/TR/REC-html40"><head>' +
+            '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
+            '</head><body><table>{table}</table></body></html>';
+        var c = { worksheet : worksheet || 'Worksheet', table : ctx instanceof HTMLElement ? ctx.innerHTML: ctx};
+        var f = function(s, c) { return s.replace(/{(\w+)}/g, function(m, p) { return c[p]; }); };
+        var source = 'data:application/vnd.ms-excel;base64,' + base64(f(template, c));
+        dwnBlob(source, (fileName||'export.xls'),'application/vnd.ms-excel;charset=utf-8;');
+    }
 
     /**
      * @Helper copy2prn
      * Подготавливает данные звёрнутые в шаблон к печати
      *
-     * @param { String } template - DOM element Id
+     * @param { String | HTMLElement } cntx - tpl script name | DOM element
      * @param { Object } data - for tpl
      */
-    g.copy2prn = function (template, data) {
+    g.copy2prn = function ( cntx, data) {
         var print_layer = g.document.createElement('iframe');
         print_layer.name = 'print_layer';
         print_layer.src = 'printer';
         print_layer.style.display = 'none';
         g.document.body.appendChild(print_layer);
 
+        var prn = cntx instanceof HTMLElement ? cntx.innerHTML : tpl(cntx,data||{});
         var frameDoc = (print_layer.contentWindow) ? print_layer.contentWindow : (print_layer.contentDocument.document) ? print_layer.contentDocument.document : print_layer.contentDocument;
         frameDoc.document.open();
-        frameDoc.document.write(tpl(template,data||{}));
+        frameDoc.document.write(prn);
         frameDoc.document.close(); // necessary for IE >= 10
 
         setTimeout(function () {
@@ -950,46 +1031,6 @@
         var applySaltToChar = function (code){ return textToChars(salt).reduce(function (a, b) { return a ^ b; }, code); };
         return encoded.match(/.{1,3}/g).map(function (hex){ return parseInt(hex, 16); })
             .map(applySaltToChar).map(function(charCode){ return String.fromCharCode(charCode)}).join('');
-    };
-
-    /**
-     * @function base64_encode Encodes data with MIME base64
-     * original by: Tyler Akins (http://rumkin.com)
-     * improved by: Bayron Guevara
-     *
-     * @param data {string}
-     * @return {string}
-     */
-    g.base64_encode = function( data ) {
-        var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-        var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
-
-        do { // pack three octets into four hexets
-            o1 = data.charCodeAt(i++);
-            o2 = data.charCodeAt(i++);
-            o3 = data.charCodeAt(i++);
-
-            bits = o1<<16 | o2<<8 | o3;
-
-            h1 = bits>>18 & 0x3f;
-            h2 = bits>>12 & 0x3f;
-            h3 = bits>>6 & 0x3f;
-            h4 = bits & 0x3f;
-
-            // use hexets to index into b64, and append result to encoded string
-            enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-        } while (i < data.length);
-
-        switch( data.length % 3 ){
-            case 1:
-                enc = enc.slice(0, -2) + '==';
-                break;
-            case 2:
-                enc = enc.slice(0, -1) + '=';
-                break;
-        }
-
-        return enc;
     };
 
     /**
@@ -1504,8 +1545,8 @@
      */
     g.xhr = function(params) {
         if (!navigator.onLine && params && !!params.local) {
-            if (typeof params.cancel === 'function') params.cancel(false);
-            if (typeof params.after === 'function') params.after(false);
+            if (typeof params.cancel === 'function') params.cancel({srcElement:this, status:10});
+            if (typeof params.after === 'function') params.after({srcElement:this, status:10}, g.xhr.CANCEL);
             return null;
         }
         var x = new xmlHttpRequest();
@@ -1526,32 +1567,22 @@
         var rs = Object.assign({'Xhr-Version': version,'Content-type':'application/x-www-form-urlencoded'}, (params || {}).rs);
         if (rs['Content-type'] === false || rs['Content-type'].toLowerCase() === 'multipart/form-data') delete rs['Content-type'];
 
-        x.cancel = function(e) {
+        var cancel = function(e) {
             x.abort();
-            g.removeEventListener('offline', x.cancel);
+            g.removeEventListener('offline', cancel);
             if ((typeof opt.cancel === 'function')) opt.cancel(e);
-            if (typeof opt.after === 'function') opt.after(e);
+            if (typeof opt.after === 'function') opt.after(e, g.xhr.CANCEL);
         };
-        x.halt = function(e) {
-            g.removeEventListener('offline', x.cancel);
+        var fail = function(e) {
+            x.abort();
+            g.removeEventListener('offline', cancel);
             if (typeof opt.fail === 'function') opt.fail(e);
-            if (typeof opt.after === 'function') opt.after(e);
+            if (typeof opt.after === 'function') opt.after(e, g.xhr.FAIL);
         };
-
-        x.process = function() {
-            g.addEventListener('offline', x.cancel);
-            x.timeout = opt.timeout;
-            x.ontimeout = x.cancel;
-            x.onreadystatechange = (typeof opt.process === 'function') ? opt.process :
-            function(e) { return (x.readyState === g.xhr.DONE && x.status >= 400) ? x.halt(e) : false };
-            return x;
-        };
-
-        x.onerror = x.halt;
-        x.onload = function(e) {
-            g.removeEventListener('offline', x.cancel);
+        var done = function(e) {
+            g.removeEventListener('offline', cancel);
             if (typeof opt.done === 'function') opt.done(e);
-            if (typeof opt.after === 'function') opt.after(e);
+            if (typeof opt.after === 'function') opt.after(e, g.xhr.DONE);
         };
 
         try {
@@ -1566,12 +1597,16 @@
                 x.withCredentials = opt.withCredentials;
                 if (x.withCredentials) x.setRequestHeader('cookies', document.cookie);
                 for (var m in rs) x.setRequestHeader(m, rs[m]);
-                x.process().send(opt.data);
+                g.addEventListener('offline', cancel);
+                x.timeout = opt.timeout; x.ontimeout = cancel; x.onerror = fail; x.onload = done;
+                x.onreadystatechange = (typeof opt.process === 'function') ? opt.process :
+                    function(e) { return (x.readyState === g.xhr.DONE && x.status >= 400) ? fail(e) : false };
+                x.send(opt.data);
             } else {
-                x.cancel({srcElement:x});
+                cancel({srcElement:x, status:400});
             }
         } catch (e) {
-            x.halt(e);
+            fail(e);
         }
         return x;
     };
@@ -1580,6 +1615,8 @@
     g.xhr.HEADERS_RECEIVED = 2; // получены заголовки ответа
     g.xhr.LOADING = 3; // ответ в процессе передачи (данные частично получены)
     g.xhr.DONE = 4; // запрос завершён
+    g.xhr.FAIL = 5; // запрос завершён аварийно
+    g.xhr.CANCEL = 6; // запрос отменён
 
     /**
      * @function tpl
