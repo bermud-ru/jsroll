@@ -52,7 +52,7 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
                 try {
                     if (typeof done === 'function') {
                         var tx = own.owner.db.transaction(own.tables, 'readonly');
-                        tx.onerror = tx.onabort = function (e) { return  own.fail(e, tx); };
+                        tx.onerror = tx.onabort = function (e) { return own.fail(e, tx); };
                         // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                         var store = tx.objectStore(own.tables);
                         return store.getAll().onsuccess = function (e) { return done(e, store, tx); };
@@ -68,10 +68,10 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             try {
                 console.log('db', own.owner.db);
                 var tx = own.owner.db.transaction(own.tables, 'readwrite');
-                tx.onerror = function (e) { return  handler.fail(e, tx); };
+                tx.onerror = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tables[0]);
-                console.log('store', store);
+// console.log('store', store);
                 if (own.primaryKey && row.hasOwnProperty(own.primaryKey)) {
                     if (row[own.primaryKey] === null) {
                         delete row[own.primaryKey];
@@ -91,7 +91,7 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             try {
                 var tx = own.owner.db.transaction(own.tables, 'readwrite');
-                tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
+                tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tablelName);
                 if (!own.primaryKey || row[own.primaryKey] === null) throw 'PrimaryKey is not set!';
@@ -105,10 +105,12 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
             try {
                 var tx = own.owner.db.transaction(own.tables, 'readwrite');
-                tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
+                tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tables);
-                if (typeof handler.done === 'function') store.delete(idx).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.delete(idx);
+                // var store = tx.objectStore(own.tables[0]);
+                //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
+                if (typeof handler.done === 'function') store['delete'](idx).onsuccess = function (e) { return handler.done(e, store, tx); }; else store['delete'](idx);
             } catch (e) {
                 handler.fail(e);
             }

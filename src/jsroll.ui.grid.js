@@ -21,7 +21,7 @@
         this.selection = g.getSelection();
     }; Cursor.prototype = {
         current: null,
-        in: function (el, off) {
+        at: function (el, off) {
             this.current = el;
             el.contentEditable = true;
             this.range.setStart(el, off||0);
@@ -58,7 +58,7 @@
 
         var formula = this.ui.attr('formula');
         if (formula) { this.innerHTML = '=' + formula; }
-        cursor.in(this);
+        cursor.at(this);
         this.css.add('active');
         return false;
     };
