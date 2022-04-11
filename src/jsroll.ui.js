@@ -550,7 +550,7 @@ var Application = function (ver) {
             event.split(/\s*,\s*/).forEach( function(e) {
                 var tags = e.split('|'), event = tags.pop();
                 a.forEach(function (i) {
-                    if (!tags.length || tags.indexOf(i.tagName) >-1) switch (event) {
+                    if (!tags.length || i.matches(tags[0])) switch (event) {
                         case 'dbltap': i.addEventListener('touchend', function (e) {
                                return dbltap(g.ui.src(e),e,fn,i,args);
                             }, opt ? opt : false);
@@ -563,6 +563,15 @@ var Application = function (ver) {
             });
             return this.instance;
         },
+        /**
+         * Делегирования обработчика события
+         *
+         * @param s { string | regex }
+         * @param event { string }
+         * @param fn { closure }
+         * @param args { IArguments }
+         * @param opt {false|Object}
+         **/
         dg: function (s, event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
@@ -571,15 +580,15 @@ var Application = function (ver) {
                     switch (event) {
                         case 'dbltap': i.addEventListener('touchend', function (e) {
                                 var own = this, found = false, el = g.ui.src(e);
-                                while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                                if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return dbltap(el,e,fn,el,args); }
+                                while (el && el !== own && !(found = el.matches(s))) el = el.parentElement;
+                                if (found && (!tags.length || el.matches(tags[0]))) { return dbltap(el,e,fn,el,args); }
                                 return found;
                             });
                             break;
                         default: i.addEventListener(event, function(e) {
                             var own = this, found = false, el = g.ui.src(e);
                             while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                            if (found && (!tags.length || tags.indexOf(el.tagName) >-1)) { return fn.apply(el,args?args.unshift(e):[e]); }
+                            if (found && (!tags.length || el.matches(tags[0]))) { return fn.apply(el,args?args.unshift(e):[e]); }
                             return found;
                         }, opt ? opt : false);
                     }
@@ -587,19 +596,32 @@ var Application = function (ver) {
             });
             return this.instance;
         },
+        /**
+         * Удалить обработчик событий
+         *
+         * @param event { string }
+         * @param fn { closure }
+         * @param opt {false|Object}
+         **/
         off: function (event, fn, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
-                var tags = e.split(':'), event = tags.pop();
+                var tags = e.split('|'), event = tags.pop();
                 a.forEach( function (i) {
-                    if (!tags.length || tags.indexOf(i.tagName) >-1) i.removeEventListener(event, fn, opt ? opt : false);
+                    if (!tags.length || i.matches(tags[0])) i.removeEventListener(event, fn, opt ? opt : false);
                 });
             });
             return this.instance;
         },
+        /**
+         *
+         * @param s { string | regex }
+         **/
         matches: function (s) {
-            var el = this.instance;
-            return typeof s === 'string' ? s.split(/\s*,\s*/).some( function(e) { return el.matches(e); }) : false;
+            var a = this.instance instanceof Array ? this.instance : [this.instance];
+            var rules = typeof s === 'string' ? s.split(/\s*,\s*/) : [s];
+            var res = a.filter(function(el) { return rules.filter( function(r) { return el.matches(r); }).length; });
+            return res.length > 0 ? res : false;
         },
         /**
          *
