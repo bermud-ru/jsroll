@@ -50,30 +50,30 @@ var storage = function() {
 };
 
 var Application = function (ver) {
-    var own = this;
-    own.localStorage = storage();
-    own.merge(str2json(own.localStorage.getItem('Application')));
-    own.sessionStorage = sessionStorage;
-    own.version = ver || new Date();
+    var $ = this;
+    $.localStorage = storage();
+    $.merge(str2json($.localStorage.getItem('Application')));
+    $.sessionStorage = sessionStorage;
+    $.version = ver || new Date();
 
-    window.onload = own.run.bind(own);
-    window.onunload = own.destroy.bind(own);
-    window.onresize = own.resize.bind(own);
-    window.onbeforeunload = function (event) { if (own.confirmReload) return own.reload(event); };
+    window.onload = $.run.bind($);
+    window.onunload = $.destroy.bind($);
+    window.onresize = $.resize.bind($);
+    window.onbeforeunload = function (event) { if ($.confirmReload) return $.reload(event); };
     // document.addEventListener('deviceready', function() {
     //     // Heavy cordova sorces redy to work (espesial for
     //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
     // }, false);
 
     if (window.addEventListener) {
-        window.addEventListener('online', own.online.bind(own), false);
-        window.addEventListener('offline', own.offline.bind(own), false);
-        document.addEventListener('DOMContentLoaded', function(event) { return own.__ready__ = true; }, false);
+        window.addEventListener('online', $.online.bind($), false);
+        window.addEventListener('offline', $.offline.bind($), false);
+        document.addEventListener('DOMContentLoaded', function(event) { return $.__ready__ = true; }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
             if (hash !== urn.handled.hash) {
                 urn.handled.hash = hash;
-                if (typeof urn.handled.handler === 'function') urn.handled.handler.call(own, location.pathname, location.search, false);
+                if (typeof urn.handled.handler === 'function') urn.handled.handler.call($, location.pathname, location.search, false);
             }
             return false;
             // var r = confirm("You pressed a Back button! Are you sure?!");
@@ -96,19 +96,19 @@ var Application = function (ver) {
         this.removeEventListener = target.removeEventListener.bind(target);
         this.dispatchEvent = function (e) {
             if (this.events.hasOwnProperty(e.type)) {
-                var own = this;
+                var $ = this;
                 this.events[e.type].forEach(function (o, i) {
-                   if (o.parentNode) o.dispatchEvent(e); else own.events[e.type].splice(i,1);
+                   if (o.parentNode) o.dispatchEvent(e); else $.events[e.type].splice(i,1);
                 });
             } else {
                 target.dispatchEvent(e);
             }
         }
         this.eventListener = function (el,event,fn,opt) {
-            var own = this, a = el instanceof Array ? el : [el];
+            var $ = this, a = el instanceof Array ? el : [el];
             if (this.events.hasOwnProperty(event)) {
                 a.forEach(function (o) {
-                    if ((own.events[event].indexOf(o)) === -1) { own.events[event].push(o); }
+                    if (($.events[event].indexOf(o)) === -1) { $.events[event].push(o); }
                 })
             } else {
                 this.events[event] = a;
@@ -116,10 +116,10 @@ var Application = function (ver) {
             a.forEach(function (o){ o.addEventListener(event,fn,opt) });
         }
     } else {
-        document.body.ononline = own.online.bind(own);
-        document.body.onoffline = own.offline.bind(own);
+        document.body.ononline = $.online.bind($);
+        document.body.onoffline = $.offline.bind($);
         document.onreadystatechange = function (e) {
-            if (document.readyState === "complete") { return own.ready(e); }
+            if (document.readyState === "complete") { return $.ready(e); }
         }
         // window.onhashchange = function() {
         //     console.log(window.location.pathname+  window.location.search);
@@ -130,13 +130,13 @@ var Application = function (ver) {
     $version: null,
     get version() { return this.$version },
     set version(s) {
-        var own = this;
-        if (own.$version !== s) {
+        var $ = this;
+        if ($.$version !== s) {
             var wait = function() {
-                if (own.__ready__) {
+                if ($.__ready__) {
                     if (wait.timer) clearTimeout(wait.timer);
-                    own.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
-                    own.$version = s
+                    $.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
+                    $.$version = s
                 } else {
                     return wait.timer = setTimeout( wait, 50);
                 }
@@ -168,10 +168,10 @@ var Application = function (ver) {
      * @return {*|number}
      */
     onready: function (fn, args) {
-        var own = this, wait = function(cb, a) {
-            if (own.__ready__) {
+        var $ = this, wait = function(cb, a) {
+            if ($.__ready__) {
                 if (this.timer) clearTimeout(this.timer);
-                return cb.apply(own, a);
+                return cb.apply($, a);
             } else {
                 return this.timer = setTimeout(function () { return new wait(cb, a); }, 50);
             }
@@ -185,9 +185,9 @@ var Application = function (ver) {
      */
     resize: function (e) { return false; },
     serialize: function (e) {
-        var props = {}, own = this;
-        Object.getOwnPropertyNames(own).forEach( function (i ) {
-            if (i.startsWith('$')) { props[i] = own[i]; }
+        var props = {}, $ = this;
+        Object.getOwnPropertyNames($).forEach( function (i ) {
+            if (i.startsWith('$')) { props[i] = $[i]; }
         });
         if (Object.keys(props).length === 0) {
             this.localStorage.removeItem('Application');
@@ -308,9 +308,9 @@ var Application = function (ver) {
          * @returns {css}
          */
         add: function (c) {
-            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, own = this;
+            var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, $ = this;
             a.forEach(function (v,i,a) {
-                if (own.instance && !own.has(v)) own.instance.className += ' ' + v;
+                if ($.instance && !$.has(v)) $.instance.className += ' ' + v;
             });
             return this;
         },
@@ -417,7 +417,7 @@ var Application = function (ver) {
         } else {
             clearTimeout(he.timer);
             he.element = null;
-            return fn.apply(i,args?args.unshift(e):[e]);
+            return fn.apply(i,argX(args,e));
         }
     }
 
@@ -429,7 +429,15 @@ var Application = function (ver) {
     var ui = function(instance) {
         if (instance.parentElement) this.wrap(instance.parentElement);
         this.instance = instance || g;
-    }; ui.prototype = {
+    };
+    /**
+     * @function argX Arguments helper
+     * @param args { arguments }
+     * @param e { event }
+     * @return {0|{length}|*|[undefined]}
+     */
+    var argX = function (args, e) { if (args && args.length) { if (args[0] instanceof Event) return args; args.unshift(e); return args; } return[e] }
+    ui.prototype = {
         wrap:function(i, v){
             if (i && !i.hasOwnProperty('ui')) {
                 Object.defineProperty(i, 'ui', { value: new ui(i), writable: false, configurable: false });
@@ -462,19 +470,19 @@ var Application = function (ver) {
          * @return { null|HTMLElement }
          */
         els: function (s, fn, args) {
-            var r = new Array(0), own = this;
+            var r = new Array(0), $ = this;
             if (typeof s === 'string'|| s instanceof Array) {
                 var c = typeof s === 'string' ? s.split(/\s*,\s*/) : s;
                 c.forEach((function (x) {
-                    r.push.apply(r, obj2array(own.instance.querySelectorAll(x), []).map(function (e, i, a) {
+                    r.push.apply(r, obj2array($.instance.querySelectorAll(x), []).map(function (e, i, a) {
                         if ( e instanceof Element ) {
-                            own.wrap(e); if (typeof fn == 'function') fn.apply(e, args ? args.push(i,a) && args:[i, a]);
+                            $.wrap(e); if (typeof fn == 'function') fn.apply(e, args ? args.push(i,a) && args:[i, a]);
                             return e;
                         }
                     }));
-                }).bind(own));
+                }).bind($));
             }
-            return own.wrap(r);
+            return $.wrap(r);
         },
         attr: function (a, v) {
             if (a === undefined) {
@@ -556,7 +564,7 @@ var Application = function (ver) {
                             }, opt ? opt : false);
                             break;
                         default: i.addEventListener(event, function (e) {
-                            return fn.apply(i,args?args.unshift(e):[e])
+                            return fn.apply(i,argX(args,e))
                         }, opt ? opt : false);
                     }
                 });
@@ -579,16 +587,16 @@ var Application = function (ver) {
                 a.forEach( function (i) {
                     switch (event) {
                         case 'dbltap': i.addEventListener('touchend', function (e) {
-                                var own = this, found = false, el = g.ui.src(e);
-                                while (el && el !== own && !(found = el.matches(s))) el = el.parentElement;
+                                var $ = this, found = false, el = g.ui.src(e);
+                                while (el && el !== $ && !(found = el.matches(s))) el = el.parentElement;
                                 if (found && (!tags.length || el.matches(tags[0]))) { return dbltap(el,e,fn,el,args); }
                                 return found;
                             });
                             break;
                         default: i.addEventListener(event, function(e) {
-                            var own = this, found = false, el = g.ui.src(e);
-                            while (el && el !== own && !(found = el.ui.matches(s))) el = el.parentElement;
-                            if (found && (!tags.length || el.matches(tags[0]))) { return fn.apply(el,args?args.unshift(e):[e]); }
+                            var $ = this, found = false, el = g.ui.src(e);
+                            while (el && el !== $ && !(found = el.ui.matches(s))) el = el.parentElement;
+                            if (found && (!tags.length || el.matches(tags[0]))) { return fn.apply(el,argX(args,e)); }
                             return found;
                         }, opt ? opt : false);
                     }
@@ -690,7 +698,7 @@ var Application = function (ver) {
                 default:
                     var attr;
                     if (attr = el.getAttribute('@')) {
-                        var o = function (el) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(g, el);
+                        var o = function (g,group) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(el,g,el.group);
                         v = o && o.hasOwnProperty('value') ? o.value : null;
                         break;
                     } else {
@@ -699,7 +707,7 @@ var Application = function (ver) {
             }
         }
         return QueryParam(v, QueryParam.NULLSTR);
-    };
+    }; g.InputHTMLElementValue = InputHTMLElementValue;
 
     /**
      * @function getElementsValues
@@ -771,9 +779,8 @@ var Application = function (ver) {
                 var attr;
                 try {
                     if (attr = el.getAttribute('@')) {
-                        var o = function (el) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(g, el);
-                        if (o && o.hasOwnProperty('value')) o.value = el;
-                        break;
+                        var o = function (g,group) { return eval(quoter(attr, quoter.QOUTAS_CODE)) }.call(el,g,el.group);
+                        if (o && o.hasOwnProperty('value')) { o.value = el; break; }
                     }
                 } catch (e) {
                     console.warn(e);
@@ -790,7 +797,7 @@ var Application = function (ver) {
     };
 
     /**
-     * @function functionsetInputHTMLElementFromObject
+     * @function setInputHTMLElementFromObject
      *
      * @param { HTMLFormElement }  el
      * @param { Object } v - объете данных
@@ -814,11 +821,12 @@ var Application = function (ver) {
                 } else if (this.value) {
                     this.status = 'success';
                 }
+                return this.status;
             }
             return status;
         }
         return 'none';
-    };
+    }; g.setInputHTMLElementFromObject = setInputHTMLElementFromObject;
 
     /**
      * @function crud - Create Read Update Delete interface
@@ -839,11 +847,11 @@ var Application = function (ver) {
     };
     Object.defineProperty(crud.prototype, 'data', {
         set: function (data) {
-            var own = this;
+            var $ = this;
             if (data instanceof Array) {
-                own.__data__ = data.map(function (v) {return Object.merge(own.meta, v)});
-                own.index = 0;
-            } else { own.__data__ = []; }
+                $.__data__ = data.map(function (v) {return Object.merge($.meta, v)});
+                $.index = 0;
+            } else { $.__data__ = []; }
         },
         get: function() { return this.__data__; },
         enumerable: true, configurable: true
@@ -933,51 +941,51 @@ var Application = function (ver) {
      * @param { Object } opt
      */
     var group = function (els, opt) {
-        var own = this, fields_set = true;
-        own.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
-        own.__elements = typeof els === 'string' ? ui.els(els) : els;
-        own.form = {};
+        var $ = this, fields_set = true;
+        $.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
+        $.__elements = typeof els === 'string' ? ui.els(els) : els;
+        $.form = {};
 
-        if ( own.__elements instanceof HTMLFormElement ) {
-            own.form = own.__elements;
+        if ( $.__elements instanceof HTMLFormElement ) {
+            $.form = $.__elements;
             fields_set = false;
-            Object.defineProperty(own.opt, 'method', {
+            Object.defineProperty($.opt, 'method', {
                 enumerable: true,
                 configurable: true,
                 get: function method () {
-                    return own.form.getAttribute('method') || 'get'
+                    return $.form.getAttribute('method') || 'get'
                 }
             });
-            own.opt.url = own.form.getAttribute('action') || own.opt.url;
-            own.form.addEventListener('submit',own.onsubmit.bind(own), true);
-            own.__elements = g.ui.wrap(obj2array(own.form.elements).map(function (el) { return g.ui.wrap(el);}));
+            $.opt.url = $.form.getAttribute('action') || $.opt.url;
+            $.form.addEventListener('submit',$.onsubmit.bind($), true);
+            $.__elements = g.ui.wrap(obj2array($.form.elements).map(function (el) { return g.ui.wrap(el);}));
         }
 
-        own.__elements.forEach(function (v){ v.group = own; if (fields_set) own.form[v.name] = v; });
-        if ( own.opt.submit ) {
-            var submit = own.opt.submit instanceof Array ? own.opt.submit : [own.opt.submit];
-            submit.forEach(function (v){ if (v instanceof Element) v.ui.on('click', own.onsubmit.bind(own)); });
+        $.__elements.forEach(function (v){ v.group = $; if (fields_set) $.form[v.name] = v; });
+        if ( $.opt.submit ) {
+            var submit = $.opt.submit instanceof Array ? $.opt.submit : [$.opt.submit];
+            submit.forEach(function (v){ if (v instanceof Element) v.ui.on('click', $.onsubmit.bind($)); });
         }
 
-        own.hashing();
-        if (own.opt.change) {
-            var fieldset = own.querySelector('fieldset');
-            if (fieldset) fieldset.ui.on('change', own.opt.change.bind(own));
-            else own.elements.ui.on('change', own.opt.change.bind(own));
+        $.hashing();
+        if ($.opt.change) {
+            var fieldset = $.querySelector('fieldset');
+            if (fieldset) fieldset.ui.on('change', $.opt.change.bind($));
+            else $.elements.ui.on('change', $.opt.change.bind($));
         }
     }; group.prototype = {
         form: null,
         __elements: [],
         get elements() { return this.__elements; },
         get length() { return this.elements.length; },
-        getElementById: function (n) {
+        byId: function (n) {
             if (typeof n === 'undefined') return this.elements;
             var r = []; for(var i = 0, l = this.length; i < l; i++) {
                 if (this.elements[i].getAttribute('name') === n || this.elements[i].getAttribute('id') === n) {
                     r.push(this.elements[i]);
                 }
             }
-            return r.length === 0 ? null : (r.length === 1 ? r[0] : g.ui.wrap(r));
+            return r.length === 0 ? null : (r.length === 1 ? r[0] : r);
         },
         querySelector: function (s) {
             if (typeof s === 'undefined') return this.elements;
@@ -1012,8 +1020,8 @@ var Application = function (ver) {
             }
         },
         get valid () {
-            this.__valid = []; var own = this;
-            this.elements.forEach(function (e,i,a) { if (!input_validator(e)) own.__valid.push(e); });
+            this.__valid = []; var $ = this;
+            this.elements.forEach(function (e,i,a) { if (!input_validator(e)) $.__valid.push(e); });
             return !this.__valid.length ;
         },
         reset: function (attr) {
@@ -1436,64 +1444,64 @@ var Application = function (ver) {
                 return false;
             },
             onKeydown:function (e) {
-                var owner = this, key = g.eventCode(e), th = this.typeahead, list = th.cache[th.key] || [];
-                if (list.length && owner.pannel) {
+                var $ = this, key = g.eventCode(e), th = $.typeahead, list = th.cache[th.key] || [];
+                if (list.length && $.pannel) {
                     switch (key) {
                         case 'ArrowUp': case 38:
                             if (th.index < 0) th.index = 0;
-                            if (owner.pannel) owner.pannel.css.del('fade');
+                            if ($.pannel) $.pannel.css.del('fade');
                             if (th.index > 0) th.index--; else th.index = list.length - 1;
                             break;
                         case 'ArrowDown': case 40:
                             if (th.index < 0) th.index = 0;
-                            if (owner.pannel) owner.pannel.css.del('fade');
+                            if ($.pannel) $.pannel.css.del('fade');
                             if (th.index < list.length - 1) th.index++; else th.index = 0;
                             break;
                         case 'Enter': case 13:
                             th.stoped();
-                            owner.setValue(th.index > -1 ? th.value : th.cache[th.key][0]);
-                            if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
+                            $.setValue(th.index > -1 ? th.value : th.cache[th.key][0]);
+                            if ($.value.length) $.setSelectionRange($.value.length, $.value.length);
                             return false;
                         case 'Escape': case 27:
                             th.stoped();
                             return false;
                         default:
-                            if (owner.pannel) owner.pannel.css.add('fade');
+                            if ($.pannel) $.pannel.css.add('fade');
                             setTimeout(th.valueChanger.bind(th), 0);
                             return false;
                     }
-                    owner.pannel.ui.el('.active', function (){ this.css.del('active'); });
-                    owner.pannel.ui.el('[value="' + th.index + '"]', function (){  this.css.add('active'); });
-                    owner.setValue(th.value);
-                    if (owner.value.length) owner.setSelectionRange(owner.value.length, owner.value.length);
+                    $.pannel.ui.el('.active', function (){ this.css.del('active'); });
+                    $.pannel.ui.el('[value="' + th.index + '"]', function (){  this.css.add('active'); });
+                    $.setValue(th.value);
+                    if ($.value.length) $.setSelectionRange($.value.length, $.value.length);
                     return false;
                 } else if (key === 'Enter' || key === 13) {
                     th.stoped();
-                    if (owner.pannel) owner.pannel.css.add('fade');
+                    if ($.pannel) $.pannel.css.add('fade');
                 }
                 // setTimeout(th.valueChanger.bind(th), 0);
                 return false;
             },
             onFocus:function(e){
-                var owner = this, th = this.typeahead, len = owner.value.length;
-                if (len) owner.setSelectionRange(len, len);
+                var $ = this, th = $.typeahead, len = $.value.length;
+                if (len) $.setSelectionRange(len, len);
                 if ((!len && th.opt.getEmpty) || (len && this.status !== 'success')) {
                     th.delayed();
-                    th.activeItem(th.key = owner.__key__);
+                    th.activeItem(th.key = $.__key__);
                 }
                 return false;
             },
             onInput:function(e){
-                var owner = this, th = this.typeahead;
+                var th = this.typeahead;
                 th.delayed();
-                th.key = owner.__key__;
+                th.key = this.__key__;
                 th.valueChanger();
                 return false;
             },
             onBlur:function(e){
-                var owner = this, th = this.typeahead;
+                var th = this.typeahead;
                 th.stoped();
-                input_validator(owner);
+                input_validator(this);
                 return false;
             },
             valueChanger: function (item) {
@@ -1546,10 +1554,10 @@ var Application = function (ver) {
                 }
             }, opt);
             element.setValue = function (v) {
-                var th = this.typeahead, owner = this,
+                var th = this.typeahead, $ = this,
                     isSet = v && v.hasOwnProperty(this.name),
                     eq = this.value === this.__value ? this.value.trim().length : 0;
-                if (eq && isSet && owner.__key__ === v[owner.name].trim().toLowerCase()) { if (typeof th.opt.fn === 'function') owner.status = th.opt.fn.call(owner, v); }
+                if (eq && isSet && $.__key__ === v[$.name].trim().toLowerCase()) { if (typeof th.opt.fn === 'function') $.status = th.opt.fn.call($, v); }
                 else { th.valueChanger(isSet ? v : ((th.index > -1) ? th.value : null)); }
                 return false;
             };

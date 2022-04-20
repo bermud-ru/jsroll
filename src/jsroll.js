@@ -95,12 +95,12 @@
             if (!navigator.onLine) return console.error('Browser not connected!');
             if (this.connected) return console.warn('Already connected!');
 
-            var own = this;
-            if (opt) own.opt = Object.assign(own.opt, opt);
-            own.socket = new WebSocket(own.url);
-            own.socket.binaryType = own.opt.binaryType;
-            ['error','open','message','close'].forEach(function (e) { own.socket.addEventListener(e, own[e].bind(own)); });
-            return own.socket;
+            var $ = this;
+            if (opt) $.opt = Object.assign($.opt, opt);
+            $.socket = new WebSocket($.url);
+            $.socket.binaryType = $.opt.binaryType;
+            ['error','open','message','close'].forEach(function (e) { $.socket.addEventListener(e, $[e].bind($)); });
+            return $.socket;
         },
         error: function(e) {
             this.connected = false;
@@ -117,11 +117,11 @@
         },
         close: function(e) {
             if (!e) return this.connected ? this.socket.close() : true;
-            var own = this;
-            own.connected = false;
+            var $ = this;
+            $.connected = false;
             var fn; setTimeout(fn = function() {
-            return own.readyState === WebSocket.CONNECTING ? own.up() : setTimeout(fn, own.opt.reconnect);
-            }, own.opt.reconnect);
+            return $.readyState === WebSocket.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnect);
+            }, $.opt.reconnect);
             return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
         },
         send: function(data) {
@@ -162,63 +162,63 @@
      * @constructor
      */
     g.idxDB = function(name, version, opt) {
-        var own = this;
+        var $ = this;
         this.name = name;
         this.version = parseInt(version);
-        Object.defineProperty(own, 'active', {
+        Object.defineProperty($, 'active', {
             __proto__: null,
             get: function active() {
-                return own.idxDBinstance ? own.idxDBinstance.readyState === 'done' : false;
+                return $.idxDBinstance ? $.idxDBinstance.readyState === 'done' : false;
             }
         });
-        if (typeof opt === 'object') own.merge(opt);
-        return own;
+        if (typeof opt === 'object') $.merge(opt);
+        return $;
     }; g.idxDB.prototype = {
         IDBOpenDBRequest: null,
         get db() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.result : null; },
         connect: function () {
-            var own = this, max = 0, wait = function () {
+            var $ = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
-                if (!own.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
+                if (!$.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
 
-                var idxDBinstance = g.indexedDB.open(own.name, own.version, function (e) {
-                    return own.build(e);
+                var idxDBinstance = g.indexedDB.open($.name, $.version, function (e) {
+                    return $.build(e);
                 });
                 // Create schema
                 idxDBinstance.onupgradeneeded = function (e) {
-                    return own.build(e);
+                    return $.build(e);
                 };
                 // on reload, idxDBinstance up!
                 idxDBinstance.onsuccess = function (e) {
-                    return own.success(e);
+                    return $.success(e);
                 };
                 idxDBinstance.onblocked = function (e) {
-                    return own.blocked(e);
+                    return $.blocked(e);
                 };
                 // on Error
                 idxDBinstance.onerror = function (e) {
-                    return own.fail(e);
+                    return $.fail(e);
                 };
-                return own.idxDBinstance = idxDBinstance;
+                return $.idxDBinstance = idxDBinstance;
             };
             return wait();
         },
         destroy: function (event) {
-            var own = this;
-            own.idxDBinstance = null; // Дропнули всё
-            own.populate = true; // Пересоздали хранилище
-            var idxDBinstance = own.idxDBinstance = g.indexedDB.deleteDatabase(own.name, own.version);
+            var $ = this;
+            $.idxDBinstance = null; // Дропнули всё
+            $.populate = true; // Пересоздали хранилище
+            var idxDBinstance = $.idxDBinstance = g.indexedDB.deleteDatabase($.name, $.version);
             idxDBinstance.onsuccess = function (e) {
-                return own.success(e);
+                return $.success(e);
             }
             idxDBinstance.onerror = function (e) {
-                return own.fail(e);
+                return $.fail(e);
             }
             idxDBinstance.onblocked = function (e) {
-                return own.blocked(e);
+                return $.blocked(e);
             }
             idxDBinstance.onupgradeneeded = function (e) {
-                return own.build(e);
+                return $.build(e);
             }
         },
         build: function (e) {
@@ -234,9 +234,9 @@
             return this;
         },
         close: function () {
-            var own = this;
-            try { own.db.close(); } catch (e) { own.fail(e); }
-            return own;
+            var $ = this;
+            try { $.db.close(); } catch (e) { $.fail(e); }
+            return $;
         },
         blocked:function (e) {
             console.warn(e);
@@ -333,20 +333,20 @@
      * @return webSQLinstance { webSQL }
      */
     var webSQL = function ( opt) {
-        var own = this;
+        var $ = this;
         if ('openDatabase' in g) {
             this.webSQLinstance = openDatabase(opt.name, opt.version||'1.0', opt.displayName||"DB instace dreated at "+(new Date()), opt.estimatedSize||200000);
-            own.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
+            $.stmt("SELECT * FROM sqlite_master WHERE type='table' AND name NOT LIKE '__Webkit%';",[],
                 function(tx, rs) {
                     var table, tablesNumber = rs.rows.length;
                     for (var i = 0; i < tablesNumber; i++) {
                         table = rs.rows.item(i);
                         if ( table.type === 'table') {
                             tx.executeSql('SELECT name, sql FROM sqlite_master WHERE name = ?', [table.name], function(t,r){
-                                own.tables[r.rows[0].name] = {type:'table', DDL:r.rows[0].sql};
+                                $.tables[r.rows[0].name] = {type:'table', DDL:r.rows[0].sql};
                             });
                         } else {
-                            own.tables[table.name] = {type: table.type};
+                            $.tables[table.name] = {type: table.type};
                         }
                     }
                 }
@@ -354,7 +354,7 @@
         } else {
             this.webSQLinstance = null; throw "webSQL object not exist!";
         }
-        if (opt && typeof opt === 'object') own.merge(opt);
+        if (opt && typeof opt === 'object') $.merge(opt);
     };
     webSQL.prototype = {
         opt: QueryParam.STRNULL | QueryParam.INTQOUTED,
@@ -407,33 +407,33 @@
         },
         cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
         transaction: function (proc, fail) {
-            var own = this;
-            //  own.webSQLinstance.readTransaction(function (tx) {
+            var $ = this;
+            //  $.webSQLinstance.readTransaction(function (tx) {
             var wait = function() {
-                if (!own.turn || !own.runnig) {
+                if (!$.turn || !$.runnig) {
                     if (wait.timer) clearTimeout(wait.timer);
-                    return own.webSQLinstance.transaction(
-                        function (tx) { return own.proc(tx, proc);},
-                        function (error) { return own.fail(own.running, error, fail); }
+                    return $.webSQLinstance.transaction(
+                        function (tx) { return $.proc(tx, proc);},
+                        function (error) { return $.fail($.running, error, fail); }
                     );
                 } else { return wait.timer = setTimeout(wait, 50); }
             }
             wait();
         },
         executeSql: function(tx, query, data, done, fail) {
-            var own = this, multiQuery = typeof query !== 'string' ;
+            var $ = this, multiQuery = typeof query !== 'string' ;
             try {
                 return (multiQuery ? query : [query]).forEach( function(sql, i, a) {
                     return tx.executeSql( sql, (multiQuery ? data[i] : data),
                         function(tx, result) {
-                            return own.done(tx, result, done, sql, i, a);
+                            return $.done(tx, result, done, sql, i, a);
                         },
                         function(tx, error) {
-                            return own.fail(tx, error, fail, sql, i, a);
+                            return $.fail(tx, error, fail, sql, i, a);
                         });
                 });
             } catch(e) {
-                return own.fail(tx, e, fail);
+                return $.fail(tx, e, fail);
             }
         },
         /**
@@ -446,16 +446,16 @@
          * @param bulk { webSQL.BULK | webSQL.UPSERT | webSQL.DEFAULT }
          */
         stmt: function (query, data, done, fail, bulk) {
-            var own = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
-            return own.transaction(
+            var $ = this, d = typeof data === 'undefined' ? [] : (!!bulk ? data : [data]);
+            return $.transaction(
                 function (tx) {
                     var i = 0, count = d.length, ResultSet = [];
                     var next = function (tx, rs) {
                         if (i < count) {
                             if (typeof rs !== 'undefined' ) ResultSet[i] = rs;
-                            own.executeSql(tx, query, d[i++], next, fail)
+                            $.executeSql(tx, query, d[i++], next, fail)
                         } else {
-                            return typeof done === 'function' ? done.call(own, tx, count > 1 ? ResultSet : rs) : null;
+                            return typeof done === 'function' ? done.call($, tx, count > 1 ? ResultSet : rs) : null;
                         }
                     };
                     return next(tx);
@@ -464,19 +464,19 @@
             );
         },
         grinder: function (o, fields, no_uppend) {
-            var res = {}, own = this; // res = Object.create(null);
+            var res = {}, $ = this; // res = Object.create(null);
             if (fields instanceof Array && typeof o === 'object') fields.forEach(function (v) {
-                if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], own.opt) : null;
+                if (o.hasOwnProperty(v) || !!no_uppend) res[v] = o.hasOwnProperty(v) ? QueryParam(o[v], $.opt) : null;
             });
             return res;
         },
         filtration: function(query, params) {
-            var own = this, m = false;
+            var $ = this, m = false;
             if (/:([^\s$%\),]*)/m.test(query)) {
                 if (!Object.keys(params).length) throw 'webSQL::filter params not exist!';
                 while (m = /:([^\s$%\),]*)/gm.exec(query)) {
                     if (params.hasOwnProperty(m[1])) {
-                        query = query.replace(m[0], QueryParam(params[m[1]], own.opt));
+                        query = query.replace(m[0], QueryParam(params[m[1]], $.opt));
                     } else {
                         throw 'webSQL::filter param (' + m[1] + ') not exist!';
                     }
@@ -530,14 +530,14 @@
          * @return {*|void}
          */
         update: function (table, params, filter, done, fail) {
-            var keys = [], where = [], own = this;
+            var keys = [], where = [], $ = this;
             if (typeof filter === 'string') {
                 filter = this.filtration(filter, params);
             } else if (typeof filter === 'object') {
                 if (filter instanceof Array) {
                     filter.forEach(function (v, i, a) {
                         keys.push(v);
-                        where.push(QueryParam(params[v], own.opt));
+                        where.push(QueryParam(params[v], $.opt));
                         delete params[v];
                     });
                 } else {
@@ -1090,40 +1090,40 @@
     Object.defineProperty(Object.prototype, 'createChild', {
         value: function() {
             if (!arguments.length || typeof arguments[0] !== 'object') return null;
-            var own = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            var $ = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
             var owner = arguments[0];
             switch (typeof arguments[1]) {
                 case 'function':
                     var fn = arguments[1];
-                    own = new fn;
-                    if (own.__proto__) {
-                        own.__proto__ = Object.merge(own.__proto__, owner);
-                        own.__proto__.constructor = fn;
+                    $ = new fn;
+                    if ($.__proto__) {
+                        $.__proto__ = Object.merge($.__proto__, owner);
+                        $.__proto__.constructor = fn;
                     } else  {
-                        own.prototype = Object.merge(fn.prototype, owner);
+                        $.prototype = Object.merge(fn.prototype, owner);
                     }
                     break;
                 case 'object':
-                    own = Object.merge(arguments[1]);
+                    $ = Object.merge(arguments[1]);
                 case 'undefined':
                 default:
-                    if (own.__proto__) own.__proto__ = owner; else own.prototype = owner;
+                    if ($.__proto__) $.__proto__ = owner; else $.prototype = owner;
             }
-            own['owner'] = owner;
+            $['owner'] = owner;
             if (owner.hasOwnProperty('heirs')) {
                 if (owner.heirs instanceof Array) {
-                    owner.heirs.push(own);
+                    owner.heirs.push($);
                 } else {
-                    owner.heirs[own.hasOwnProperty('childIndex') ? own.childIndex : Object.keys(owner.heirs).length] = own
+                    owner.heirs[$.hasOwnProperty('childIndex') ? $.childIndex : Object.keys(owner.heirs).length] = $
                 }
             } else {
-                if (own.hasOwnProperty('childIndex')) {
-                    owner.heirs = {}; owner.heirs[own.childIndex] = own;
+                if ($.hasOwnProperty('childIndex')) {
+                    owner.heirs = {}; owner.heirs[$.childIndex] = $;
                 } else {
-                    owner.heirs = []; owner.heirs.push(own)
+                    owner.heirs = []; owner.heirs.push($)
                 }
             }
-            return own;
+            return $;
         },
         enumerable: false
     });
@@ -1631,19 +1631,19 @@
      */
     g.tpl = function tpl( str, data, cb, opt ) {
         var ctx = this, args = arguments; var arg = args[1] || [], pig = {before: null, after:null};
-        var fn, own = {
+        var fn, $ = {
             src: null, context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
             wait: function(after, args) {
-                var own = this;
-                if (own.processing) { own.timer = setTimeout(function () { own.wait(after, args); }, 50); return own; }
-                else if (typeof after == 'function') { after.apply(own.tpl, args); }
-                else if (after && (typeof (fn = func(after, own.tpl, args)) === 'function')) { fn.apply(own.tpl, args); }
-                return own;
+                var $ = this;
+                if ($.processing) { $.timer = setTimeout(function () { $.wait(after, args); }, 50); return $; }
+                else if (typeof after == 'function') { after.apply($.tpl, args); }
+                else if (after && (typeof (fn = func(after, $.tpl, args)) === 'function')) { fn.apply($.tpl, args); }
+                return $;
             },
             response_header: null,
             __tpl__: undefined,
             get tpl() {
-                if (this.__tpl__) this.__tpl__.owner = own;
+                if (this.__tpl__) this.__tpl__.owner = $;
                 return this.__tpl__;
             },
             set tpl(v) {
@@ -1667,59 +1667,59 @@
             build = function( str, id, cache ) {
                 var isId = typeof id !== 'undefined', pattern = null, dom = null;
                 try {
-                    if (pig.before && (typeof (fn = func(pig.before, own)) === 'function')) {
-                        fn.apply(own, args);
+                    if (pig.before && (typeof (fn = func(pig.before, $)) === 'function')) {
+                        fn.apply($, args);
                     }
                     if (opt && typeof opt.before === 'object') {
                         arg.merge(opt.before);
                     } else if (opt && typeof opt.before === 'function') {
-                        opt.before(own, args);
+                        opt.before($, args);
                     }
 
                     if ( cache ) {
                         pattern = func(cache);
                     } else {
                         pattern = compile(str);
-                        if (isId && own.caching) g.sessionStorage.setItem(id, pattern.toString());
+                        if (isId && $.caching) g.sessionStorage.setItem(id, pattern.toString());
                     }
 
-                    if (!pattern) { return own.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
+                    if (!pattern) { return $.onTplError('tpl-pattern', id, str, args, 'пустой шаблон'); }
 
                     var a, awaiting = function () {
-                        if (own.processing) { own.timer = setTimeout(awaiting, 50); return; }
+                        if ($.processing) { $.timer = setTimeout(awaiting, 50); return; }
 
                         if ( !(cb instanceof Array) ) {
-                            a = typeof arg === 'function' ? arg.apply(own, args) : arg;
-                            own.html = pattern.call(own, a);
+                            a = typeof arg === 'function' ? arg.apply($, args) : arg;
+                            $.html = pattern.call($, a);
                         }
 
                         var after = opt && typeof opt.after == 'function' ? opt.after : null;
 
-                        if (typeof cb === 'function') { own.tpl = cb.call(dom = ui.dom(own.html,'html/dom'), own); }
-                        else if (cb instanceof HTMLElement && (own.tpl = cb)) {
-                            own.tpl.innerHTML = own.html;
+                        if (typeof cb === 'function') { $.tpl = cb.call(dom = ui.dom($.html,'html/dom'), $); }
+                        else if (cb instanceof HTMLElement && ($.tpl = cb)) {
+                            $.tpl.innerHTML = $.html;
                         } else if ( cb instanceof Array ) {
-                            own.tpl = cb;
-                            own.tpl.forEach(function (i) {
-                                a = typeof arg === 'function' ? arg.call(own, i, pattern) : arg;
-                                i.innerHTML = pattern.call(own, a);
+                            $.tpl = cb;
+                            $.tpl.forEach(function (i) {
+                                a = typeof arg === 'function' ? arg.call($, i, pattern) : arg;
+                                i.innerHTML = pattern.call($, a);
                                 if (pig.after && (typeof (fn = func(pig.after, i, a)) === 'function')) {
-                                    own.wait(fn, a);
+                                    $.wait(fn, a);
                                 }
-                                if (after) { own.wait(after, a); }
+                                if (after) { $.wait(after, a); }
                             });
-                            return own.tpl;
+                            return $.tpl;
                         }
 
-                        if (pig.after && (typeof (fn = func(pig.after, own.tpl, a)) === 'function')) {
-                            own.wait(fn, a);
+                        if (pig.after && (typeof (fn = func(pig.after, $.tpl, a)) === 'function')) {
+                            $.wait(fn, a);
                         }
-                        if (after) { own.wait(after, a); }
-                        return dom || own.html;
+                        if (after) { $.wait(after, a); }
+                        return dom || $.html;
                     };
                     return awaiting();
                 } catch( e ) {
-                    return own.onTplError('tpl-build', id, str, args, e);
+                    return $.onTplError('tpl-build', id, str, args, e);
                 }
             };
 
@@ -1728,26 +1728,26 @@
             switch ( true ) {
                 case str.match(is_url):
                     var id = 'uri' + str.hash();
-                    own.caching = true;
+                    $.caching = true;
                     if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
                     // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
                     var o = opt || {}; o.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
-                    return own.src = g.xhr(Object.assign({ owner: own, url: str, async: (typeof cb === 'function'),
+                    return $.src = g.xhr(Object.assign({ owner: $, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
-                        fail: function(e) { return own.onTplError('tpl-xhr', id, str, args, e); }
+                        fail: function(e) { return $.onTplError('tpl-xhr', id, str, args, e); }
                         }, o));
                 case !/[^#*\w\-\.]/.test(str):
-                    own.caching = true;
-                    own.src = g.document.getElementById(str.replace(/^#/,''));
-                    pig.before = own.src && own.src.getAttribute('before');
-                    pig.after = own.src && own.src.getAttribute('after');
+                    $.caching = true;
+                    $.src = g.document.getElementById(str.replace(/^#/,''));
+                    pig.before = $.src && $.src.getAttribute('before');
+                    pig.after = $.src && $.src.getAttribute('after');
                     if (cache = g.sessionStorage.getItem(str)) { return build(null, str, cache); }
-                    if (!own.src) { return own.onTplError('tpl #'+str+' not exist!'); }
-                    return build( own.src.innerHTML, str );
+                    if (!$.src) { return $.onTplError('tpl #'+str+' not exist!'); }
+                    return build( $.src.innerHTML, str );
                 default:
                     return build( str );
             }
-        } catch ( e ) { return own.onTplError('tpl', id, str, args, e) }
+        } catch ( e ) { return $.onTplError('tpl', id, str, args, e) }
     };
 
     /**

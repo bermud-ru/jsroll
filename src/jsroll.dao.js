@@ -32,11 +32,11 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
         init: init,
         build: build,
         get: function (id, opt) {
-            var own = this;
-            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
+            var $ = this;
+            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
             if (id && typeof handler.done === 'function') {
                 try {
-                    var tx = own.owner.db.transaction(own.tables, 'readonly');
+                    var tx = $.owner.db.transaction(own.tables, 'readonly');
                     var store = tx.objectStore(own.tables);
                     tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
                     // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
@@ -47,27 +47,27 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             }
         },
         getAll: function (done) {
-            var own = this;
+            var $ = this;
             if (typeof done === 'function') {
                 try {
                     if (typeof done === 'function') {
-                        var tx = own.owner.db.transaction(own.tables, 'readonly');
-                        tx.onerror = tx.onabort = function (e) { return own.fail(e, tx); };
+                        var tx = $.owner.db.transaction(own.tables, 'readonly');
+                        tx.onerror = tx.onabort = function (e) { return $.fail(e, tx); };
                         // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                         var store = tx.objectStore(own.tables);
                         return store.getAll().onsuccess = function (e) { return done(e, store, tx); };
                     }
                 } catch (e) {
-                    own.owner.fail(e);
+                    $.owner.fail(e);
                 }
             }
         },
         add: function (data, opt) {
-            var own = this, row = own.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
+            var $ = this, row = $.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
             try {
-                console.log('db', own.owner.db);
-                var tx = own.owner.db.transaction(own.tables, 'readwrite');
+                console.log('db', $.owner.db);
+                var tx = $.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tables[0]);
@@ -79,7 +79,7 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
                 }
                 tx.onabort = function (e) {
                     if (own.primaryKey && row.hasOwnProperty(own.primaryKey))
-                        console.error('row PrimaryKey[' + own.primaryKey + '] = ' + row[own.primaryKey] + ' in ' + JSON.stringify(own.tables) + 'already has!');
+                        console.error('row PrimaryKey[' + $.primaryKey + '] = ' + row[own.primaryKey] + ' in ' + JSON.stringify(own.tables) + 'already has!');
                 };
                 if (typeof handler.done === 'function') store.add(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.add(row);
             } catch (e) {
@@ -87,10 +87,10 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             }
         },
         put: function (data, opt) {
-            var own = this, row = own.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
+            var $ = this, row = $.data2row(data, QueryParam.STRNULL);
+            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
             try {
-                var tx = own.owner.db.transaction(own.tables, 'readwrite');
+                var tx = $.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tablelName);
@@ -101,10 +101,10 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
             }
         },
         del: function (idx, opt) {
-            var own = this;
-            var handler = Object.assign({done: own.owner.done, fail: own.owner.fail, close: own.owner.close}, opt);
+            var $ = this;
+            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
             try {
-                var tx = own.owner.db.transaction(own.tables, 'readwrite');
+                var tx = $.owner.db.transaction(own.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore(own.tables);
@@ -257,9 +257,9 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
 //                 }
 //             },
 //             fail: function (e) {
-//                 var own = this;
-//                 own.xhrCount++;
-//                 console.error('Model[' + own.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
+//                 var $ = this;
+//                 $.xhrCount++;
+//                 console.error('Model[' + $.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
 //             }
 //         });
 //     },
