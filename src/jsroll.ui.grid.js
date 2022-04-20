@@ -154,13 +154,12 @@
         }
 
         table.row.del = function(index) {
-            var i = parseInt(index)-1;
-            if (i > 0) table.deleteRow(i);
+            if (table.rows.length > 2) table.deleteRow(parseInt(index));
         }
 
         table.col.del = function(index) {
-            var i = parseInt(index)-1;
-            if (i > 0) for (var r = 0, n = table.rows.length; r < n; r++) table.rows[r].deleteCell(i);
+            var i = parseInt(index);
+            if (table.rows[0].cells.length > 2) for (var r = 0, n = table.rows.length; r < n; r++) table.rows[r].deleteCell(i);
         }
 
         var tuple = function (row, offset) {
