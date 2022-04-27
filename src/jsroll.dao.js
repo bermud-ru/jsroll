@@ -511,49 +511,4 @@ var webSQLmodel = function ( webSQLinstance, opt) {
 };
 g.webSQLmodel = webSQLmodel;
 // var db = new webSQLmodel(new webSQL({name:"DB", version: "1.0", displayName: "DB instace dreated at "+datetimer(new Date()), estimatedSize:200000}));
-
-var sqlObject = function() {
-    return function (o) {
-        var index = is_empty(o.index) || parseInt(o.index);
-        var pk = o.primaryKey ? o.primaryKey : null;
-        var rows = o.crud;
-        var fn, worker = function (row) {
-            switch (opt.method.toLowerCase()) {
-                case 'del': rows.splice(index,1); break;
-                case 'post': if (pk) row[pk] = Math.max.apply(Math, rows.map(function(r) { return r[pk]; })) + 1;
-                    rows.push(row); break;
-                case 'put': rows[index].merge(row); break;
-                case 'get': default:
-            }
-            if (typeof opt.done === 'function') opt.done(index !== null ? rows[index] : rows);
-            return worker.done = true;
-        }
-        var opt = Object.assign({ srcElement: worker, method: 'get', index: index, rows: rows, timeout: 1000}, o);
-
-        worker.timeout = function () {
-            var res = ((Date.now() - worker.start) < opt.timeout);
-            if (!res) {
-                clearTimeout(worker.instance);
-                if (typeof opt.cansel === 'function') opt.cansel(); else console.warn('Worker timeout');
-            }
-            return res;
-        };
-
-        worker.start = Date.now();
-        worker.done = false;
-
-        if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
-            (fn = function () {
-                if (worker.timeout()) worker.instance = setTimeout(function () {
-                    worker(o.data);
-                    if (!worker.done) return fn();
-                    if (typeof opt.after == 'function') opt.after();
-                    return false;
-                }, 0);
-            })();
-        }
-        return worker;
-    };
-}; g.sqlObject = sqlObject;
-
 }( window, window.ui ));
