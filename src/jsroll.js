@@ -204,7 +204,7 @@
         },
         launchSchemas: function (event) {
             var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
-                $.models[v.name] = v;
+                $.models[v.tables.join('-')] = v;
                 if (typeof v.launch === 'function') {
                     v.store = v.launch($.db);
                 } else {

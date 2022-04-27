@@ -28,7 +28,7 @@
 var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
 
     return Object.merge({
-        get name() { return this.tables[0]; /*.join('-'); */ },
+        get name() { return this.tables[0]; },
         tables: typeof tables === 'string' ? [tables] : tables,
         primaryKey: primaryKey || null,
         schema: schema,
