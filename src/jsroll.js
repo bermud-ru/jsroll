@@ -141,18 +141,9 @@
         'key' in e ? e.key : 'keyCode' in e ? e.keyCode : 'keyIdentifier' in e ? e.keyIdentifier : e.charCode : null;
     };
 
-    if (!('indexedDB' in g)) {
-        g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || g.shimIndexedDB || null;
-    }
-
-    if (!('IDBTransaction' in g)) {
-        g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction || null;
-    }
-
-    if (!('IDBKeyRange' in g)) {
-        g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange || null;
-    }
-
+    if (!('indexedDB' in g)) { g.indexedDB = g.mozIndexedDB || g.webkitIndexedDB || g.msIndexedDB || g.shimIndexedDB || null; }
+    if (!('IDBTransaction' in g)) { g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction || null; }
+    if (!('IDBKeyRange' in g)) { g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange || null; }
     /**
      * @class idxDB
      *
@@ -163,42 +154,31 @@
      */
     g.idxDB = function(name, version, opt) {
         var $ = this;
-        this.name = name;
-        this.version = parseInt(version);
+        $.name = name;
+        $.version = parseInt(version);
+        $.models = {};
         Object.defineProperty($, 'active', {
             __proto__: null,
-            get: function active() {
-                return $.idxDBinstance ? $.idxDBinstance.readyState === 'done' : false;
-            }
+            get: function active() { return $.idxDBinstance ? $.idxDBinstance.readyState === 'done' : false; }
         });
         if (typeof opt === 'object') $.merge(opt);
         return $;
     }; g.idxDB.prototype = {
         IDBOpenDBRequest: null,
-        get db() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.result : null; },
+        set db(event) { var $ = this; $.IDBOpenDBRequest = event instanceof Event ? ui.src(event) : event;},
+        get db() { var $ = this; return $.IDBOpenDBRequest ? $.IDBOpenDBRequest.result : null; },
         connect: function () {
             var $ = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
                 if (!$.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
-
-                var idxDBinstance = g.indexedDB.open($.name, $.version, function (e) {
-                    return $.build(e);
-                });
+                var idxDBinstance = g.indexedDB.open($.name, $.version, function (e) { return $.buildSchemas(e); });
                 // Create schema
-                idxDBinstance.onupgradeneeded = function (e) {
-                    return $.build(e);
-                };
+                idxDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); };
                 // on reload, idxDBinstance up!
-                idxDBinstance.onsuccess = function (e) {
-                    return $.success(e);
-                };
-                idxDBinstance.onblocked = function (e) {
-                    return $.blocked(e);
-                };
+                idxDBinstance.onsuccess = function (e) { return $.launchSchemas(e); };
+                idxDBinstance.onblocked = function (e) { return $.blocked(e); };
                 // on Error
-                idxDBinstance.onerror = function (e) {
-                    return $.fail(e);
-                };
+                idxDBinstance.onerror = function (e) { return $.fail(e); };
                 return $.idxDBinstance = idxDBinstance;
             };
             return wait();
@@ -208,50 +188,40 @@
             $.idxDBinstance = null; // Дропнули всё
             $.populate = true; // Пересоздали хранилище
             var idxDBinstance = $.idxDBinstance = g.indexedDB.deleteDatabase($.name, $.version);
-            idxDBinstance.onsuccess = function (e) {
-                return $.success(e);
-            }
-            idxDBinstance.onerror = function (e) {
-                return $.fail(e);
-            }
-            idxDBinstance.onblocked = function (e) {
-                return $.blocked(e);
-            }
-            idxDBinstance.onupgradeneeded = function (e) {
-                return $.build(e);
-            }
+            idxDBinstance.onsuccess = function (e) { return $.launchSchemas(e); }
+            idxDBinstance.onerror = function (e) { return $.fail(e); }
+            idxDBinstance.onblocked = function (e) { return $.blocked(e); }
+            idxDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); }
         },
-        build: function (e) {
-            this.IDBOpenDBRequest = ui.src(e);
-            var db = this.IDBOpenDBRequest.result;
-            obj2array(this.heirs).map(function (v, i, a) { v.build(db); });
-            return this;
-        },
-        success: function (e) {
-            this.IDBOpenDBRequest = ui.src(e);
-            var db = this.IDBOpenDBRequest.result;
-            obj2array(this.heirs).map(function (v, i, a) { v.init(db); });
-            return this;
-        },
-        close: function () {
-            var $ = this;
-            try { $.db.close(); } catch (e) { $.fail(e); }
+        buildSchemas: function (event) {
+            var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
+                if (typeof v.schema === 'function') { v.schema($.db); } else {
+                    if (v.primaryKey) $.db.createObjectStore(v.name,{keyPath:v.primaryKey, autoIncrement: !!v.autoIncrement});
+                    else $.db.createObjectStore(v.name);
+                }
+            });
             return $;
         },
-        blocked:function (e) {
-            console.warn(e);
-            return this;
+        launchSchemas: function (event) {
+            var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
+                $.models[v.name] = v;
+                if (typeof v.launch === 'function') {
+                    v.store = v.launch($.db);
+                } else {
+                    v.store  = $.db.transaction(v.tables, 'readwrite').objectStore(v.name);
+                }
+            });
+            return $;
         },
-        fail: function (e) {
-            console.error('Fail '+this.name+' database ver '+this.version, e.message);
-            return this;
-        },
+        close: function (event) { var $ = this; try { $.db.close(); } catch (e) { $.fail(e); } return $; },
+        blocked:function (event) { console.warn(event); return this; },
+        done: function (event, store, tx) { if (event.target) console.table(event.target.result); return store; },
+        fail: function (event) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.message); return this; },
         data2row: function (data, flag) {
             if (data && typeof data === 'object') {
                 var p = function (o) {
-                    var res = {}; for (var i in o) {
-                        res[i] = QueryParam(o[i], typeof flag === 'undefined' ? QueryParam.STRNULL : flag);
-                    }
+                    var res = {};
+                    for (var i in o) { res[i] = QueryParam(o[i],typeof flag === 'undefined' ? QueryParam.STRNULL : flag); }
                     return res;
                 };
                 if (data instanceof Array) { return data.map(function (v) { return p(v); }); }
@@ -260,7 +230,7 @@
             return data;
         },
         bind: function (model) {
-            return __parent__(this, model);
+            return Object.createChild(this, model);
         }
     };
 

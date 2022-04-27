@@ -19,26 +19,28 @@
  *
  * @param tables { string[] }
  * @param primaryKey { string | null }
- * @param build { function } create store in IndexedDB instahce
- * @param init { function } after IndexedDB instahce up
+ * @param schema { function } create store of model
+ * @param launch { function } can return model store
  * @param opt { Object } extra for create Model
  * @return { Object }
  * @constructor
  */
-var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
+var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
+
     return Object.merge({
+        get name() { return this.tables[0]; /*.join('-'); */ },
         tables: typeof tables === 'string' ? [tables] : tables,
-        primaryKey: primaryKey,
-        init: init,
-        build: build,
+        primaryKey: primaryKey || null,
+        schema: schema,
+        launch: launch,
         get: function (id, opt) {
             var $ = this;
-            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
+            var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             if (id && typeof handler.done === 'function') {
                 try {
-                    var tx = $.owner.db.transaction(own.tables, 'readonly');
-                    var store = tx.objectStore(own.tables);
-                    tx.onerror = tx.onabort = function (e) { return  handler.fail(e, tx); };
+                    var tx = $.owner.db.transaction($.tables, 'readonly');
+                    var store = tx.objectStore($.tables);
+                    tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                     // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                     return store.get(id).onsuccess = function (e) { return handler.done(e, store, tx); };
                 } catch (e) {
@@ -46,40 +48,34 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
                 }
             }
         },
-        getAll: function (done) {
+        getAll: function (opt) {
             var $ = this;
-            if (typeof done === 'function') {
-                try {
-                    if (typeof done === 'function') {
-                        var tx = $.owner.db.transaction(own.tables, 'readonly');
-                        tx.onerror = tx.onabort = function (e) { return $.fail(e, tx); };
-                        // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                        var store = tx.objectStore(own.tables);
-                        return store.getAll().onsuccess = function (e) { return done(e, store, tx); };
-                    }
-                } catch (e) {
-                    $.owner.fail(e);
-                }
+            var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
+            try {
+                var tx = $.owner.db.transaction($.tables, 'readonly');
+                tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
+                // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
+                var store = tx.objectStore($.tables);
+                return store.getAll().onsuccess = function (e) { return handler.done(e, store, tx); };
+            } catch (e) {
+                handler.fail(e);
             }
         },
         add: function (data, opt) {
             var $ = this, row = $.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
+            var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
                 console.log('db', $.owner.db);
-                var tx = $.owner.db.transaction(own.tables, 'readwrite');
+                var tx = $.owner.db.transaction($.tables, 'readwrite');
                 tx.onerror = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(own.tables[0]);
-// console.log('store', store);
-                if (own.primaryKey && row.hasOwnProperty(own.primaryKey)) {
-                    if (row[own.primaryKey] === null) {
-                        delete row[own.primaryKey];
-                    }
+                var store = tx.objectStore($.tables[0]);
+                if ($.primaryKey && row.hasOwnProperty($.primaryKey)) {
+                    if (row[$.primaryKey] === null) { delete row[$.primaryKey]; }
                 }
                 tx.onabort = function (e) {
-                    if (own.primaryKey && row.hasOwnProperty(own.primaryKey))
-                        console.error('row PrimaryKey[' + $.primaryKey + '] = ' + row[own.primaryKey] + ' in ' + JSON.stringify(own.tables) + 'already has!');
+                    if ($.primaryKey && row.hasOwnProperty($.primaryKey))
+                        console.error('row PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + 'already has!');
                 };
                 if (typeof handler.done === 'function') store.add(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.add(row);
             } catch (e) {
@@ -88,13 +84,13 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
         },
         put: function (data, opt) {
             var $ = this, row = $.data2row(data, QueryParam.STRNULL);
-            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
+            var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
-                var tx = $.owner.db.transaction(own.tables, 'readwrite');
+                var tx = $.owner.db.transaction($.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(own.tablelName);
-                if (!own.primaryKey || row[own.primaryKey] === null) throw 'PrimaryKey is not set!';
+                var store = tx.objectStore($.name);
+                if (!$.primaryKey || row[$.primaryKey] === null) throw 'PrimaryKey is not set!';
                 if (typeof handler.done === 'function') store.put(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.put(row);
             } catch (e) {
                 handler.fail(e);
@@ -102,13 +98,13 @@ var IndexedDBmodel = function (tables, primaryKey, build, init, opt) {
         },
         del: function (idx, opt) {
             var $ = this;
-            var handler = Object.assign({done: $.owner.done, fail: $.owner.fail, close: $.owner.close}, opt);
+            var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
-                var tx = $.owner.db.transaction(own.tables, 'readwrite');
+                var tx = $.owner.db.transaction($.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
-                var store = tx.objectStore(own.tables);
-                // var store = tx.objectStore(own.tables[0]);
+                var store = tx.objectStore($.tables);
+                // var store = tx.objectStore($.tables[0]);
                 //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
                 if (typeof handler.done === 'function') store['delete'](idx).onsuccess = function (e) { return handler.done(e, store, tx); }; else store['delete'](idx);
             } catch (e) {
@@ -406,15 +402,15 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                         if (model.processing && !opt.timer) { opt.timer = setTimeout(function () { wait(); }, 50);  return false; }
                         clearTimeout(opt.timer);
                         xhr({ method: opt.method, url: opt.url,
-                            // --------------------------------------------------
-                            rs: {'Hash': acl.user.hash, 'Content-type': 'application/json'},
-                            data: JSON.stringify(Object.assign({
+                            rs: {
+                                'Content-type': 'application/json',
                                 ver: model.webSQLinstance.version,
                                 pk: model.primaryKey,
-                                table: model.tablelName,
+                                model: model.tablelName,
+                                limit: opt.limit,
                                 page: opt.page,
-                                rows: obj2array(r.rows)
-                            }, opt.params)),
+                            },
+                            data: JSON.stringify(Object.assign({ rows: obj2array(r.rows)}, opt.params)),
                             before: function (e) { model.processing = true; },
                             after: function (e) { model.processing = false; opt.xhrCount++; },
                             done: function (e, hr) {
@@ -447,15 +443,22 @@ var webSQLmodel = function ( webSQLinstance, opt) {
             if (model.processing) { opt.timer = setTimeout(function () { wait(); }, 50);  return false; }
             clearTimeout(opt.timer);
             xhr({
-                url: location.update(opt.url , Object.assign({
+                url: location.update(opt.url , opt.params),
+                // Object.assign({
+                //     // ver: model.webSQLinstance.version,
+                //     // limit: opt.limit,
+                //     // page: opt.page,
+                //     // pk: model.primaryKey,
+                //     // model: model.tablelName
+                //     // ,idx: idx ? JSON.stringify(idx) : []
+                // }, opt.params)),
+                rs: { //'Content-type': 'application/json',
                     ver: model.webSQLinstance.version,
+                    pk: model.primaryKey,
+                    model: model.tablelName,
                     limit: opt.limit,
                     page: opt.page,
-                    pk: model.primaryKey,
-                    model: model.tablelName
-                    // ,idx: idx ? JSON.stringify(idx) : []
-                }, opt.params)),
-                // rs: {'Hash': acl.user.hash}, // ---------------------------------------------------
+                },
                 before: function (e) { model.processing = true; return false; },
                 after: function (e) { model.processing = false; opt.xhrCount++; return false; },
                 done: function (e, hr) {
