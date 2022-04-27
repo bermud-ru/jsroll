@@ -62,7 +62,7 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
             }
         },
         add: function (data, opt) {
-            var $ = this, rows = data instanceof Array ? data : [data];
+            var $ = this, idx = [], rows = data instanceof Array ? data : [data];
             var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
                 console.log('db', $.owner.db);
@@ -72,8 +72,9 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 var store = tx.objectStore($.tables[0]);
                 var i=0, row, l = rows.length, loop = function () {
                     row = $.data2row(rows[i++], QueryParam.STRNULL);
-                    if ($.autoIncrement && row.hasOwnProperty($.primaryKey)) {
+                    if (row.hasOwnProperty($.primaryKey)) {
                         if (row[$.primaryKey] === null) { delete row[$.primaryKey]; }
+                        else idx.push(row[$.primaryKey]);
                     }
                     tx.onabort = function (e) {
                         if ($.primaryKey && row.hasOwnProperty($.primaryKey))
@@ -81,7 +82,7 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     };
                     if (typeof handler.done === 'function') {
                         store.add(row).onsuccess = i < l ? function () { return loop(); } :
-                            function (e) { return handler.done(e, store, tx); };
+                            function (e) { return handler.done(e, store, tx, idx); };
                     } else { store.add(row); return loop(); }
                 }
                 loop();
@@ -90,7 +91,7 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
             }
         },
         put: function (data, opt) {
-            var $ = this, rows = data instanceof Array ? data : [data];
+            var $ = this, idx = [], rows = data instanceof Array ? data : [data];
             var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
                 var tx = $.owner.db.transaction($.tables, 'readwrite');
@@ -100,9 +101,10 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 var i=0, row, l = rows.length, loop = function () {
                     row = $.data2row(rows[i++], QueryParam.STRNULL);
                     if (!$.primaryKey || row[$.primaryKey] === null) throw 'PrimaryKey is not set!';
+                    else idx.push(row[$.primaryKey]);
                     if (typeof handler.done === 'function') {
                         store.put(row).onsuccess = i < l ? function () { return loop(); } :
-                            function (e) { return handler.done(e, store, tx); };
+                            function (e) { return handler.done(e, store, tx, idx); };
                     } else { store.put(row); return loop(); }
                 }
                 loop();
