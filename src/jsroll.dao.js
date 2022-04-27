@@ -26,10 +26,10 @@
  * @constructor
  */
 var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
-
     return Object.merge({
         get name() { return this.tables[0]; },
         tables: typeof tables === 'string' ? [tables] : tables,
+        autoIncrement: !!primaryKey,
         primaryKey: primaryKey || null,
         schema: schema,
         launch: launch,
@@ -62,7 +62,7 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
             }
         },
         add: function (data, opt) {
-            var $ = this, row = $.data2row(data, QueryParam.STRNULL);
+            var $ = this, rows = data instanceof Array ? data : [data];
             var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
                 console.log('db', $.owner.db);
@@ -70,28 +70,42 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 tx.onerror = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore($.tables[0]);
-                if ($.primaryKey && row.hasOwnProperty($.primaryKey)) {
-                    if (row[$.primaryKey] === null) { delete row[$.primaryKey]; }
+                var i=0, row, l = rows.length, loop = function () {
+                    row = $.data2row(rows[i++], QueryParam.STRNULL);
+                    if ($.autoIncrement && row.hasOwnProperty($.primaryKey)) {
+                        if (row[$.primaryKey] === null) { delete row[$.primaryKey]; }
+                    }
+                    tx.onabort = function (e) {
+                        if ($.primaryKey && row.hasOwnProperty($.primaryKey))
+                            console.error('row PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + 'already has!');
+                    };
+                    if (typeof handler.done === 'function') {
+                        store.add(row).onsuccess = i < l ? function () { return loop(); } :
+                            function (e) { return handler.done(e, store, tx); };
+                    } else { store.add(row); return loop(); }
                 }
-                tx.onabort = function (e) {
-                    if ($.primaryKey && row.hasOwnProperty($.primaryKey))
-                        console.error('row PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + 'already has!');
-                };
-                if (typeof handler.done === 'function') store.add(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.add(row);
+                loop();
             } catch (e) {
                 handler.fail(e);
             }
         },
         put: function (data, opt) {
-            var $ = this, row = $.data2row(data, QueryParam.STRNULL);
+            var $ = this, rows = data instanceof Array ? data : [data];
             var handler = Object.assign({done: $.owner.done.bind($.owner), fail: $.owner.fail.bind($.owner), close: $.owner.close.bind($.owner)}, opt);
             try {
                 var tx = $.owner.db.transaction($.tables, 'readwrite');
                 tx.onerror = tx.onabort = function (e) { return handler.fail(e, tx); };
                 // tx.oncomplete = function (event) { handler.close(event); /** after handler **/ };
                 var store = tx.objectStore($.name);
-                if (!$.primaryKey || row[$.primaryKey] === null) throw 'PrimaryKey is not set!';
-                if (typeof handler.done === 'function') store.put(row).onsuccess = function (e) { return handler.done(e, store, tx); }; else store.put(row);
+                var i=0, row, l = rows.length, loop = function () {
+                    row = $.data2row(rows[i++], QueryParam.STRNULL);
+                    if (!$.primaryKey || row[$.primaryKey] === null) throw 'PrimaryKey is not set!';
+                    if (typeof handler.done === 'function') {
+                        store.put(row).onsuccess = i < l ? function () { return loop(); } :
+                            function (e) { return handler.done(e, store, tx); };
+                    } else { store.put(row); return loop(); }
+                }
+                loop();
             } catch (e) {
                 handler.fail(e);
             }
