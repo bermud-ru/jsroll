@@ -218,7 +218,7 @@ var Application = function (ver) {
         // // Log the data and result
         console.log("; data = ", data, "; status = ", status);
     },
-    setCookie: function (name,value,days,path) {
+    setCookie: function (name, value, days, path) {
         if (typeof name !== 'string') return ;
         var expires = "";
         if (days) {
@@ -226,16 +226,19 @@ var Application = function (ver) {
             date.setTime(date.getTime() + (days*24*60*60*1000));
             expires = "; expires=" + date.toUTCString();
         }
-        document.cookie = name + "=" + (value || "")  + expires + "; path="+(path||'/');
+        document.cookie = name + "=" + base64(JSON.stringify(value).replace(/(^"|"$)/g, '')) + expires + "; path="+(path||'/');
     },
     getCookie: function (name) {
         if (typeof name !== 'string') return ;
         var nameEQ = name + "=";
         var ca = document.cookie.split(';');
         for(var i=0; i < ca.length; i++) {
-            var c = ca[i];
-            while (c.charAt(0) === ' ') c = c.substring(1,c.length);
-            if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            var c = ca[i], l = c.length;
+            while (c.charAt(0) === ' ') c = c.substring(1,l);
+            if (c.indexOf(nameEQ) === 0) {
+                var a = atob(c.substring(nameEQ.length, l));
+                try { return JSON.parse(a); } catch (e) { return a; }
+            }
         }
         return null;
     },
