@@ -205,18 +205,31 @@
         launchSchemas: function (event) {
             var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
                 $.models[v.tables.join('-')] = v;
-                if (typeof v.launch === 'function') {
-                    v.store = v.launch($.db);
-                } else {
-                    v.store  = $.db.transaction(v.tables, 'readwrite').objectStore(v.name);
-                }
+                if (typeof v.launch === 'function') v.launch($.db);
             });
             return $;
         },
-        close: function (event) { var $ = this; try { $.db.close(); } catch (e) { $.fail(e); } return $; },
+        store: function (k, status, opt) {
+            var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
+            tx.onabort = function (e) { return opt && typeof opt.cancel === 'function' ? opt.cancel.call($, e, status, store) : $.cancel(e, status, store);};
+            tx.onerror = function (e) { return opt && typeof opt.cancel === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store); };
+            tx.onabort = function (e) {
+                if ($.primaryKey && row.hasOwnProperty($.primaryKey))
+                    console.error('PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + ' already has!');
+            };
+
+            store = tx.objectStore(!k || k === 'readwrite' ? $.name : $.tables);
+            store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
+                opt.done.call($, event, status) : $.done(event, status);
+            }
+            return store;
+        },
+        close: function () { var $ = this; try { $.db.close(); } catch (e) { $.fail(e); } return $; },
         blocked:function (event) { console.warn(event); return this; },
-        done: function (event, store, tx) { if (event.target) console.table(event.target.result); return store; },
-        fail: function (event) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.message); return this; },
+        done: function (event, status, store) { console.table( event instanceof Event ? event.target.result : event.result); return store; },
+        cancel: function (event, status, store) { console.warn(event); return store; },
+        fail: function (event, status, store) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.message); return this; },
+        status: function (methodID, status) { return parseInt(methodID) * (status === undefined || !!status ? 1 : -1); },
         data2row: function (data, flag) {
             if (data && typeof data === 'object') {
                 var p = function (o) {
@@ -372,7 +385,7 @@
         },
         done: function (tx, result, callback, sql, index, query) {
             if (typeof callback === 'function') callback.call(this, tx, result, sql, index, query);
-            else console.warn('webSQL query ['+sql+'] resultSet: ', result);
+            else { console.warn('webSQL query ['+sql+'] resultSet: '); console.table(result); }
             return this.runnig = false;
         },
         cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
