@@ -63,8 +63,8 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     var cursor = event.target.result;
                     if (cursor && result.length < l) {
                         if(!advanced) { advanced = true; cursor.advance(p*l) }
-                        //!!! cursor.continue() yuicompressor-2.4.8.jar =>>
-                        else { result.push(cursor.value); cursor.continue() }
+                        //!!! cursor.continue() yuicompressor-2.4.8.jar =>> cursor['continue']()
+                        else { result.push(cursor.value); cursor['continue']() }
                     } else { return store.oncomplete({result:result, count:count, page:p, limit:l}); }
                 }; else { return store.oncomplete({result:[], count:0, page:p, limit:l}); }
             }
@@ -162,8 +162,8 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 var i=0, id, l = idx.length, loop = function () {
                     id = idx[i++];
                     //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
-                    if (opt && typeof opt.success === 'function') store.delete(id).onsuccess = function (e) { return opt.success.call($, e, $.status(IndexedDBmodel.DEL, status), store, i, rows); };
-                    else store.delete(id);
+                    if (opt && typeof opt.success === 'function') store['delete'](id).onsuccess = function (e) { return opt.success.call($, e, $.status(IndexedDBmodel.DEL, status), store, i, rows); };
+                    else store['delete'](id);
                     if (i < l) { return loop(); } else { $.processing = false; store.oncomplete({result:idx}); return idx; }
                 }
                 return loop();
