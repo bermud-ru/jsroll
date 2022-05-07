@@ -211,11 +211,11 @@
         },
         store: function (k, status, opt) {
             var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
-            tx.onabort = function (e) { return opt && typeof opt.cancel === 'function' ? opt.cancel.call($, e, status, store) : $.cancel(e, status, store);};
             tx.onerror = function (e) { return opt && typeof opt.cancel === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store); };
             tx.onabort = function (e) {
                 if ($.primaryKey && row.hasOwnProperty($.primaryKey))
                     console.error('PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + ' already has!');
+                else return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store);
             };
 
             store = tx.objectStore(!k || k === 'readwrite' ? $.name : $.tables);
