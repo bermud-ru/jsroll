@@ -108,15 +108,22 @@
         return false;
     };
 
+    var tuple = function (row, offset) {
+        var d = []; for (var j=parseInt(offset), z=row.length; j<z; j++) {
+            d.push(QueryParam(row[j], QueryParam.STRNULL));
+        }
+        return d;
+    };
+
     g.grid = function(table) {
         if (table.hasOwnProperty('cell')) return table;
 
-        table.cell = function(rowIndex, cellIndex, asObject) {
+        table.cell = function(rowIndex, cellIndex, asContent) {
             try {
                 var c;
                 if (cellIndex !== undefined) {
                     c = this.rows[parseInt(rowIndex)].cells[parseInt(cellIndex)];
-                    if (!asObject) c = c.innerHTML;
+                    if (!!asContent) c = c.innerHTML;
                 } else {
                     c = this.rows[parseInt(rowIndex)];
                 }
@@ -125,6 +132,9 @@
             }
             return c;
         };
+        table.cell.ELEMENT = undefined;
+        table.cell.CONTENT = 1;
+        table.cell.OBJECT = 2;
 
         table.row = {};
         table.row.add = function(index) {
@@ -162,13 +172,6 @@
             if (table.rows[0].cells.length > 2) for (var r = 0, n = table.rows.length; r < n; r++) table.rows[r].deleteCell(i);
         }
 
-        var tuple = function (row, offset) {
-            var d = []; for (var j=parseInt(offset), z=row.length; j<z; j++) {
-                d.push(QueryParam(row[j], QueryParam.STRNULL));
-            }
-            return d;
-        };
-
         Object.defineProperty(table, 'value', {
             __proto__: null,
             get: function value() {
@@ -189,6 +192,7 @@
             }, null, {bubbles: false, cancelable: true, composed: true});
             return el;
         };
+
         table.ui.els('tbody tr td:not(:first-of-type)', function () {
             return cellEvent(this);
         });

@@ -76,6 +76,14 @@
         1015: 'CERT_AUTHORITY_INVALID'
     };
 
+    /**
+     * @class WebSocket
+     *
+     * WebSocket.CONNECTING: 0
+     * WebSocket.OPEN: 1
+     * WebSocket.CLOSING: 2
+     * WebSocket.CLOSED: 3
+     */
     var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : function (url, opt) { return console.warn('WebSocket not supported!'); });
     var ws = function (url, opt) {
         // var socket = new WebSocket(url, opt.hasOwnProperty('protocol') ? opt.protocol : '');
@@ -86,10 +94,6 @@
         opt: {binaryType:'blob', reconnect:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
-        // WebSocket.CONNECTING: 0
-        // WebSocket.OPEN: 1
-        // WebSocket.CLOSING: 2
-        // WebSocket.CLOSED: 3
         get readyState() { return this.socket ? this.socket.readyState : WebSocket.CONNECTING; },
         up: function(opt){
             if (!navigator.onLine) return console.error('Browser not connected!');
@@ -145,25 +149,26 @@
     if (!('IDBTransaction' in g)) { g.IDBTransaction = g.webkitIDBTransaction || g.msIDBTransaction || null; }
     if (!('IDBKeyRange' in g)) { g.IDBKeyRange = g.webkitIDBKeyRange || g.msIDBKeyRange || null; }
     /**
-     * @class idxDB
+     * @class IDB
      *
      * @param { string } name
      * @param { int } version
      * @param { object } opt
      * @constructor
      */
-    g.idxDB = function(name, version, opt) {
+    g.IDB = function(name, version, opt) {
         var $ = this;
         $.name = name;
         $.version = parseInt(version);
         $.models = {};
+        $.__active__ = g.IDB.LAUNCH;
         Object.defineProperty($, 'active', {
             __proto__: null,
-            get: function active() { return $.idxDBinstance ? $.idxDBinstance.readyState === 'done' : false; }
+            get: function active() { return $.IDBinstance ? $.IDBinstance.readyState === 'done' && $.__active__ === g.IDB.READY : false; }
         });
         if (typeof opt === 'object') $.merge(opt);
         return $;
-    }; g.idxDB.prototype = {
+    }; g.IDB.prototype = {
         IDBOpenDBRequest: null,
         set db(event) { var $ = this; $.IDBOpenDBRequest = event instanceof Event ? ui.src(event) : event;},
         get db() { var $ = this; return $.IDBOpenDBRequest ? $.IDBOpenDBRequest.result : null; },
@@ -171,35 +176,39 @@
             var $ = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
                 if (!$.heirs && max++ < 30) return wait.processs = setTimeout(wait, 20);
-                var idxDBinstance = g.indexedDB.open($.name, $.version, function (e) { return $.buildSchemas(e); });
+                var IDBinstance = g.indexedDB.open($.name, $.version, function (e) { return $.buildSchemas(e); });
                 // Create schema
-                idxDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); };
-                // on reload, idxDBinstance up!
-                idxDBinstance.onsuccess = function (e) { return $.launchSchemas(e); };
-                idxDBinstance.onblocked = function (e) { return $.blocked(e); };
+                IDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); };
+                // on reload, IDBinstance up!
+                IDBinstance.onsuccess = function (e) { return $.launchSchemas(e); };
+                IDBinstance.onblocked = function (e) { return $.blocked(e); };
                 // on Error
-                idxDBinstance.onerror = function (e) { return $.fail(e); };
-                return $.idxDBinstance = idxDBinstance;
+                IDBinstance.onerror = function (e) { return $.fail(e); };
+                return $.IDBinstance = IDBinstance;
             };
             return wait();
         },
         destroy: function (event) {
             var $ = this;
-            $.idxDBinstance = null; // Дропнули всё
+            $.IDBinstance = null; // Дропнули всё
             $.populate = true; // Пересоздали хранилище
-            var idxDBinstance = $.idxDBinstance = g.indexedDB.deleteDatabase($.name, $.version);
-            idxDBinstance.onsuccess = function (e) { return $.launchSchemas(e); }
-            idxDBinstance.onerror = function (e) { return $.fail(e); }
-            idxDBinstance.onblocked = function (e) { return $.blocked(e); }
-            idxDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); }
+            var IDBinstance = $.IDBinstance = g.indexedDB.deleteDatabase($.name, $.version);
+            IDBinstance.onsuccess = function (e) { return $.launchSchemas(e); }
+            IDBinstance.onerror = function (e) { return $.fail(e); }
+            IDBinstance.onblocked = function (e) { return $.blocked(e); }
+            IDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); }
         },
         buildSchemas: function (event) {
+            this.__active__ |= g.IDB.BUILD;
             var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
                 if (typeof v.schema === 'function') { v.schema($.db); } else {
-                    if (v.primaryKey) $.db.createObjectStore(v.name,{keyPath:v.primaryKey, autoIncrement: !!v.autoIncrement});
-                    else $.db.createObjectStore(v.name);
+                    if (!$.db.objectStoreNames.contains(v.name)) {
+                        if (v.primaryKey) $.db.createObjectStore(v.name,{keyPath:v.primaryKey, autoIncrement: !!v.autoIncrement});
+                        else $.db.createObjectStore(v.name);
+                    }
                 }
             });
+            this.__active__ ^= g.IDB.BUILD;
             return $;
         },
         launchSchemas: function (event) {
@@ -207,17 +216,22 @@
                 $.models[v.tables.join('-')] = v;
                 if (typeof v.launch === 'function') v.launch($.db);
             });
+            this.__active__ ^= g.IDB.LAUNCH;
+            for (var fn in $.__pool__) g.func(fn).apply($,$.__pool__[fn]); $.__pool__=[];
             return $;
         },
-        store: function (k, status, opt) {
+        __pool__: [],
+        onready: function (fn, arg) {
+            if (typeof fn === 'function') this.__pool__[fn] = arg instanceof Array ? arg : arg ? [arg] : [];
+        },
+        store: function (k, status, opt, row) {
             var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
             tx.onerror = function (e) { return opt && typeof opt.cancel === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store); };
             tx.onabort = function (e) {
-                if ($.primaryKey && row.hasOwnProperty($.primaryKey))
+                if ($.primaryKey && row && row.hasOwnProperty($.primaryKey))
                     console.error('PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + ' already has!');
                 else return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store);
             };
-
             store = tx.objectStore(!k || k === 'readwrite' ? $.name : $.tables);
             store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
                 opt.done.call($, event, status) : $.done(event, status);
@@ -228,7 +242,7 @@
         blocked:function (event) { console.warn(event); return this; },
         done: function (event, status, store) { console.table( event instanceof Event ? event.target.result : event.result); return store; },
         cancel: function (event, status, store) { console.warn(event); return store; },
-        fail: function (event, status, store) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.message); return this; },
+        fail: function (event, status, store) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.target.error); return this; },
         status: function (methodID, status) { return parseInt(methodID) * (status === undefined || !!status ? 1 : -1); },
         data2row: function (data, flag) {
             if (data && typeof data === 'object') {
@@ -245,6 +259,29 @@
         bind: function (model) {
             return Object.createChild(this, model);
         }
+    };
+    g.IDB.READY = 0; g.IDB.INITIALIZING = 1; g.IDB.BUILD = 2; g.IDB.LAUNCH = 4; g.IDB.PROCCESS = 8;
+
+    /**
+     * @class IDBFilter
+     *
+     * @param condition { function }
+     * @param limit { int }
+     * @param args { arguments }
+     * @constructor
+     */
+    g.IDBFilter = function (condition, limit, args) {
+        this.limit = parseInt(limit) || 10;
+        this.args = args || [];
+        if (typeof condition === 'function') this.fn = condition;
+    }; g.IDBFilter.prototype = {
+        offset: 0, limit: 0, advanced: true, count: 0, fn: null, page: [], chunk: [], run: false,
+        populated: function(cursor) { return cursor && (this.chunk.length < this.limit) },
+        condition: function (tuple) {
+            this.offset++; if (!this.fn || this.fn.apply(this,[tuple].merge(this.args))) this.chunk.push(tuple);
+        },
+        next: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page.push(this.offset); this.advanced = false; return this },
+        reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this }
     };
 
     /**
@@ -610,7 +647,7 @@
      */
     var str2json = function (s, def) {
         if (typeof s === 'object') return s;
-        try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = s||(typeof def === 'undefined' ? null : def)};
+        try { var o = (typeof s === 'string' ? JSON.parse(s) : s||(typeof def === 'undefined' ? null : def)); } catch (e) { o = typeof def === 'undefined' ? s : def};
         return o;
     };
     g.str2json = str2json;
@@ -801,6 +838,31 @@
     //
     //     return enc;
     // };
+
+    JSON.serialize = function (o, opt, c) {
+        if (o && typeof o === 'object') {
+            var cls;
+            if (c) {
+                cls = typeof c === 'string' ? c + ':' : (c.constructor.name !== 'Object' ? c.constructor.name + ':' : '');
+            } else {
+                cls = o.constructor.name !== 'Object' ? o.constructor.name + ':' : '';
+            }
+            var src = cls + JSON.stringify(o).replace(/(^"|"$)/g, '');
+            return parseInt(opt) && JSON.BASE64 ? base64(src) : src;
+        }
+        return null;
+    };
+    JSON.OBJECT = 1;
+    JSON.BASE64 = 2;
+
+    JSON.unserialize = function (s, opt, c) {
+        var src = parseInt(opt) && JSON.BASE64 ? atob(s)  : s;
+        var pair = src.match(/^(([a-zA-Z0-9_]+?):)*(.*)$/);
+        var o = str2json(pair[3], null);
+        if (!c) c = pair[2];
+        if (o && c) return typeof c === 'string' ? Object(new g[c], o) : c.merge(o);
+        return o;
+    }
 
     /**
      * mb_case_title
@@ -1031,8 +1093,20 @@
      */
     Object.defineProperty(Object.prototype, 'merge', {
         value: function() {
-            if (!arguments.length) return null;
             var o = (typeof this === 'object' ? this : (typeof this === 'function' ? new this : {}));
+            if (!arguments.length) return o;
+
+            if (o instanceof Array) {
+                obj2array(arguments).forEach( function(v, k, a) {
+                    if (v instanceof Array) {
+                        v.forEach(function (x) {o.push(x)})
+                    } else {
+                        if (v) o.push(v)
+                    }
+                });
+                return o;
+            }
+
             if (typeof this === 'function' && o && o.__proto__.__proto__) o.__proto__.constructor = this;
 
             obj2array(arguments).forEach( function(v, k, a) {

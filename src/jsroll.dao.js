@@ -15,7 +15,8 @@
 'use strict';
 
 /**
- * @helper IndexedDBmodel
+ * @helper IDBmodel
+ * @doc https://w3c.github.io/IndexedDB
  *
  * @param tables { string[] }
  * @param primaryKey { string | null }
@@ -25,9 +26,17 @@
  * @return { Object }
  * @constructor
  */
-var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
+var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
     return Object.merge({
-        processing: false,
+        __processing__:[],
+        get processing() {
+            var fn = this.__processing__.length ? this.__processing__.shift() : false;
+            return fn ? fn.call(this) : false;
+        },
+        set processing(fn) {
+            this.__processing__.push(fn);
+            if (this.__processing__.length === 1) return this.processing;
+        },
         get name() { return this.tables[0]; },
         tables: typeof tables === 'string' ? [tables] : tables,
         autoIncrement: !!primaryKey,
@@ -35,145 +44,178 @@ var IndexedDBmodel = function (tables, primaryKey, schema, launch, opt) {
         schema: schema,
         launch: launch,
         clear: function (opt) {
-            var $ = this, store = $.store('readwrite', $.status(IndexedDBmodel.NEWINDEX), opt);
+            var $ = this, store = $.store('readwrite', $.status(IDBmodel.TRUNCATE), opt);
             if (opt && typeof opt.success === 'function') return store.clear().onsuccess = function (e) { return status = opt.success.call($, e, store); };
             else return store.clear().onsuccess = opt.complete;
         },
         count: function(cb, opt) {
-            var $ = this, store = $.store('readonly', $.status(IndexedDBmodel.COUNT), opt);
-            if (typeof cb === 'function') store.count().onsuccess = function (e) { return cb.call($, e, $.status(IndexedDBmodel.COUNT), store); };
-        else store.count().onsuccess = store.oncomplete;
+            var $ = this, store = $.store('readonly', $.status(IDBmodel.COUNT), opt);
+            if (typeof cb === 'function') store.count().onsuccess = function (e) { return cb.call($, e, $.status(IDBmodel.COUNT), store); };
+            else store.count().onsuccess = store.oncomplete;
+        },
+        filter: function (mng, opt) {
+            var $ = this;
+            var nexted = true, fn = function () {
+                var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
+                store.openCursor().onsuccess = function(event) {
+                    var cursor = event.target.result;
+                    if (mng.populated(cursor)) {
+                        if (!mng.advanced) { mng.advanced = true; if (mng.offset > 0) cursor.advance(mng.offset) }
+                        else { mng.condition(cursor.value); cursor['continue']() }
+                    } else {
+                        store.oncomplete({result:mng.chunk, offset:mng.offset, limit:mng.limit});
+                        if (nexted) { nexted = false; return $.processing }
+                    }
+                };
+            }
+            $.processing = fn;
         },
         paginator: function (page, limit, opt){
             var $ = this, result = [], p = parseInt(page), l = parseInt(limit), advanced = p === 0;
-            var store = $.store('readonly', $.status(IndexedDBmodel.PAGINATOR), opt);
-            store.count().onsuccess = function (e) {
-                var count = e.target.result;
-                if (count > 0) store.openCursor().onsuccess = function(event) {
-                    var cursor = event.target.result;
-                    if (cursor && result.length < l) {
-                        if(!advanced) { advanced = true; cursor.advance(p*l) }
-                        //!!! cursor.continue() yuicompressor-2.4.8.jar =>> cursor['continue']()
-                        else { result.push(cursor.value); cursor['continue']() }
-                    } else { return store.oncomplete({result:result, count:count, page:p, limit:l}); }
-                }; else { return store.oncomplete({result:[], count:0, page:p, limit:l}); }
+            var nexted = true, fn = function () {
+                var store = $.store('readonly', $.status(IDBmodel.PAGINATOR), opt);
+                store.count().onsuccess = function (e) {
+                    var count = e.target.result;
+                    if (count > 0) store.openCursor().onsuccess = function(event) {
+                        var cursor = event.target.result;
+                        if (cursor && result.length < l) {
+                            if(!advanced) { advanced = true; cursor.advance(p*l) }
+                            //!!! cursor.continue() yuicompressor-2.4.8.jar =>> cursor['continue']()
+                            else { result.push(cursor.value); cursor['continue']() }
+                        } else { return store.oncomplete({result:result, count:count, page:p, limit:l}) }
+                    }; else {
+                        store.oncomplete({result:[], count:0, page:p, limit:l});
+                        if (nexted) { nexted = false; return $.processing }
+                    }
+                }
             }
+            $.processing = fn;
         },
         createIndex: function (name, keyPath, options) {
-            var $ = this, store = $.store('readwrite', $.status(IndexedDBmodel.NEWINDEX));
-            return store.createIndex(name, keyPath, options).onsuccess = store.oncomplete;
+            var $ = this, store = $.store('readwrite', $.status(IDBmodel.NEWINDEX));
+            store.createIndex(name, keyPath, options).onsuccess = store.oncomplete;
         },
         index: function (opt) {
-            var $ = this, result, store = $.store('readonly', $.status(IndexedDBmodel.INDEX), opt);
+            var $ = this, store = $.store('readonly', $.status(IDBmodel.INDEX), opt);
             var index = store.index(arguments.shift());
-            result = index.get(arguments).onsuccess = store.oncomplete;
-            return typeof result === 'function' ? {} : result;
+            index.get(arguments).onsuccess = store.oncomplete;
         },
         get: function (idx, opt) {
             var $ = this, result = [], isArray = idx instanceof Array;
-            if (!isArray) idx = [idx];
-            try {
-                var store = $.store('readwrite', $.status(IndexedDBmodel.DEL), opt);
-                var i=0, l = idx.length, loop = function () {
-                    store.get(idx[i++]).onsuccess = function (event) {
-                        result.push(event.target.result);
-                        if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IndexedDBmodel.GET), store, i, rows);
-                        if (i < l) { return loop(); }
-                        store.oncomplete({result:result});
-                        return isArray ? result : result[0];
+            var nexted = true, fn = function () {
+                if (!isArray) idx = [idx];
+                try {
+                    var store = $.store('readonly', $.status(IDBmodel.DEL), opt);
+                    var i=0, l = idx.length, loop = function () {
+                        store.get(idx[i++]).onsuccess = function (event) {
+                            result.push(event.target.result);
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GET), store, i, rows);
+                            if (i < l) { return loop(); }
+                            store.oncomplete({result:result});
+                            if (nexted) { nexted = false; return $.processing; }
+                        }
                     }
+                    return loop();
+                } catch (e) {
+                    if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
+                    if (nexted) { nexted = false; return $.processing; }
                 }
-                return loop();
-            } catch (e) {
-                if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
             }
+            $.processing = fn;
         },
         getAll: function (opt) {
-            var $ = this, result;
-            if ( $.processing ) return (opt && typeof opt.cancel === 'function') ? opt.cancel.call($, e) : $.cancel(e);
-            var store = $.store('readonly', $.status(IndexedDBmodel.GETALL), opt);
-            if (opt && typeof opt.success === 'function') result = store.getAll().onsuccess = function (e) { return  opt.success.call($, e, $.status(IndexedDBmodel.GETALL), store); };
-            else result = store.getAll().onsuccess = store.oncomplete;
-            return typeof result === 'function' ? {} : result;
+            var $ = this, nexted = true, fn = function () {
+                var store = $.store('readonly', $.status(IDBmodel.GETALL), opt);
+                store.getAll().onsuccess = function (event) {
+                    if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GETALL), store);
+                    else store.oncomplete({result:event.target.result});
+                    if (nexted) { nexted = false; return $.processing; }
+                }
+            }
+            $.processing = fn;
         },
         add: function (data, opt) {
             var $ = this, idx = [], rows = data instanceof Array ? data : [data];
-            if ( $.processing ) return (opt && typeof opt.cancel === 'function') ? opt.cancel.call($, e) : $.cancel(e);
-            $.processing = true;
-            try {
-                var i=0, l=rows.length, store=$.store('readwrite', $.status(IndexedDBmodel.ADD), opt);
-                var row, loop = function () {
-                    row = $.data2row(rows[i++], QueryParam.STRNULL);
-                    if (row.hasOwnProperty($.primaryKey) && (row[$.primaryKey] === null || row[$.primaryKey] === '')) {
-                        delete row[$.primaryKey];
+            var nexted = true, fn = function () {
+                try {
+                    var i=0, l=rows.length, store=$.store('readwrite', $.status(IDBmodel.ADD), opt);
+                    var row, loop = function () {
+                        row = $.data2row(rows[i++], QueryParam.STRNULL);
+                        if (row.hasOwnProperty($.primaryKey) && (row[$.primaryKey] === null || row[$.primaryKey] === '')) {
+                            delete row[$.primaryKey];
+                        }
+                        store.add(row).onsuccess = function (event) {
+                            idx.push(event.target.result);
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.ADD), store, i, rows);
+                            if (i < l) return loop();
+                            store.oncomplete({result:idx, rows:rows});
+                            if (nexted) { nexted = false; return $.processing; }
+                        }
                     }
-                    store.add(row).onsuccess = function (event) {
-                        idx.push(event.target.result);
-                        if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IndexedDBmodel.ADD), store, i, rows);
-                        if (i < l) { return loop(); }
-                        $.processing = false;
-                        store.oncomplete({result:idx, rows:rows});
-                        return idx;
-                    }
+                    return loop();
+                } catch (e) {
+                    if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
+                    if (nexted) { nexted = false; return $.processing; }
                 }
-                return loop();
-            } catch (e) {
-                if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
             }
+            $.processing = fn;
         },
         put: function (data, opt) {
             var $ = this, idx = [], rows = data instanceof Array ? data : [data];
-            if ( $.processing ) return (opt && typeof opt.cancel === 'function') ? opt.cancel.call($, e) : $.cancel(e);
-            $.processing = true;
-            try {
-                var i=0, l=rows.length, store=$.store('readwrite', $.status(IndexedDBmodel.PUT), opt);
-                var row, loop = function () {
-                    row = $.data2row(rows[i++], QueryParam.STRNULL);
-                    if (!$.primaryKey || row[$.primaryKey] === null || row[$.primaryKey] === '') throw 'PrimaryKey is not set!';
-                    store.put(row).onsuccess = function (event) {
-                        idx.push(event.target.result);
-                        if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IndexedDBmodel.PUT), store, i, rows);
-                        if (i < l) { return loop(); }
-                        $.processing = false;
-                        store.oncomplete({result:idx, rows:rows});
-                        return idx;
+            var nexted = true, fn = function () {
+                try {
+                    var i=0, l=rows.length, store=$.store('readwrite', $.status(IDBmodel.PUT), opt);
+                    var row, loop = function () {
+                        row = $.data2row(rows[i++], QueryParam.STRNULL);
+                        if (!$.primaryKey || row[$.primaryKey] === null || row[$.primaryKey] === '') throw 'PrimaryKey is not set!';
+                        store.put(row).onsuccess = function (event) {
+                            idx.push(event.target.result);
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.PUT), store, i, rows);
+                            if (i < l) return loop();
+                            store.oncomplete({result:idx, rows:rows});
+                            if (nexted) { nexted = false; return $.processing; }
+                        }
                     }
+                    return loop();
+                } catch (e) {
+                    if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
+                    if (nexted) { nexted = false; return $.processing; }
                 }
-                return loop();
-            } catch (e) {
-                if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
             }
+            $.processing = fn;
         },
         del: function (idx, opt) {
             var $ = this, isArray = idx instanceof Array;
-            if ( $.processing ) return (opt && typeof opt.cancel === 'function') ? opt.cancel.call($, e) : $.cancel(e);
-            if (!isArray) idx = [idx];
-            $.processing = true;
-            try {
-                var store = $.store('readwrite', $.status(IndexedDBmodel.DEL), opt);
-                var i=0, l = idx.length, loop = function () {
-                    //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
-                    store['delete'](idx[i++]).onsuccess = function (event) {
-                        if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IndexedDBmodel.DEL), store, i, rows);
-                        if (i < l) { return loop(); }
-                        $.processing = false;
-                        store.oncomplete({result:idx});
-                        return isArray ? idx : idx[0];
+            var nexted = true, fn = function () {
+                if (!isArray) idx = [idx];
+                try {
+                    var store = $.store('readwrite', $.status(IDBmodel.DEL), opt);
+                    var i=0, l = idx.length, loop = function () {
+                        //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
+                        store['delete'](idx[i++]).onsuccess = function (event) {
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.DEL), store, i, rows);
+                            if (i < l) return loop();
+                            store.oncomplete({result:idx});
+                            if (nexted) { nexted = false; return $.processing; }
+                        }
                     }
+                    return loop();
+                } catch (e) {
+                    if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
+                    if (nexted) { nexted = false; return $.processing; }
                 }
-                return loop();
-            } catch (e) {
-                if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
             }
+            $.processing = fn;
         }
     }, opt);
-};  IndexedDBmodel.GET = 1; IndexedDBmodel.GETALL = 2; IndexedDBmodel.ADD = 3; IndexedDBmodel.PUT = 3;
-    IndexedDBmodel.UPSERT = 4; IndexedDBmodel.DEL = 5; IndexedDBmodel.INDEX = 6; IndexedDBmodel.TRUNCATE = 7;
-    IndexedDBmodel.COUNT = 8; IndexedDBmodel.NEWINDEX = 9; IndexedDBmodel.PAGINATOR = 10;
-g.IndexedDBmodel = IndexedDBmodel;
+};  IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 3;
+    IDBmodel.UPSERT = 4; IDBmodel.DEL = 5; IDBmodel.INDEX = 6; IDBmodel.TRUNCATE = 7;
+    IDBmodel.COUNT = 8; IDBmodel.NEWINDEX = 9; IDBmodel.PAGINATOR = 10; IDBmodel.FILTER = 11;
 
-// var db = new idxDB('test1',1)
-// db.bind(IndexedDBmodel('table1','id'))
+g.IDBmodel = IDBmodel;
+
+// var db = new IDB('test1',1)
+// db.bind(IDBmodel('table1','id'))
 // db.connect()
 // db.models.table1.add({id:1, name:'Boris'})
 // db.models.table1.getAll()

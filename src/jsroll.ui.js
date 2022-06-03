@@ -49,6 +49,26 @@ var storage = function() {
     return localStorage;
 };
 
+var Initializer = function(eventType,target) {
+    this.target = target||app;
+    this.eventType = eventType;
+    this.setup = false;
+    this.isLast = false;
+    this.pool=[];
+    this.add = function () {
+        var $=this, id=uuid(); $.setup = true; $.pool.push(id);
+        return id;
+    };
+    this.done = function (id, isLast) {
+        if (id) {
+            var $=this, pos = $.pool.indexOf(id);
+            if (isLast) $.isLast = true;
+            if (pos >-1) { $.pool.splice(pos,1);}
+            if ($.isLast && !$.pool.length) { app.onready(function (s) { s.target.dispatchEvent(new ce(s.eventType))}, [$])}
+        }
+    }
+};
+
 var Application = function (ver) {
     var $ = this;
     $.localStorage = storage();
@@ -126,7 +146,6 @@ var Application = function (ver) {
         // }
     }
 }; Application.prototype = {
-    __version_pool__: [],
     $version: null,
     get version() { return this.$version },
     set version(s) {
@@ -135,10 +154,10 @@ var Application = function (ver) {
             var wait = function() {
                 if ($.__ready__) {
                     if (wait.timer) clearTimeout(wait.timer);
-                    $.__version_pool__.forEach(function (v) { v.fn.apply(app, v.args) });
+                    $.__version_pool__.forEach(function (v) { v.fn.apply($, v.args) });
                     $.$version = s
                 } else {
-                    return wait.timer = setTimeout( wait, 50);
+                    return wait.timer = setTimeout( wait, 5);
                 }
             }
             return wait();
@@ -154,6 +173,7 @@ var Application = function (ver) {
     },
     online: function (e) { return console.log('app online ' + datetimer(new Date())); },
     offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
+    __version_pool__: [],
     /**
      *
      * @param fn { closure }
@@ -161,6 +181,7 @@ var Application = function (ver) {
      * @return {*|number}
      */
     changeVersion: function (fn, args) { return this.__version_pool__.push({fn:fn, args:args||[]}) },
+    readyFnpool:[],
     /**
      *
      * @param fn { closure }
@@ -168,15 +189,16 @@ var Application = function (ver) {
      * @return {*|number}
      */
     onready: function (fn, args) {
-        var $ = this, wait = function(cb, a) {
+        var $ = this, wait = function(fn, args) {
             if ($.__ready__) {
-                if (this.timer) clearTimeout(this.timer);
-                return cb.apply($, a);
+                clearTimeout(wait.timer); wait.timer = 0;
+                $.readyFnpool.forEach(function (v) {v.fn.apply($,v.args)}); $.readyFnpool=[];
             } else {
-                return this.timer = setTimeout(function () { return new wait(cb, a); }, 50);
+                $.readyFnpool.push({fn:fn,args:args});
+                wait.timer = setTimeout(wait, 5);
             }
         }
-        return new wait(fn, args||[]);
+        return $.__ready__ ? fn.apply($,args) : wait(fn, args||[]);
     },
     /**
      *
@@ -207,8 +229,12 @@ var Application = function (ver) {
         }
         return this.confirmReload;
     },
+    __destroyers__: [],
+    ondestroy: function (fn, arg) { this.__destroyers__[fn] = arg||[] },
     destroy: function (e) {
-        this.serialize();
+        var $=this;
+        $.serialize();
+        if ($.__destroyers__.length) for(var fn in $.__destroyers__) func(fn,$).apply($,$.__destroyers__[fn]);
         if (!navigator.sendBeacon || !navigator.onLine) return;
         var url = "/logout";
         // // Create the data to send
@@ -226,7 +252,8 @@ var Application = function (ver) {
             date.setTime(date.getTime() + (days*24*60*60*1000));
             expires = "; expires=" + date.toUTCString();
         }
-        document.cookie = name + "=" + base64(JSON.stringify(value).replace(/(^"|"$)/g, '')) + expires + "; path="+(path||'/');
+        var v = value ? base64((typeof value === 'string' ? value : JSON.stringify(value).replace(/(^"|"$)/g, ''))) : '';
+        document.cookie = name + "=" + v + expires + "; path="+(path||'/');
     },
     getCookie: function (name) {
         if (typeof name !== 'string') return ;
@@ -401,7 +428,7 @@ var Application = function (ver) {
             return !!nodes[i];
     };
 
-    var he = function () { clearTimeout(he.timer); };
+    var he = function () { clearTimeout(he.timer); he.timer=0;};
     /**
      * Extra pathc for mubile devices
      * Double Tab Event Handker
@@ -418,7 +445,7 @@ var Application = function (ver) {
             he.timer = setTimeout(he, g.ui.DOUBLE_TIMEOUT);
             return he.element = el;
         } else {
-            clearTimeout(he.timer);
+            clearTimeout(he.timer); he.timer=0;
             he.element = null;
             return fn.apply(i,argX(args,e));
         }
@@ -1311,8 +1338,6 @@ var Application = function (ver) {
                 };
                 th.key = key; if (!th.timer) th.stoped();
                 th.timer = setTimeout(fn.bind(th), th.delta);
-
-                return;
             },
             activeItem:function (key) {
                 var owner = this.owner, th = this;
