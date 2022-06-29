@@ -167,7 +167,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     var i=0, l=rows.length, store=$.store('readwrite', $.status(IDBmodel.PUT), opt);
                     var row, loop = function () {
                         row = $.data2row(rows[i++], QueryParam.STRNULL);
-                        if (!$.primaryKey || row[$.primaryKey] === null || row[$.primaryKey] === '') throw 'PrimaryKey is not set!';
+                        if (!$.primaryKey || row[$.primaryKey] === null || row[$.primaryKey] === '') throw 'PrimaryKey is not set! '+JSON.stringify(row);
                         store.put(row).onsuccess = function (event) {
                             idx.push(event.target.result);
                             if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.PUT), store, i, rows);

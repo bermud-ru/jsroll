@@ -49,6 +49,8 @@ var storage = function() {
     return localStorage;
 };
 
+var TIMEOUT = 5;
+
 var Initializer = function(eventType,target) {
     this.target = target||app;
     this.eventType = eventType;
@@ -72,6 +74,10 @@ var Initializer = function(eventType,target) {
 var Application = function (ver) {
     var $ = this;
     $.localStorage = storage();
+    //TODO: fix for safary
+    // var serialize = str2json($.localStorage.getItem('Application'));
+    // if (serialize && typeof serialize === 'object') for(var v in serialize) $.__proto__[v]=serialize[v];
+    // console.warn('proto',Object.getPrototypeOf(this));
     $.merge(str2json($.localStorage.getItem('Application')));
     $.sessionStorage = sessionStorage;
     $.version = ver || new Date();
@@ -79,7 +85,7 @@ var Application = function (ver) {
     window.onload = $.run.bind($);
     window.onunload = $.destroy.bind($);
     window.onresize = $.resize.bind($);
-    window.onbeforeunload = function (event) { if ($.confirmReload) return $.reload(event); };
+    window.onbeforeunload = function (event) { if ($.confirmReload) return $.reload(event) };
     // document.addEventListener('deviceready', function() {
     //     // Heavy cordova sorces redy to work (espesial for
     //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
@@ -157,7 +163,7 @@ var Application = function (ver) {
                     $.__version_pool__.forEach(function (v) { v.fn.apply($, v.args) });
                     $.$version = s
                 } else {
-                    return wait.timer = setTimeout( wait, 5);
+                    return wait.timer = setTimeout( wait, TIMEOUT);
                 }
             }
             return wait();
@@ -189,16 +195,18 @@ var Application = function (ver) {
      * @return {*|number}
      */
     onready: function (fn, args) {
+        if (typeof fn !== 'function') return console.error("Fn not exist!");
         var $ = this, wait = function(fn, args) {
             if ($.__ready__) {
+                $.readyFnpool.forEach(function (v) { v.fn.apply($,v.args)});
                 clearTimeout(wait.timer); wait.timer = 0;
-                $.readyFnpool.forEach(function (v) {v.fn.apply($,v.args)}); $.readyFnpool=[];
+                $.readyFnpool=[];
             } else {
-                $.readyFnpool.push({fn:fn,args:args});
-                wait.timer = setTimeout(wait, 5);
+                if (fn) $.readyFnpool.push({fn:fn,args:args});
+                wait.timer = setTimeout(wait, TIMEOUT);
             }
         }
-        return $.__ready__ ? fn.apply($,args) : wait(fn, args||[]);
+        return $.__ready__ ? fn.apply($,args||[]) : wait(fn, args||[]);
     },
     /**
      *
@@ -230,11 +238,11 @@ var Application = function (ver) {
         return this.confirmReload;
     },
     __destroyers__: [],
-    ondestroy: function (fn, arg) { this.__destroyers__[fn] = arg||[] },
+    ondestroy: function (fn, arg) { if (typeof fn === 'function') this.__destroyers__.push({fn:fn, arg: arg||[] }) },
     destroy: function (e) {
         var $=this;
         $.serialize();
-        if ($.__destroyers__.length) for(var fn in $.__destroyers__) func(fn,$).apply($,$.__destroyers__[fn]);
+        if ($.__destroyers__.length) for(var v in $.__destroyers__) v.fn.apply($,v.arg);
         if (!navigator.sendBeacon || !navigator.onLine) return;
         var url = "/logout";
         // // Create the data to send
@@ -477,7 +485,6 @@ var Application = function (ver) {
             return i;
         },
         /**
-         *
          * @param s { string }
          * @param fn { closure }
          * @param args { arguments }
@@ -493,7 +500,6 @@ var Application = function (ver) {
             return el;
         },
         /**
-         *
          * @param s { string }
          * @param fn { closure }
          * @param args { arguments }
@@ -548,6 +554,12 @@ var Application = function (ver) {
             }
             return this;
         },
+        /**
+         * @param str { string }
+         * @param data { object }
+         * @param cb { function }
+         * @param opt { object }
+         */
         tpl: function (str, data, cb, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             a.forEach( function (v, i, z) {
@@ -680,7 +692,7 @@ var Application = function (ver) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             a.forEach( function (el, i) {
                 var cntx = s instanceof Array ? (s[i] || s[0]) : s;
-                if (cntx instanceof HTMLElement) el.appendChild(cntx); else el.innerHTML = cntx;
+                if (cntx instanceof HTMLElement) { el.innerHTML = ''; el.appendChild(cntx) } else { el.innerHTML = cntx }
             });
         },
         up: function (d, mime) {
@@ -703,7 +715,7 @@ var Application = function (ver) {
         focus: function(s) {
             var el = this.instance;
             if (s) { el = (typeof s === 'string' ? this.el(s): s); }
-            setTimeout(function(e) { return el.focus(); }, 0);
+            setTimeout(function(e) { return el.focus(); }, 1);
             return el;
         }
     }; g.ui = new ui(document);
@@ -936,7 +948,7 @@ var Application = function (ver) {
                         if (!worker.done) return fn();
                         if (typeof opt.after == 'function') opt.after();
                         return false;
-                    }, 0);
+                    }, 5);
                 })();
             }
             return worker;
@@ -1360,13 +1372,7 @@ var Application = function (ver) {
                 th.index = data.length ? 0 : -1;
 
                 if (owner.pannel) {
-                    if (data.length) {
-                        owner.pannel.ui.tpl(th.opt.tpl, {data: data, field: owner.name}, function (cnt) {
-                            // var n = ui.dom(cnt);
-                            // owner.pannel.innerHTML = n ? n.innerHTML : null;
-                            owner.pannel.innerHTML = this.innerHTML;
-                        });
-                    }
+                    if (data.length) owner.pannel.ui.tpl(th.opt.tpl,{up:true, data: data, field: owner.name});
                 } else {
                     tpl(this.opt.tpl, {data: data, field: owner.name}, function (panel) {
                         owner.parentElement.insertAdjacentHTML('beforeend', panel.html);
@@ -1495,7 +1501,7 @@ var Application = function (ver) {
                             return false;
                         default:
                             if ($.pannel) $.pannel.css.add('fade');
-                            setTimeout(th.valueChanger.bind(th), 0);
+                            setTimeout(th.valueChanger.bind(th), 5);
                             return false;
                     }
                     $.pannel.ui.el('.active', function (){ this.css.del('active'); });

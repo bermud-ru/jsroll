@@ -86,50 +86,55 @@
      */
     var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : function (url, opt) { return console.warn('WebSocket not supported!'); });
     var ws = function (url, opt) {
-        // var socket = new WebSocket(url, opt.hasOwnProperty('protocol') ? opt.protocol : '');
-        this.protocol = '';
         this.opt = Object.assign(this.opt, opt);
         this.url = url;
     }; ws.prototype = {
-        opt: {binaryType:'blob', reconnect:1000, error:null, open:null, message:null, close:null},
+        opt: {protocol:'websocket', binaryType:'blob', reconnect:false, reconnectTimeout:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
         get readyState() { return this.socket ? this.socket.readyState : WebSocket.CONNECTING; },
-        up: function(opt){
-            if (!navigator.onLine) return console.error('Browser not connected!');
-            if (this.connected) return console.warn('Already connected!');
-
-            var $ = this;
-            if (opt) $.opt = Object.assign($.opt, opt);
-            $.socket = new WebSocket($.url);
-            $.socket.binaryType = $.opt.binaryType;
-            ['error','open','message','close'].forEach(function (e) { $.socket.addEventListener(e, $[e].bind($)); });
+        up: function(opt) {
+            if (this.connected && $.socket) {
+                return $.socket;
+            } else {
+                var $ = this;
+                if (typeof opt === 'object') $.opt = Object.assign($.opt, opt);
+                $.socket = new WebSocket($.url, $.opt.protocol);
+                if ($.socket) {
+                    $.socket.binaryType = $.opt.binaryType;
+                    ['error', 'open', 'message', 'close'].forEach(function (e) {
+                        $.socket.addEventListener(e, $[e].bind($), {bubbles: false, cancelable: true, composed: true})
+                    });
+                }
+            }
             return $.socket;
         },
         error: function(e) {
             this.connected = false;
-            var close = (this.opt && typeof this.opt.error === 'function') ? this.opt.error.call(this, e) : (console.error(e) || true);
+            var close = (typeof this.opt.error === 'function') ? this.opt.error.call(this, e) : (console.error(e) || true);
             if ( close && this.socket)  this.socket.close();
             return this;
         },
         message: function(e) {
-            return (this.opt && typeof this.opt.message === 'function') ? this.opt.message.call(this, e) : console.log(e);
+            return (typeof this.opt.message === 'function') ? this.opt.message.call(this, e) : console.log(e);
         },
         open: function(e) {
             this.connected = new Date();
-            return (this.opt && typeof this.opt.open === 'function') ? this.opt.open.call(this, e) : console.log(e);
+            return (typeof this.opt.open === 'function') ? this.opt.open.call(this, e) : console.log(e);
         },
         close: function(e) {
-            if (!e) return this.connected ? this.socket.close() : true;
             var $ = this;
             $.connected = false;
-            var fn; setTimeout(fn = function() {
-            return $.readyState === WebSocket.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnect);
-            }, $.opt.reconnect);
-            return (this.opt && typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
+            if (!e) {
+                if ($.socket) $.socket.close();
+                if (typeof $.opt.close === 'function') $.opt.close.apply(this, arguments);
+            }
+            var fn = function() { return $.readyState === WebSocket.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnectTimeout)};
+            if ( $.opt.reconnect ) return  setTimeout(fn, $.opt.reconnectTimeout);
+            else return (typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
         },
         send: function(data) {
-            if (this.connected) this.socket.send(data); else console.warn(this.url + ' not connected!');
+            if (this.connected) this.socket.send(typeof data === 'string' ? data : JSON.stringify(data)); else console.warn(this.url + ' not connected!');
         }
     }; g.ws = ws;
 
@@ -217,12 +222,16 @@
                 if (typeof v.launch === 'function') v.launch($.db);
             });
             this.__active__ ^= g.IDB.LAUNCH;
-            for (var fn in $.__pool__) g.func(fn).apply($,$.__pool__[fn]); $.__pool__=[];
+            for (var v in $.__pool__) { v.fn.apply($, v.arg); }
+            $.__pool__=[];
             return $;
         },
         __pool__: [],
         onready: function (fn, arg) {
-            if (typeof fn === 'function') this.__pool__[fn] = arg instanceof Array ? arg : arg ? [arg] : [];
+            if (this.__active__ !== g.IDB.READY) {
+                if (typeof fn === 'function') this.__pool__.push({fn: fn, arg: arg || []});
+            }
+            return fn.apply(this,arg||[]);
         },
         store: function (k, status, opt, row) {
             var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
@@ -1690,11 +1699,11 @@
         var ctx = this, args = arguments; var arg = args[1] || [], pig = {before: null, after:null};
         var fn, $ = {
             src: null, context: ctx, attr: null, caching: false, str: str, data: arg, cb: cb, processing: false, timer: null,
-            wait: function(after, args) {
-                var $ = this;
-                if ($.processing) { $.timer = setTimeout(function () { $.wait(after, args); }, 50); return $; }
-                else if (typeof after == 'function') { after.apply($.tpl, args); }
-                else if (after && (typeof (fn = func(after, $.tpl, args)) === 'function')) { fn.apply($.tpl, args); }
+            wait: function(after, args, index) {
+                var $ = this, tpl = index && $.tpl instanceof Array ? $.tpl[index] : $.tpl;
+                if ($.processing) { $.timer = setTimeout(function () { $.wait(after, args, index); }, 5); return $ }
+                else if (typeof after == 'function') { after.apply(tpl, args); }
+                else if (after && (typeof (fn = func(after, tpl, args)) === 'function')) { fn.apply($.tpl, args) }
                 return $;
             },
             response_header: null,
@@ -1757,21 +1766,19 @@
                             $.tpl.innerHTML = $.html;
                         } else if ( cb instanceof Array ) {
                             $.tpl = cb;
-                            $.tpl.forEach(function (i) {
-                                a = typeof arg === 'function' ? arg.call($, i, pattern) : arg;
-                                i.innerHTML = pattern.call($, a);
-                                if (pig.after && (typeof (fn = func(pig.after, i, a)) === 'function')) {
-                                    $.wait(fn, a);
-                                }
-                                if (after) { $.wait(after, a); }
+                            $.tpl.forEach(function (v,i,t) {
+                                a = typeof arg === 'function' ? arg.call($, v,i,t) : arg;
+                                v.innerHTML = pattern.call($, a);
+                                if (pig.after && (typeof (fn = func(pig.after, v)) === 'function')) {
+                                    $.wait(fn, a, i);
+                                } else if (after) { $.wait(after, a, i); }
                             });
                             return $.tpl;
                         }
 
                         if (pig.after && (typeof (fn = func(pig.after, $.tpl, a)) === 'function')) {
                             $.wait(fn, a);
-                        }
-                        if (after) { $.wait(after, a); }
+                        } else if (after) { $.wait(after, a); }
                         return dom || $.html;
                     };
                     return awaiting();
