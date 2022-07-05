@@ -87,21 +87,19 @@
     var WebSocket = 'MozWebSocket' in g ? g.MozWebSocket : ('WebSocket' in g ? g.WebSocket : function (url, opt) { return console.warn('WebSocket not supported!'); });
     var ws = function (url, opt) {
         this.opt = Object.assign(this.opt, opt);
-        this.url = url;
+        this.opt.url = url;
     }; ws.prototype = {
-        opt: {protocol:'websocket', binaryType:'blob', reconnect:false, reconnectTimeout:1000, error:null, open:null, message:null, close:null},
+        opt: {protocol:[], binaryType:'blob', reconnect:false, reconnectTimeout:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
         get readyState() { return this.socket ? this.socket.readyState : WebSocket.CONNECTING; },
         up: function(opt) {
-            if (this.connected && $.socket) {
-                return $.socket;
-            } else {
+            if (!this.connected || (typeof opt === 'object' && opt.url && opt.url !== this.opt.url)) {
                 var $ = this;
-                if (typeof opt === 'object') $.opt = Object.assign($.opt, opt);
-                $.socket = new WebSocket($.url, $.opt.protocol);
+                if (opt) $.opt.merge(opt);
+                $.socket = new WebSocket($.opt.url, $.opt.protocol); // protocol=["soap", "wamp"]; protocol:'websocket'
                 if ($.socket) {
-                    $.socket.binaryType = $.opt.binaryType;
+                    $.socket.binaryType = $.opt.binaryType; //.binaryType = "arraybuffer";
                     ['error', 'open', 'message', 'close'].forEach(function (e) {
                         $.socket.addEventListener(e, $[e].bind($), {bubbles: false, cancelable: true, composed: true})
                     });
@@ -132,6 +130,13 @@
             var fn = function() { return $.readyState === WebSocket.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnectTimeout)};
             if ( $.opt.reconnect ) return  setTimeout(fn, $.opt.reconnectTimeout);
             else return (typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
+        },
+        disconnect: function (code, reason) {
+            // закрывающая сторона: socket.close([code], [reason]);
+            // code – специальный WebSocket-код закрытия (не обязателен).
+            // reason – строка с описанием причины закрытия (не обязательна).
+            // ws.socket.close(1000, "работа закончена");
+            return this.socket.close(code, reason);
         },
         send: function(data) {
             if (this.connected) this.socket.send(typeof data === 'string' ? data : JSON.stringify(data)); else console.warn(this.url + ' not connected!');
