@@ -304,6 +304,7 @@
      */
     g.IDBFilter = function (condition, limit, args) {
         this.limit = parseInt(limit);
+        if (isNaN(this.limit)) console.log('IDBFilter limit not define!');
         this.args = args || [];
         if (typeof condition === 'function') this.fn = condition;
     }; g.IDBFilter.prototype = {

@@ -57,7 +57,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             var $ = this;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
-                store.openCursor(opt && opt.keyRange).onsuccess = function(event) {
+                store.openCursor(opt && opt.keyRange, opt && opt.keyDirection).onsuccess = function(event) {
                     var cursor = event.target.result;
                     if (mng.populated(cursor)) {
                         if (!mng.advanced) { mng.advanced = true; if (mng.offset > 0) cursor.advance(mng.offset) }
@@ -122,7 +122,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         getAll: function (opt) {
             var $ = this, nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.GETALL), opt);
-                store.getAll(opt && opt.keyRange).onsuccess = function (event) {
+                store.getAll(opt && opt.keyRange || null, opt && opt.count || null).onsuccess = function (event) {
                     if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GETALL), store);
                     else store.oncomplete({result:event.target.result});
                     if (nexted) { nexted = false; return $.processing; }
