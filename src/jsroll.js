@@ -92,56 +92,68 @@
         opt: {protocol:[], binaryType:'blob', reconnect:false, reconnectTimeout:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
-        get readyState() { return this.socket ? this.socket.readyState : WebSocket.CONNECTING; },
+        __status: ws.CONNECTING,
+        get readyState() { return  this.__status = this.socket ? this.socket.readyState : ws.CONNECTING; },
         up: function(opt) {
             if (!this.connected || (typeof opt === 'object' && opt.url && opt.url !== this.opt.url)) {
                 var $ = this;
                 if (opt) $.opt.merge(opt);
+                // if ($.socket) $.socket.close();
                 $.socket = new WebSocket($.opt.url, $.opt.protocol); // protocol=["soap", "wamp"]; protocol:'websocket'
                 if ($.socket) {
                     $.socket.binaryType = $.opt.binaryType; //.binaryType = "arraybuffer";
-                    ['error', 'open', 'message', 'close'].forEach(function (e) {
-                        $.socket.addEventListener(e, $[e].bind($), {bubbles: false, cancelable: true, composed: true})
+                    ['onerror', 'onopen', 'onmessage', 'onclose'].forEach(function (x) {
+                        $.socket[x] = function (e) { return $[x](e) };
                     });
                 }
             }
-            return $.socket;
+            return this.socket;
         },
-        error: function(e) {
+        onerror: function(e) {
             this.connected = false;
-            var close = (typeof this.opt.error === 'function') ? this.opt.error.call(this, e) : (console.error(e) || true);
-            if ( close && this.socket)  this.socket.close();
+            if (typeof this.opt.error === 'function') {
+                this.opt.error.call(this, e)
+            } else {
+                console.error(e);
+            }
             return this;
         },
-        message: function(e) {
+        onmessage: function(e) {
             return (typeof this.opt.message === 'function') ? this.opt.message.call(this, e) : console.log(e);
         },
-        open: function(e) {
+        onopen: function(e) {
             this.connected = new Date();
             return (typeof this.opt.open === 'function') ? this.opt.open.call(this, e) : console.log(e);
         },
-        close: function(e) {
+        onclose: function(e) {
             var $ = this;
             $.connected = false;
-            if (!e) {
-                if ($.socket) $.socket.close();
-                if (typeof $.opt.close === 'function') $.opt.close.apply(this, arguments);
-            }
-            var fn = function() { return $.readyState === WebSocket.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnectTimeout)};
-            if ( $.opt.reconnect ) return  setTimeout(fn, $.opt.reconnectTimeout);
-            else return (typeof this.opt.close === 'function') ? this.opt.close.call(this, e) : console.warn(e);
+            if (e instanceof Event) {
+                if ( $.opt.reconnect ) {
+                    var fn = function() { return $.readyState === ws.CONNECTING ? $.up() : setTimeout(fn, $.opt.reconnectTimeout)};
+                    return setTimeout(fn, $.opt.reconnectTimeout)
+                }
+            } else if ($.socket) { $.socket.close() }
+
+            return (typeof $.opt.close === 'function') ? $.opt.close.apply($, arguments) : console.warn(e);
         },
-        disconnect: function (code, reason) {
+        close: function (code, reason) {
             // закрывающая сторона: socket.close([code], [reason]);
             // code – специальный WebSocket-код закрытия (не обязателен).
             // reason – строка с описанием причины закрытия (не обязательна).
             // ws.socket.close(1000, "работа закончена");
-            return this.socket.close(code, reason);
+            if (this.connected && code) return this.socket.close(code, reason);
         },
         send: function(data) {
             if (this.connected) this.socket.send(typeof data === 'string' ? data : JSON.stringify(data)); else console.warn(this.url + ' not connected!');
         }
-    }; g.ws = ws;
+    };
+    ws.CONNECTING = 0;
+    ws.OPEN = 1;
+    ws.CLOSING = 2;
+    ws.CLOSED = 3;
+    ws.RECONNECTING = 4;
+    g.ws = ws;
 
     /**
      * @function eventCode
@@ -180,8 +192,9 @@
         return $;
     }; g.IDB.prototype = {
         IDBOpenDBRequest: null,
-        set db(event) { var $ = this; $.IDBOpenDBRequest = event instanceof Event ? ui.src(event) : event;},
-        get db() { var $ = this; return $.IDBOpenDBRequest ? $.IDBOpenDBRequest.result : null; },
+        set db(event) { this.IDBOpenDBRequest = event instanceof Event ? ui.src(event) : event;},
+        get db() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.result : null; },
+        get tx() { return this.IDBOpenDBRequest ? this.IDBOpenDBRequest.transaction : null; },
         connect: function () {
             var $ = this, max = 0, wait = function () {
                 clearTimeout(wait.processs);
@@ -208,10 +221,10 @@
             IDBinstance.onblocked = function (e) { return $.blocked(e); }
             IDBinstance.onupgradeneeded = function (e) { return $.buildSchemas(e); }
         },
-        buildSchemas: function (event) {
+        buildSchemas: function (db) {
             this.__active__ |= g.IDB.BUILD;
-            var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
-                if (typeof v.schema === 'function') { v.schema($.db); } else {
+            var $ = this; $.db = db; obj2array(this.heirs).map(function (v, i, a) {
+                if (typeof v.schema === 'function') { v.schema($.db, $.tx); } else {
                     if (!$.db.objectStoreNames.contains(v.name)) {
                         if (v.primaryKey) $.db.createObjectStore(v.name,{keyPath:v.primaryKey, autoIncrement: !!v.autoIncrement});
                         else $.db.createObjectStore(v.name);
@@ -221,10 +234,10 @@
             this.__active__ ^= g.IDB.BUILD;
             return $;
         },
-        launchSchemas: function (event) {
-            var $ = this; $.db = event; obj2array(this.heirs).map(function (v, i, a) {
+        launchSchemas: function (db) {
+            var $ = this; $.db = db; obj2array(this.heirs).map(function (v, i, a) {
                 $.models[v.tables.join('-')] = v;
-                if (typeof v.launch === 'function') v.launch($.db);
+                if (typeof v.launch === 'function') v.launch($.db, $.tx);
             });
             this.__active__ ^= g.IDB.LAUNCH;
             for (var v in $.__pool__) { v.fn.apply($, v.arg); }
@@ -247,6 +260,11 @@
                 else return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store);
             };
             store = tx.objectStore(!k || k === 'readwrite' ? $.name : $.tables);
+            if (typeof opt === 'object' && opt.index) {
+                if (store.indexNames.contains(opt.index)) {
+                    store = store.index(opt.index);
+                } else { console.warn('IDB.'+JSON.stringify($.tables)+' index ['+opt.index+'] not exist!') }
+            }
             store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
                 opt.done.call($, event, status) : $.done(event, status);
             }
@@ -285,17 +303,15 @@
      * @constructor
      */
     g.IDBFilter = function (condition, limit, args) {
-        this.limit = parseInt(limit) || 10;
+        this.limit = parseInt(limit);
         this.args = args || [];
         if (typeof condition === 'function') this.fn = condition;
     }; g.IDBFilter.prototype = {
         offset: 0, limit: 0, advanced: true, count: 0, fn: null, page: [], chunk: [], run: false,
-        populated: function(cursor) { return cursor && (this.chunk.length < this.limit) },
-        condition: function (tuple) {
-            this.offset++; if (!this.fn || this.fn.apply(this,[tuple].merge(this.args))) this.chunk.push(tuple);
-        },
+        populated: function(cursor) { return cursor && (this.limit === 0 || this.chunk.length < this.limit) },
+        condition: function (tuple) { this.offset++; if (!this.fn || this.fn.apply(this,[tuple].merge(this.args))) this.chunk.push(tuple) },
         next: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page.push(this.offset); this.advanced = false; return this },
-        reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this }
+        reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this },
     };
 
     /**

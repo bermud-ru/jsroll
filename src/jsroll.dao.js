@@ -45,19 +45,19 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         launch: launch,
         clear: function (opt) {
             var $ = this, store = $.store('readwrite', $.status(IDBmodel.TRUNCATE), opt);
-            if (opt && typeof opt.success === 'function') return store.clear().onsuccess = function (e) { return status = opt.success.call($, e, store); };
-            else return store.clear().onsuccess = opt.complete;
+            if (opt && typeof opt.success === 'function') return store.clear().onsuccess = function (e) { return opt.success.call($, e, store) };
+            else return store.clear().onsuccess = store.complete;
         },
-        count: function(cb, opt) {
+        count: function(opt) {
             var $ = this, store = $.store('readonly', $.status(IDBmodel.COUNT), opt);
-            if (typeof cb === 'function') store.count().onsuccess = function (e) { return cb.call($, e, $.status(IDBmodel.COUNT), store); };
-            else store.count().onsuccess = store.oncomplete;
+            if (opt && typeof opt.success === 'function') store.count(opt && opt.keyRange).onsuccess = function (e) { return opt.success.call($, e, store) };
+            else store.count(opt && opt.keyRange).onsuccess = store.oncomplete;
         },
         filter: function (mng, opt) {
             var $ = this;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
-                store.openCursor().onsuccess = function(event) {
+                store.openCursor(opt && opt.keyRange).onsuccess = function(event) {
                     var cursor = event.target.result;
                     if (mng.populated(cursor)) {
                         if (!mng.advanced) { mng.advanced = true; if (mng.offset > 0) cursor.advance(mng.offset) }
@@ -74,9 +74,9 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             var $ = this, result = [], p = parseInt(page), l = parseInt(limit), advanced = p === 0;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.PAGINATOR), opt);
-                store.count().onsuccess = function (e) {
+                store.count(opt && opt.keyRange).onsuccess = function (e) {
                     var count = e.target.result;
-                    if (count > 0) store.openCursor().onsuccess = function(event) {
+                    if (count > 0) store.openCursor(opt && opt.keyRange).onsuccess = function(event) {
                         var cursor = event.target.result;
                         if (cursor && result.length < l) {
                             if(!advanced) { advanced = true; cursor.advance(p*l) }
@@ -91,10 +91,6 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             }
             $.processing = fn;
         },
-        createIndex: function (name, keyPath, options) {
-            var $ = this, store = $.store('readwrite', $.status(IDBmodel.NEWINDEX));
-            store.createIndex(name, keyPath, options).onsuccess = store.oncomplete;
-        },
         index: function (opt) {
             var $ = this, store = $.store('readonly', $.status(IDBmodel.INDEX), opt);
             var index = store.index(arguments.shift());
@@ -105,7 +101,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             var nexted = true, fn = function () {
                 if (!isArray) idx = [idx];
                 try {
-                    var store = $.store('readonly', $.status(IDBmodel.DEL), opt);
+                    var store = $.store('readonly', $.status(IDBmodel.GET), opt);
                     var i=0, l = idx.length, loop = function () {
                         store.get(idx[i++]).onsuccess = function (event) {
                             result.push(event.target.result);
@@ -126,7 +122,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         getAll: function (opt) {
             var $ = this, nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.GETALL), opt);
-                store.getAll().onsuccess = function (event) {
+                store.getAll(opt && opt.keyRange).onsuccess = function (event) {
                     if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GETALL), store);
                     else store.oncomplete({result:event.target.result});
                     if (nexted) { nexted = false; return $.processing; }
@@ -210,7 +206,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
     }, opt);
 };  IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 3;
     IDBmodel.UPSERT = 4; IDBmodel.DEL = 5; IDBmodel.INDEX = 6; IDBmodel.TRUNCATE = 7;
-    IDBmodel.COUNT = 8; IDBmodel.NEWINDEX = 9; IDBmodel.PAGINATOR = 10; IDBmodel.FILTER = 11;
+    IDBmodel.COUNT = 8; IDBmodel.PAGINATOR = 9; IDBmodel.FILTER = 10;
 
 g.IDBmodel = IDBmodel;
 
