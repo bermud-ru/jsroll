@@ -54,6 +54,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             else store.count(opt && opt.keyRange).onsuccess = store.oncomplete;
         },
         filter: function (mng, opt) {
+            if (!mng instanceof IDBFilter) throw "IDBmodel::filter() mng - must be of IDBFilter object!";
             var $ = this;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
@@ -61,7 +62,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     var cursor = event.target.result;
                     if (mng.populated(cursor)) {
                         if (!mng.advanced) { mng.advanced = true; if (mng.offset > 0) cursor.advance(mng.offset) }
-                        else { mng.condition(cursor.value); cursor['continue']() }
+                        else { mng.condition(cursor); cursor['continue']() }
                     } else {
                         store.oncomplete({result:mng.chunk, offset:mng.offset, limit:mng.limit});
                         if (nexted) { nexted = false; return $.processing }

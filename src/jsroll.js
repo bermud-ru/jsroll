@@ -310,7 +310,7 @@
     }; g.IDBFilter.prototype = {
         offset: 0, limit: 0, advanced: true, count: 0, fn: null, page: [], chunk: [], run: false,
         populated: function(cursor) { return cursor && (this.limit === 0 || this.chunk.length < this.limit) },
-        condition: function (tuple) { this.offset++; if (!this.fn || this.fn.apply(this,[tuple].merge(this.args))) this.chunk.push(tuple) },
+        condition: function (cursor) { this.offset++; if (!this.fn || this.fn.apply(this,[cursor].merge(this.args))) this.chunk.push(cursor.value) },
         next: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page.push(this.offset); this.advanced = false; return this },
         reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this },
     };
