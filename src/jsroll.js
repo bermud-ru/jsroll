@@ -266,7 +266,7 @@
                 } else { console.warn('IDB.'+JSON.stringify($.tables)+' index ['+opt.index+'] not exist!') }
             }
             store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
-                opt.done.call($, event, status) : $.done(event, status);
+                opt.done.call($, event, status, tx) : $.done(event, status, tx);
             }
             return store;
         },
@@ -274,7 +274,7 @@
         blocked:function (event) { console.warn(event); return this; },
         done: function (event, status, store) { console.table( event instanceof Event ? event.target.result : event.result); return store; },
         cancel: function (event, status, store) { console.warn(event); return store; },
-        fail: function (event, status, store) { console.error('Fail database '+this.name+' ver '+this.version +' :'+ event.target.error); return this; },
+        fail: function (event, status, store) { return console.error('Fail database '+this.name+' ver '+this.version +' :'+ (event instanceof Event ? event.target.error : JSON.stringify(event))) },
         status: function (methodID, status) { return parseInt(methodID) * (status === undefined || !!status ? 1 : -1); },
         data2row: function (data, flag) {
             if (data && typeof data === 'object') {
@@ -297,12 +297,12 @@
     /**
      * @class IDBFilter
      *
-     * @param condition { function }
      * @param limit { int }
+     * @param condition { function }
      * @param args { arguments }
      * @constructor
      */
-    g.IDBFilter = function (condition, limit, args) {
+    g.IDBFilter = function (limit,condition ,args) {
         this.limit = parseInt(limit);
         if (isNaN(this.limit)) console.log('IDBFilter limit not define!');
         this.args = args || [];
@@ -310,7 +310,7 @@
     }; g.IDBFilter.prototype = {
         offset: 0, limit: 0, advanced: true, count: 0, fn: null, page: [], chunk: [], run: false,
         populated: function(cursor) { return cursor && (this.limit === 0 || this.chunk.length < this.limit) },
-        condition: function (cursor) { this.offset++; if (!this.fn || this.fn.apply(this,[cursor].merge(this.args))) this.chunk.push(cursor.value) },
+        condition: function (cursor) { this.offset++; if (!this.fn) this.chunk.push(cursor.value); else this.fn.apply(this, [cursor].merge(this.args)) },
         next: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page.push(this.offset); this.advanced = false; return this },
         reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this },
     };

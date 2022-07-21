@@ -106,7 +106,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     var i=0, l = idx.length, loop = function () {
                         store.get(idx[i++]).onsuccess = function (event) {
                             result.push(event.target.result);
-                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GET), store, i, rows);
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GET), store, i, idx);
                             if (i < l) { return loop(); }
                             store.oncomplete({result:result});
                             if (nexted) { nexted = false; return $.processing; }
@@ -130,6 +130,24 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 }
             }
             $.processing = fn;
+        },
+        tree: function (opt) {
+            var $ = this;
+            $.getAll({index: opt.index, keyRange: IDBKeyRange.only(opt.id),
+                done: function (event, status, tx) {
+                    var data = event.result, fn = function (i, data) {
+                        if (i < data.length) {
+                            tx.objectStore($.tables).index(opt.index).getAll(IDBKeyRange.only(data[i][$.primaryKey])).onsuccess = function(e) {
+                                return fn(i+1, Array.merge(data, e.target.result))
+                            }
+                        } else {
+                            event.result = data;
+                            return opt && typeof opt.done === 'function' ? opt.done.call($, event, status, tx) : $.done(event, status, tx);
+                        }
+                    }
+                    return fn(0, data);
+                }
+            });
         },
         add: function (data, opt) {
             var $ = this, idx = [], rows = data instanceof Array ? data : [data];
