@@ -882,10 +882,15 @@ var Application = function (ver) {
         this.api = api ;
         return this;
     };
-    // crud.prototype = new Array;
     crud.prototype.__data__ = [];
+    crud.prototype.clone = function (o) {
+        var $=this, c;
+        if (null == o || "object" != typeof o) return o;
+        else if (o instanceof Array) { c = []; for (var i = 0, len = o.length; i < len; i++) { c[i] = $.clone(o[i]) } return c }
+        else if (o instanceof Object) { c = {}; for (var a in o) { if (o.hasOwnProperty(a)) c[a] = $.clone(o[a]) }  return c }
+    }
     crud.prototype.item = function (idx) {
-        return this.__data__[idx] || this.meta;
+        return this.__data__[idx] || this.clone(this.meta); // structuredClone(this.meta);
     };
     Object.defineProperty(crud.prototype, 'data', {
         set: function (data) {
@@ -900,8 +905,8 @@ var Application = function (ver) {
     });
     ['post','put','get','del'].map(function (v) {
         crud.prototype[v] = function (data, opt) {
-        var o = Object.merge(opt,{data:data_maker(data||this.meta,opt.fields)});
-        o['method'] = {'post':'POST','put':'PUT','get':'GET','del':'DELETE'}[v];
+        var o = Object.merge(opt, {data: data_maker(data||Object.create(this.meta), opt.fields)});
+        o['method'] = {'post':'POST', 'put':'PUT', 'get':'GET', 'del':'DELETE'}[v];
         return typeof this.api === 'function' ? this.api(o) : this.api[v](o);
     }});
     g.crud = crud;
