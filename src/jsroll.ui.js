@@ -242,7 +242,7 @@ var Application = function (ver) {
     destroy: function (e) {
         var $=this;
         $.serialize();
-        if ($.__destroyers__.length) for(var v in $.__destroyers__) v.fn.apply($,v.arg);
+        $.__destroyers__.forEach(function (v) { v.fn.apply($, v.args) });
         if (!navigator.sendBeacon || !navigator.onLine) return;
         var url = "/logout";
         // // Create the data to send
@@ -524,16 +524,16 @@ var Application = function (ver) {
             if (a === undefined) {
                 var r = {}, attributes = this.instance.attributes, len = attributes.length;
                 for (var i=0; i<len; i++) r[attributes[i].nodeName] = QueryParam(attributes[i].nodeValue, QueryParam.STRNULL);
-                return r;
+                return r
             } else if ( a instanceof HTMLElement && v === undefined ) {
                 var m = this.instance instanceof Array ? this.instance : [this.instance];
                 var atts = a.attributes, l = atts.length;
                 m.forEach( function (v, i, z) {
                     for (var y=0; y<l; y++) v.setAttribute(atts[y].nodeName,atts[y].nodeValue);
-                });
+                })
             } else if ( typeof a === 'object' && v === undefined ) {
                 for (var z in a) if (z && !/^\d+$/.test(z)) this.instance.setAttribute(z, a[z]);
-                return this;
+                return this
             } else if (typeof a === 'string' && v === undefined) {
                 var mask = a.indexOf('*') !== -1 ? re('/'+a.split('*')[0]+'/i') : null;
                 if (mask) {
@@ -543,16 +543,16 @@ var Application = function (ver) {
                         if (mask.test(name) && (name = name.replace(mask, '')))
                             data[name] = str2json(e.value, QueryParam(e.value,QueryParam.STRNULL));
                     });
-                    return data;
+                    return data
                 } else {
-                    return str2json(this.instance.getAttribute(a), QueryParam(this.instance.getAttribute(a),QueryParam.STRNULL));
+                    return str2json(this.instance.getAttribute(a), QueryParam(this.instance.getAttribute(a),QueryParam.STRNULL))
                 }
             } else if (typeof a === 'string') {
                 if (v === null) this.instance.removeAttribute(a);
                 else if (typeof v === 'object') this.instance.setAttribute(a, JSON.stringify(v));
-                else this.instance.setAttribute(a, v);
+                else this.instance.setAttribute(a, v)
             }
-            return this;
+            return this
         },
         /**
          * @param str { string }

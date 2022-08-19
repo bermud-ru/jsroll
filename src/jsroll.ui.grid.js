@@ -16,10 +16,10 @@
 
     if ( typeof ui === 'undefined' ) return false;
 
-    var Cursor = function () {
+    g.Cursor = function () {
         this.range = g.document.createRange();
         this.selection = g.getSelection();
-    }; Cursor.prototype = {
+    }; g.Cursor.prototype = {
         current: null,
         at: function (el, off) {
             this.current = el;
@@ -45,23 +45,7 @@
         }
     };
 
-    var cursor = new Cursor();
-    var focus = function(table) {
-        if (!this.cellValue) this.cellValue = function (rowIndex, cellIndex) {
-            var ref = table.cell(rowIndex, cellIndex);
-            if (!ref.hasOwnProperty('depend')) ref.depend = {};
-            if (!this.hasOwnProperty('ref')) this.ref = {};
-            this.ref[rowIndex + ':' + cellIndex] = true;
-            ref.depend[this.parentNode.rowIndex + ':' + this.cellIndex] = true;
-            return table.cell(rowIndex, cellIndex);
-        };
-
-        var formula = this.ui.attr('formula');
-        if (formula) { this.innerHTML = '=' + formula; }
-        cursor.at(this);
-        this.css.add('active');
-        return false;
-    };
+    var cursor = new g.Cursor();
     var refless = function(table) {
         if (this.hasOwnProperty('ref')) {
             for (var x in this.ref) {
@@ -91,20 +75,19 @@
         depend.call(this, table);
     };
 
-    var blur = function (table) {
+    var focus = function(table, fn) {
+        this.css.add('active');
+        if (typeof fn === 'function') return fn.call(this, table); else
+        if (typeof fn === 'object' && fn.hasOwnProperty('focus')) return fn.focus(this, table);
+        cursor.at(this);
+        return false;
+    };
+
+    var blur = function (table, fn) {
         this.css.del('active');
         this.removeAttribute('contenteditable'); // this.contentEditable = false;
-        var cellValue = this.innerHTML.trim().replace(/<(.|\n)*?>/g, ''); //.replace(/<\/?[^>]+(>|$)/g, '');
-        if (cellValue.length && cellValue[0] === '=') {
-            var formula = cellValue.substr(1);
-            this.ui.attr('formula', formula);
-            calc.call(this, table);
-        } else {
-            this.innerHTML = cellValue;
-            refless.call(this, table);
-            this.removeAttribute('formula');
-            depend.call(this, table);
-        }
+        if (typeof fn === 'function') return fn.call(this, table); else
+        if (typeof fn === 'object' && fn.hasOwnProperty('blur')) return fn.blur(this, table);
         return false;
     };
 
@@ -113,6 +96,39 @@
             d.push(QueryParam(row[j], QueryParam.STRNULL));
         }
         return d;
+    };
+
+    var tuple2array = function (tuple, fields) {
+        return fields.map(function (v,i,a) { return tuple.hasOwnProperty(v) ? tuple[v]: null });
+    }
+
+    var calkedCell = {
+        focus: function (table) {
+            if (!this.cellValue) this.cellValue = function (rowIndex, cellIndex) {
+                var ref = table.cell(rowIndex, cellIndex);
+                if (!ref.hasOwnProperty('depend')) ref.depend = {};
+                if (!this.hasOwnProperty('ref')) this.ref = {};
+                this.ref[rowIndex + ':' + cellIndex] = true;
+                ref.depend[this.parentNode.rowIndex + ':' + this.cellIndex] = true;
+                return table.cell(rowIndex, cellIndex);
+            };
+            var formula = this.ui.attr('formula');
+            if (formula) { this.innerHTML = '=' + formula; }
+            cursor.at(this);
+        },
+        blur: function (table) {
+            var cellValue = this.innerHTML.trim().replace(/<(.|\n)*?>/g, ''); //.replace(/<\/?[^>]+(>|$)/g, '');
+            if (cellValue.length && cellValue[0] === '=') {
+                var formula = cellValue.substr(1);
+                this.ui.attr('formula', formula);
+                calc.call(this, table);
+            } else {
+                this.innerHTML = cellValue;
+                refless.call(this, table);
+                this.removeAttribute('formula');
+                depend.call(this, table);
+            }
+        }
     };
 
     g.grid = function(table) {
@@ -132,6 +148,7 @@
             }
             return c;
         };
+
         table.cell.ELEMENT = undefined;
         table.cell.CONTENT = 1;
         table.cell.OBJECT = 2;
@@ -184,11 +201,11 @@
         var cellEvent = function (el) {
             el.ui.on('focus', function(e) {
                 e.preventDefault(); e.stopPropagation();
-                return focus.call(this, table);
+                return focus.call(this, table, calkedCell.focus);
             }, null,{bubbles: false, cancelable: true, composed: true});
             el.ui.on('blur', function(e) {
                 e.preventDefault(); e.stopPropagation();
-                return blur.call(this, table);
+                return blur.call(this, table, calkedCell.blur);
             }, null, {bubbles: false, cancelable: true, composed: true});
             return el;
         };
@@ -281,6 +298,115 @@
                     if (next && cursor.right(this, e)) next.focus(); // ui.focus(next);
                     // if ((idx = this.cellIndex+1) < table.rows[this.parentElement.rowIndex].cells.length)
                     //     ui.focus(table.rows[this.parentElement.rowIndex].cells[idx]);
+                    break;
+                default:
+            }
+            // e.preventDefault();
+            e.stopPropagation();
+            return false;
+        });
+
+        return table;
+    };
+
+    g.journal = function (table, sheet, esli) {
+        if (table.hasOwnProperty('cell')) return table;
+
+        table.ui.dg('[caption]','dblclick,dbltap',function (e) {
+            e.stopPropagation(); e.preventDefault();
+            if (e.ctrlKey || e.metaKey) return false;
+            if (e.detail === 2) emptySelection();
+            var $ = this; if (!$.hasOwnProperty('populated')) $.populated = [];
+            if ($.ui.attr('caption') === 'off') {
+                $.ui.attr('caption','on');
+                if ($.populated.length) {
+                    $.populated.forEach(function (v) { v.css.del('hide') });
+                } else {
+                    sheet.update($, table);
+                }
+            } else {
+                $.ui.attr('caption','off');
+                setTimeout(fadeOut2.bind($),1);
+            }
+        }, null, {bubbles: false, cancelable: true, composed: true});
+
+        table.row = {};
+        table.row.add = function(index, row, tuple, stage) {
+            var l = table.rows[index].cells.length;
+            var i = parseInt(index)+1;
+            var x = table.insertRow(i);
+            x.setAttribute('class', ui.wrap(table.rows[index]).ui.attr('class'));
+            x.setAttribute('caption','off');
+            x.setAttribute('li_id', tuple.li_id);
+            x.setAttribute('stage', stage);
+            for (var c=0; c<l; c++) {
+                var cell = x.insertCell(c);
+                if (row) cell.innerHTML = row[c];
+                cellEvent(ui.wrap(cell)).ui.attr(table.cell(index, c));
+                cell.ui.attr('tabindex',(stage === 2 && !sheet.readOnly && c > 1) ? -1 : null);
+                if (c < 2) cell.ui.attr('stage', stage);
+            }
+            return x;
+        };
+
+        table.cell = function(rowIndex, cellIndex, asContent) {
+            try { var c;
+                if (cellIndex !== undefined) {
+                    c = this.rows[parseInt(rowIndex)].cells[parseInt(cellIndex)];
+                    if (!!asContent) c = c.innerHTML;
+                } else { c = this.rows[parseInt(rowIndex)]; }
+            } catch (e) { c = undefined; }
+            return c;
+        };
+        table.cell.ELEMENT = undefined;
+        table.cell.CONTENT = 1;
+        table.cell.OBJECT = 2;
+
+        var cellEvent = function (el) {
+            el.ui.on('focus', function(e) {
+                e.preventDefault(); e.stopPropagation();
+                return focus.call(this, cursor, sheet.cellEvent);
+            }, null,{bubbles: false, cancelable: true, composed: true});
+            el.ui.on('blur', function(e) {
+                e.preventDefault(); e.stopPropagation();
+                return blur.call(this, cursor, sheet.cellEvent);
+            }, null, {bubbles: false, cancelable: true, composed: true});
+            return el;
+        };
+
+        table.ui.els('tbody tr td:not(:first-of-type)', function () {
+            return cellEvent(this);
+        });
+
+        table.ui.dg('tbody tr td:not(:first-of-type)', 'keydown', function (e) {
+            if (e.ctrlKey || e.metaKey) return false;
+            if (e.detail === 2) emptySelection();
+            var key = eventCode(e);
+            switch (key) {
+                case 'ArrowUp': case 38:
+                    var up = this.parentElement.previousElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowUp')) return sheet.cellEvent.ArrowUp(this, up);
+                    else if (up) up.cells[this.cellIndex].focus();
+                    break;
+                case 'Enter': case 13: e.preventDefault();
+                    var down = this.parentElement.nextElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('Enter')) return sheet.cellEvent.Enter(this, down);
+                    else if (down) down.cells[this.cellIndex].focus();
+                    return false;
+                case 'ArrowDown': case 40:
+                    var down = this.parentElement.nextElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowDown')) return sheet.cellEvent.ArrowDown(this, down);
+                    else if (down) down.cells[this.cellIndex].focus();
+                    break;
+                case 'ArrowLeft': case 37:
+                    var prev = this.previousElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowLeft')) return sheet.cellEvent.ArrowLeft(this, prev);
+                    else if (prev && cursor.left(this, e)) prev.focus();
+                    break;
+                case 'ArrowRight': case 39:
+                    var next = this.nextElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowRight')) return sheet.cellEvent.ArrowRight(this, next);
+                    else if (next && cursor.right(this, e)) next.focus();
                     break;
                 default:
             }

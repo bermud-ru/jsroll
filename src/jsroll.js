@@ -239,17 +239,16 @@
                 $.models[v.tables.join('-')] = v;
                 if (typeof v.launch === 'function') v.launch($.db, $.tx);
             });
-            this.__active__ ^= g.IDB.LAUNCH;
-            for (var v in $.__pool__) { v.fn.apply($, v.arg); }
-            $.__pool__=[];
+            $.__active__ ^= g.IDB.LAUNCH;
+            $.__pool__.forEach(function (v) { v.fn.apply($, v.args) }); $.__pool__ = [];
             return $;
         },
         __pool__: [],
         onready: function (fn, arg) {
-            if (this.__active__ !== g.IDB.READY) {
-                if (typeof fn === 'function') this.__pool__.push({fn: fn, arg: arg || []});
+            if ( g.IDB.READY !== this.__active__ ) {
+                 return this.__pool__.push({fn: fn, arg: arg || []});
             }
-            return fn.apply(this,arg||[]);
+            return fn.apply(this, arg||[]);
         },
         store: function (k, status, opt, row) {
             var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
@@ -910,17 +909,22 @@
      *
      * @param dt { string | Date }
      * @param option { int }
-     * @returns {string|null}
+     * @returns {array|string|null}
      */
     g.datetimer = function(dt, option){
         var opt = typeof option === 'undefined' ? datetimer.DATETIME: Number(option);
         if (!dt) return null;
         var d = typeof dt === 'string' ? new Date(dt.replace(/\s/, 'T')) : dt;
-        var date = opt & datetimer.DATE ? ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth()+1)).slice(-2) + "." + d.getFullYear() : null;
-        var time = opt & datetimer.TIME ? ('0' + d.getHours()).slice(-2) + ":" + ('0' + d.getMinutes()).slice(-2) : null;
+        var day = ('0' + d.getDate()).slice(-2);
+        var month = ('0' + (d.getMonth()+1)).slice(-2);
+        var year = d.getFullYear();
+        var date = opt & datetimer.DATE ? day + '.' + month+ "." + year : null;
+        var hours = ('0' + d.getHours()).slice(-2)
+        var minutes = ('0' + d.getMinutes()).slice(-2);
+        var time = opt & datetimer.TIME ? hours + ":" + minutes : null;
         var second = opt & datetimer.SECOND ? '.' + ('0' + d.getSeconds()).slice(-2) : '';
-        return bundler(date, time).join(' ') + second;
-    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 3; datetimer.SECOND = 4;
+        return opt & datetimer.RAW ? [year, month, day, hours, minutes, second] : bundler(date, time).join(' ') + second;
+    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 4; datetimer.SECOND = 8; datetimer.RAW = 16;
 
     /**
      * @function localISOString
@@ -1130,7 +1134,7 @@
             if (o instanceof Array) {
                 obj2array(arguments).forEach( function(v, k, a) {
                     if (v instanceof Array) {
-                        v.forEach(function (x) {o.push(x)})
+                        if (v.length) for(var i=0, l=v.length; i<l; i++) o.push(v[i] ? v[i] : null);
                     } else {
                         if (v) o.push(v)
                     }
