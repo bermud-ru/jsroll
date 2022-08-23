@@ -261,7 +261,7 @@ var Application = function (ver) {
             expires = "; expires=" + date.toUTCString();
         }
         var v = value ? base64((typeof value === 'string' ? value : JSON.stringify(value).replace(/(^"|"$)/g, ''))) : '';
-        document.cookie = name + "=" + v + expires + "; path="+(path||'/');
+        document.cookie = name + "=" + v + expires + ";path="+(path||'/')+';SameSite=Lax';
     },
     getCookie: function (name) {
         if (typeof name !== 'string') return ;
@@ -278,7 +278,7 @@ var Application = function (ver) {
         return null;
     },
     clearCookie: function (name) {
-        if (typeof name === 'string') document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        if (typeof name === 'string') document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;SameSite=Lax';
     }
 };
 
@@ -849,13 +849,15 @@ var Application = function (ver) {
      */
     var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
-            el.value = null;
+            var old = el.value; el.value = null;
             if (!(this instanceof HTMLElement)) el.required = !!required;
             if (typeof v === 'object' && v && v.hasOwnProperty(alias || el.name)) {
                 el.value = v[alias || el.name];
             } else {
                 el.value = typeof v === 'undefined' ? null : v;
             }
+            if (old !== el.value) el.dispatchEvent(new Event('change',{bubbles: true, cancelable: true, composed: true}));
+
             var status = el.required ? input_validator(el) : !!el.value;
             if (this instanceof HTMLElement){
                 if (!!required && !status) {

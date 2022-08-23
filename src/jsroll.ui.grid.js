@@ -343,7 +343,7 @@
                 var cell = x.insertCell(c);
                 if (row) cell.innerHTML = row[c];
                 cellEvent(ui.wrap(cell)).ui.attr(table.cell(index, c));
-                cell.ui.attr('tabindex',(stage === 2 && !sheet.readOnly && c > 1) ? -1 : null);
+                cell.ui.attr('tabindex',(stage === 2 && (!sheet.readOnly || !(app.$user.role_id === 6 && app.$user.user_id !== tuple.user_id)) && c > 1) ? -1 : null);
                 if (c < 2) cell.ui.attr('stage', stage);
             }
             return x;
