@@ -82,19 +82,23 @@ var Application = function (ver) {
     $.sessionStorage = sessionStorage;
     $.version = ver || new Date();
 
-    window.onload = $.run.bind($);
-    window.onunload = $.destroy.bind($);
     window.onresize = $.resize.bind($);
     window.onbeforeunload = function (event) { if ($.confirmReload) return $.reload(event) };
-    // document.addEventListener('deviceready', function() {
-    //     // Heavy cordova sorces redy to work (espesial for
-    //     // app.webDB = window.openDatabase("Database", "1.0", 'Check DB instance', 200000);
-    // }, false);
-
     if (window.addEventListener) {
+        // window.document.addEventListener('deviceready', function() {
+        //     // Heavy cordova sorces redy to work (espesial for
+        //     return $.ready(e)
+        // }, false);
+        if ('onpagehide' in window) {
+            window.addEventListener("pageshow", $.run.bind($), false);
+            window.addEventListener("pagehide", $.destroy.bind($), false);
+        } else {
+            window.addEventListener("load", $.run.bind($), false);
+            window.addEventListener("unload", $.destroy.bind($), false);
+        }
         window.addEventListener('online', $.online.bind($), false);
         window.addEventListener('offline', $.offline.bind($), false);
-        document.addEventListener('DOMContentLoaded', function(event) { return $.__ready__ = true; }, false);
+        window.document.addEventListener('DOMContentLoaded', function(event) { return $.__ready__ = true; }, false);
         window.addEventListener('popstate', function(event) {
             var hash = (location.pathname+location.search).hash();
             if (hash !== urn.handled.hash) {
@@ -142,13 +146,15 @@ var Application = function (ver) {
             a.forEach(function (o){ o.addEventListener(event,fn,opt) });
         }
     } else {
-        document.body.ononline = $.online.bind($);
-        document.body.onoffline = $.offline.bind($);
-        document.onreadystatechange = function (e) {
-            if (document.readyState === "complete") { return $.ready(e); }
+        window.onload = $.run.bind($);
+        window.onunload = $.destroy.bind($);
+        window.document.body.ononline = $.online.bind($);
+        window.document.body.onoffline = $.offline.bind($);
+        window.document.onreadystatechange = function (e) {
+            if (window.document.readyState === 'complete') { return $.ready(e) }
         }
         // window.onhashchange = function() {
-        //     console.log(window.location.pathname+  window.location.search);
+        //     console.log(window.location.pathname+window.location.search);
         // }
     }
 }; Application.prototype = {

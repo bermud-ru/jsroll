@@ -16,18 +16,28 @@
 
     if ( typeof ui === 'undefined' ) return false;
 
+    // FF fix to force <br> line break in Firefox ContentEditable
+    if (g.document.queryCommandSupported('insertBrOnReturn'))
+        g.document.execCommand('insertBrOnReturn', false, '');
+
     g.Cursor = function () {
         this.range = g.document.createRange();
         this.selection = g.getSelection();
     }; g.Cursor.prototype = {
         current: null,
         at: function (el, off) {
+            if (this.current) {
+                this.current.removeAttribute('contenteditable');
+                this.current.css.del('active')
+            }
             this.current = el;
             el.contentEditable = true;
+
             this.range.setStart(el, off||0);
             this.range.collapse(true);
             this.selection.removeAllRanges();
             this.selection.addRange(this.range);
+            return el;
         },
         left: function (el, e){
             if (this.current === el && this.selection.focusOffset > 0) {
@@ -37,7 +47,7 @@
             return true;
         },
         right: function (el, e) {
-            if (this.current === el && this.selection.focusOffset < el.innerHTML.length) {
+            if (this.current === el && this.selection.focusOffset < el.innerHTML.replace(/(<([^>]+)>)/g, '').trim().length) {
                 e.stopPropagation(); e.stopPropagation();
                 return false;
             }
@@ -139,7 +149,7 @@
                 var c;
                 if (cellIndex !== undefined) {
                     c = this.rows[parseInt(rowIndex)].cells[parseInt(cellIndex)];
-                    if (!!asContent) c = c.innerHTML;
+                    if (!!asContent) c = QueryParam(c.innerHTML);
                 } else {
                     c = this.rows[parseInt(rowIndex)];
                 }
@@ -199,14 +209,14 @@
         });
 
         var cellEvent = function (el) {
-            el.ui.on('focus', function(e) {
+            el.ui.on('focusin', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return focus.call(this, table, calkedCell.focus);
-            }, null,{bubbles: false, cancelable: true, composed: true});
-            el.ui.on('blur', function(e) {
+            }, null,{bubbles: true, cancelable: true, composed: true});
+            el.ui.on('focusout', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return blur.call(this, table, calkedCell.blur);
-            }, null, {bubbles: false, cancelable: true, composed: true});
+            }, null, {bubbles: true, cancelable: true, composed: true});
             return el;
         };
 
@@ -331,29 +341,42 @@
         }, null, {bubbles: false, cancelable: true, composed: true});
 
         table.row = {};
-        table.row.add = function(index, row, tuple, stage) {
-            var l = table.rows[index].cells.length;
-            var i = parseInt(index)+1;
-            var x = table.insertRow(i);
-            x.setAttribute('class', ui.wrap(table.rows[index]).ui.attr('class'));
-            x.setAttribute('caption','off');
-            x.setAttribute('li_id', tuple.li_id);
-            x.setAttribute('stage', stage);
-            for (var c=0; c<l; c++) {
-                var cell = x.insertCell(c);
-                if (row) cell.innerHTML = row[c];
-                cellEvent(ui.wrap(cell)).ui.attr(table.cell(index, c));
-                cell.ui.attr('tabindex',(stage === 2 && (!sheet.readOnly || !(app.$user.role_id === 6 && app.$user.user_id !== tuple.user_id)) && c > 1) ? -1 : null);
-                if (c < 2) cell.ui.attr('stage', stage);
-            }
-            return x;
-        };
+        table.row.add = function(index, opt, tuple, s) {
+            var o = Object.assign({
+                populate: true,
+                row_attr: true,
+                cell_attr: true,
+                cell_max: false,
+                events: function (cell) {
+                    return cellEvent(cell);
+                },
+                cells: function (i, table, tuple, opt) {
+                    var $ = this, cell;
+                    var l = $.cell_max ? $.cell_max : table.rows[i].cells.length;
+                    for (var c=0; c < l; c++) {
+                        cell = $.insertCell(c);
+                        // if (typeof o.events === 'function') o.events(ui.wrap(cell));
+                        if (typeof o.cell_attr === 'function') o.cell_attr(cell, table, table.rows[i].cells[c], tuple, opt);
+                        else if (o.cell_attr) ui.wrap(cell).ui.attr(table.rows[i].cells[c]);
+                        if (typeof o.populate === 'function') o.populate(cell, tuple, c);
+                        else if (o.populate && tuple instanceof Array) cell.innerHTML = QueryParam(tuple[c]);
+                    }
+                }
+            }, opt);
+
+            var i = parseInt(index);
+            var $ = table.insertRow( i + 1);
+            if (typeof o.row_attr === 'function') o.row_attr($, table, table.rows[i], tuple, s);
+            else if (o.row_attr) ui.wrap($).ui.attr(table.rows[i]);
+            o.cells.call($, i, table, tuple, s);
+            return $;
+        }
 
         table.cell = function(rowIndex, cellIndex, asContent) {
             try { var c;
                 if (cellIndex !== undefined) {
                     c = this.rows[parseInt(rowIndex)].cells[parseInt(cellIndex)];
-                    if (!!asContent) c = c.innerHTML;
+                    if (!!asContent) c = QueryParam(c.innerHTML);
                 } else { c = this.rows[parseInt(rowIndex)]; }
             } catch (e) { c = undefined; }
             return c;
@@ -363,11 +386,11 @@
         table.cell.OBJECT = 2;
 
         var cellEvent = function (el) {
-            el.ui.on('focus', function(e) {
+            el.ui.on('focusin', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return focus.call(this, cursor, sheet.cellEvent);
             }, null,{bubbles: false, cancelable: true, composed: true});
-            el.ui.on('blur', function(e) {
+            el.ui.on('focusout', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return blur.call(this, cursor, sheet.cellEvent);
             }, null, {bubbles: false, cancelable: true, composed: true});
