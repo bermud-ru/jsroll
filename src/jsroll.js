@@ -914,17 +914,26 @@
     g.datetimer = function(dt, option){
         var opt = typeof option === 'undefined' ? datetimer.DATETIME: Number(option);
         if (!dt) return null;
-        var d = typeof dt === 'string' ? new Date(dt.replace(/\s/, 'T')) : dt;
+        var d;
+        if (typeof dt === 'string') {
+            if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(dt)) {
+                d = new Date(dt.split('.').reverse().join('-'));
+            } else { d = new Date(dt.replace(/\s/, 'T')) }
+        } else { d = dt }
+        if (opt & datetimer.COMPARE) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+        if (opt & datetimer.RAW) return [d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds()];
         var day = ('0' + d.getDate()).slice(-2);
         var month = ('0' + (d.getMonth()+1)).slice(-2);
         var year = d.getFullYear();
-        var date = opt & datetimer.DATE ? day + '.' + month+ "." + year : null;
+        var date = opt & datetimer.DATE ? day + '.' + month+ "." + year : '';
         var hours = ('0' + d.getHours()).slice(-2)
         var minutes = ('0' + d.getMinutes()).slice(-2);
-        var time = opt & datetimer.TIME ? hours + ":" + minutes : null;
-        var second = opt & datetimer.SECOND ? '.' + ('0' + d.getSeconds()).slice(-2) : '';
-        return opt & datetimer.RAW ? [year, month, day, hours, minutes, second] : bundler(date, time).join(' ') + second;
-    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 4; datetimer.SECOND = 8; datetimer.RAW = 16;
+        var time = opt & datetimer.TIME ? hours + ":" + minutes : '';
+        var sec = ('0' + d.getSeconds()).slice(-2);
+        var second = opt & datetimer.SECOND ? '.' + sec : '';
+        return bundler(date, time).join(' ') + second;
+    };  datetimer.DATE = 1; datetimer.TIME = 2; datetimer.DATETIME = 3; datetimer.SECOND = 8;
+    datetimer.RAW = 16; datetimer.COMPARE = 32;
 
     /**
      * @function localISOString
