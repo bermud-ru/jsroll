@@ -90,6 +90,7 @@ var Application = function (ver) {
         //     return $.ready(e)
         // }, false);
         if ('onpagehide' in window) {
+            this.persisted = true;
             window.addEventListener("pageshow", $.run.bind($), false);
             window.addEventListener("pagehide", $.destroy.bind($), false);
         } else {
@@ -158,6 +159,7 @@ var Application = function (ver) {
         // }
     }
 }; Application.prototype = {
+    persisted: false,
     $version: null,
     get version() { return this.$version },
     set version(s) {
@@ -179,7 +181,15 @@ var Application = function (ver) {
     notsupport:null, //'/notsupport.html',
     url: null,
     socket: null,
-    run: function () {
+    run: function (e) {
+        if (e.persisted) {
+            // This is actually a pageshow event and the page is coming out of the Page Cache.
+            // Make sure to not perform the "one-time work" that we'd normally do in the onload handler.
+            return;
+        }
+        // This is either a load event for older browsers,
+        // or a pageshow event for the initial load in supported browsers.
+        // It's safe to do everything my old load event handler did here.
         if (typeof window.ui === 'undefined') return this.notsupport ? window.location.href = this.notsupport : alert('Application not supported!');
         return  navigator.onLine ? this.online() : this.offline();
     },
@@ -247,6 +257,14 @@ var Application = function (ver) {
     ondestroy: function (fn, arg) { if (typeof fn === 'function') this.__destroyers__.push({fn:fn, arg: arg||[] }) },
     destroy: function (e) {
         var $=this;
+        // if ($.persisted) {
+        //     // This is actually a pageshow event and the page is coming out of the Page Cache.
+        //     // Make sure to not perform the "one-time work" that we'd normally do in the onload handler.
+        //     return;
+        // }
+        // This is either a load event for older browsers,
+        // or a pageshow event for the initial load in supported browsers.
+        // It's safe to do everything my old load event handler did here.
         $.serialize();
         $.__destroyers__.forEach(function (v) { v.fn.apply($, v.args) });
         if (!navigator.sendBeacon || !navigator.onLine) return;

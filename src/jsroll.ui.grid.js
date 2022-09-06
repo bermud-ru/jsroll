@@ -412,9 +412,9 @@
                     else if (up) up.cells[this.cellIndex].focus();
                     break;
                 case 'Enter': case 13: e.preventDefault();
-                    var down = this.parentElement.nextElementSibling;
-                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('Enter')) return sheet.cellEvent.Enter(this, down);
-                    else if (down) down.cells[this.cellIndex].focus();
+                    var Enter = this.parentElement.nextElementSibling;
+                    if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('Enter')) return sheet.cellEvent.Enter(this, Enter);
+                    else if (Enter) Enter.cells[this.cellIndex].focus();
                     return false;
                 case 'ArrowDown': case 40:
                     var down = this.parentElement.nextElementSibling;
