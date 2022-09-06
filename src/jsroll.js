@@ -726,11 +726,11 @@
         var s = typeof v === 'string' ? v : ( v ? JSON.stringify(v) : null );
         if (s) {
             opt = typeof opt === 'undefined' ? quoter.CODE_QOUTAS : opt;
-            if (opt & quoter.SLASHES_QOUTAS) s =  s.replace(/\\"/g, '"').replace(/\\'/g, "'");
-            if (opt & quoter.DOUBLE_SLASHES) s =  s.replace(/\\/g, '\\');
-            if (opt & quoter.CODE_QOUTAS) s =  s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-            if (opt & quoter.CODE_QOUTAS2) s =  s.replace(/"/g, '&#39;').replace(/'/g, '&quot;');
-            if (opt & quoter.QOUTAS_CODE) s =  s.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+            if (opt & quoter.SLASHES_QOUTAS) s = s.replace(/\\"/g, '"').replace(/\\'/g, "'");
+            if (opt & quoter.SLASHES_CODE) s = s.replace(/\\"/g, '&quot;');
+            if (opt & quoter.CODE_QOUTAS) s = s.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            if (opt & quoter.CODE_QOUTAS2) s = s.replace(/"/g, '&#39;').replace(/'/g, '&quot;');
+            if (opt & quoter.QOUTAS_CODE) s = s.replace(/&quot;/g, '"').replace(/&#39;/g, "'");
             return s;
         }
         return '';
@@ -738,7 +738,7 @@
     g.quoter.CODE_QOUTAS = 1;
     g.quoter.CODE_QOUTAS2 = 2;
     g.quoter.SLASHES_QOUTAS = 4;
-    g.quoter.DOUBLE_SLASHES = 8;
+    g.quoter.SLASHES_CODE = 8;
     g.quoter.QOUTAS_CODE = 16;
 
     /**
