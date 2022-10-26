@@ -788,7 +788,7 @@
      */
     g.uuid = function() {
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8); return v.toString(16);
+            var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8); return v.toString(16);
         });
     };
 
@@ -1791,7 +1791,7 @@
 
                         if ( !(cb instanceof Array) ) {
                             a = typeof arg === 'function' ? arg.apply($, args) : arg;
-                            $.html = pattern.call($, a);
+                            if (data !== false) $.html = pattern.call($, a);
                         }
 
                         var after = opt && typeof opt.after == 'function' ? opt.after : null;
@@ -1803,7 +1803,7 @@
                             $.tpl = cb;
                             $.tpl.forEach(function (v,i,t) {
                                 a = typeof arg === 'function' ? arg.call($, v,i,t) : arg;
-                                v.innerHTML = pattern.call($, a);
+                                if (data !== false) v.innerHTML = pattern.call($, a);
                                 if (pig.after && (typeof (fn = func(pig.after, v)) === 'function')) {
                                     $.wait(fn, a, i);
                                 } else if (after) { $.wait(after, a, i); }

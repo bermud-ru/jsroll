@@ -43,7 +43,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         primaryKey: primaryKey || null,
         schema: schema,
         launch: launch,
-        clear: function (opt) {
+        truncate: function (opt) {
             var $ = this, store = $.store('readwrite', $.status(IDBmodel.TRUNCATE), opt);
             if (opt && typeof opt.success === 'function') return store.clear().onsuccess = function (e) { return opt.success.call($, e, store) };
             else return store.clear().onsuccess = store.complete;
@@ -92,10 +92,35 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             }
             $.processing = fn;
         },
-        index: function (opt) {
-            var $ = this, store = $.store('readonly', $.status(IDBmodel.INDEX), opt);
-            var index = store.index(arguments.shift());
-            index.get(arguments).onsuccess = store.oncomplete;
+        scope: function (opt, idx) {
+            var $ = this;
+            $.getAll({index: opt.index, keyRange: IDBKeyRange.only(opt.id),
+                done: function (event, status, tx) {
+                    var data = idx ? event.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : event.result;
+                    var fn = function (i, data) {
+                        if (i < data.length) {
+                            tx.objectStore($.tables).index(opt.index).getAll(IDBKeyRange.only(data[i][$.primaryKey])).onsuccess = function(e) {
+                                return fn(i+1, Array.merge(data, idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }):e.target.result))
+                            }
+                        } else {
+                            event.result = data;
+                            return opt && typeof opt.done === 'function' ? opt.done.call($, event, status, tx) : $.done(event, status, tx);
+                        }
+                    }
+                    return fn(0, data);
+                }
+            });
+        },
+        tree: function (opt, fn, idx) {
+            if (typeof fn !== 'function') return;
+            var $ = this, row, loop = function(data, tx) {
+                row = data.shift(); if (row === undefined) return;
+                tx.objectStore($.tables).index(opt.index).getAll(IDBKeyRange.only(row[$.primaryKey])).onsuccess = function(e) {
+                    return loop(Array.merge(idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : e.target.result, data), tx);
+                }
+                return fn(row);
+            };
+            $.getAll({index: opt.index, keyRange: IDBKeyRange.only(opt.id), done: function (event, status, tx) { return loop(event.result, tx) }}, idx);
         },
         get: function (idx, opt) {
             var $ = this, result = [], isArray = idx instanceof Array;
@@ -109,45 +134,27 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                             if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GET), store, i, idx);
                             if (i < l) { return loop(); }
                             store.oncomplete({result:result});
-                            if (nexted) { nexted = false; return $.processing; }
+                            if (nexted) { nexted = false; return $.processing }
                         }
                     }
                     return loop();
                 } catch (e) {
                     if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
-                    if (nexted) { nexted = false; return $.processing; }
+                    if (nexted) { nexted = false; return $.processing }
                 }
             }
             $.processing = fn;
         },
-        getAll: function (opt) {
+        getAll: function (opt, idx) {
             var $ = this, nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.GETALL), opt);
                 store.getAll(opt && opt.keyRange || null, opt && opt.count || null).onsuccess = function (event) {
                     if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GETALL), store);
-                    else store.oncomplete({result:event.target.result});
-                    if (nexted) { nexted = false; return $.processing; }
+                    else store.oncomplete({result: idx ? event.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) :event.target.result});
+                    if (nexted) { nexted = false; return $.processing }
                 }
             }
             $.processing = fn;
-        },
-        tree: function (opt) {
-            var $ = this;
-            $.getAll({index: opt.index, keyRange: IDBKeyRange.only(opt.id),
-                done: function (event, status, tx) {
-                    var data = event.result, fn = function (i, data) {
-                        if (i < data.length) {
-                            tx.objectStore($.tables).index(opt.index).getAll(IDBKeyRange.only(data[i][$.primaryKey])).onsuccess = function(e) {
-                                return fn(i+1, Array.merge(data, e.target.result))
-                            }
-                        } else {
-                            event.result = data;
-                            return opt && typeof opt.done === 'function' ? opt.done.call($, event, status, tx) : $.done(event, status, tx);
-                        }
-                    }
-                    return fn(0, data);
-                }
-            });
         },
         add: function (data, opt) {
             var $ = this, idx = [], rows = data instanceof Array ? data : [data];
@@ -164,13 +171,13 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                             if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.ADD), store, i, rows);
                             if (i < l) return loop();
                             store.oncomplete({result:idx, rows:rows});
-                            if (nexted) { nexted = false; return $.processing; }
+                            if (nexted) { nexted = false; return $.processing }
                         }
                     }
                     return loop();
                 } catch (e) {
                     if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
-                    if (nexted) { nexted = false; return $.processing; }
+                    if (nexted) { nexted = false; return $.processing }
                 }
             }
             $.processing = fn;
@@ -188,13 +195,13 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                             if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.PUT), store, i, rows);
                             if (i < l) return loop();
                             store.oncomplete({result:idx, rows:rows});
-                            if (nexted) { nexted = false; return $.processing; }
+                            if (nexted) { nexted = false; return $.processing }
                         }
                     }
                     return loop();
                 } catch (e) {
                     if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
-                    if (nexted) { nexted = false; return $.processing; }
+                    if (nexted) { nexted = false; return $.processing }
                 }
             }
             $.processing = fn;
@@ -211,13 +218,13 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                             if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.DEL), store, i, rows);
                             if (i < l) return loop();
                             store.oncomplete({result:idx});
-                            if (nexted) { nexted = false; return $.processing; }
+                            if (nexted) { nexted = false; return $.processing }
                         }
                     }
                     return loop();
                 } catch (e) {
                     if (opt && typeof opt.fail === 'function') opt.fail.call($, e); else $.fail(e);
-                    if (nexted) { nexted = false; return $.processing; }
+                    if (nexted) { nexted = false; return $.processing }
                 }
             }
             $.processing = fn;
