@@ -1030,7 +1030,7 @@
                 csvFile += processRow(data.rows[x].cells);
             }
         }
-        dwnBlob(csvFile, filename,'text/csv;charset=utf-8;');
+        g.dwnBlob(csvFile, filename,'text/csv;base64;');
     };
 
     /**
@@ -1045,10 +1045,9 @@
             "xmlns='http://www.w3.org/TR/REC-html40'>" +
             "<head><meta charset='utf-8'><title>" +(fileName||'document.doc')+ "</title></head><body>";
         var footer = "</body></html>";
-        var sourceHTML = header+(ctx instanceof HTMLElement ? ctx.innerHTML : ctx)+footer;
-
-        var source = 'data:application/vnd.ms-word;charset=utf-8,' + base64(sourceHTML);
-        dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;charset=utf-8;');
+        var source = header+(ctx instanceof HTMLElement ? ctx.innerHTML : ctx)+footer;
+        // var source = 'data:application/vnd.ms-word;charset=utf-8,' + base64(source);
+        g.dwnBlob(source, (fileName||'document.doc'),'application/vnd.ms-word;base64;');
     };
 
     /**
@@ -1063,9 +1062,9 @@
             '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>{worksheet}</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->' +
             '</head><body><table>{table}</table></body></html>';
         var c = { worksheet : worksheet || 'Worksheet', table : ctx instanceof HTMLElement ? ctx.innerHTML: ctx};
-        var f = function(s, c) { return s.replace(/{(\w+)}/g, function(m, p) { return c[p]; }); };
-        var source = 'data:application/vnd.ms-excel;base64,' + base64(f(template, c));
-        dwnBlob(source, (fileName||'export.xls'),'application/vnd.ms-excel;charset=utf-8;');
+        var f = function(s, c) { return s.replace(/{(\w+)}/g, function(m, p) { return c[p]; }); }
+        // var source = 'data:application/vnd.ms-excel;base64,' + base64(f(template, c));
+        g.dwnBlob(f(template, c), (fileName||'export.xls'),'application/vnd.ms-excel;base64;');
     }
 
     /**
