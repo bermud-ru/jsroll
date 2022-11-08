@@ -870,14 +870,19 @@
     // };
 
     JSON.serialize = function (o, opt, c) {
-        if (o && typeof o === 'object') {
-            var cls;
-            if (c) {
-                cls = typeof c === 'string' ? c + ':' : (c.constructor.name !== 'Object' ? c.constructor.name + ':' : '');
+        if (o) {
+            var cls, s;
+            if( typeof o === 'string') {
+                s = g[o]; cls = o + ':';
             } else {
-                cls = o.constructor.name !== 'Object' ? o.constructor.name + ':' : '';
+                s = o;
+                if (c) {
+                    cls = typeof c === 'string' ? c + ':' : (c.constructor.name !== 'Object' ? c.constructor.name + ':' : '');
+                } else {
+                    cls = s.constructor.name !== 'Object' ? o.constructor.name + ':' : '';
+                }
             }
-            var src = cls + JSON.stringify(o).replace(/(^"|"$)/g, '');
+            var src = cls + JSON.stringify(s).replace(/(^"|"$)/g, '');
             return parseInt(opt) && JSON.BASE64 ? base64(src) : src;
         }
         return null;
@@ -890,7 +895,7 @@
         var pair = src.match(/^(([a-zA-Z0-9_]+?):)*(.*)$/);
         var o = str2json(pair[3], null);
         if (!c) c = pair[2];
-        if (o && c) return typeof c === 'string' ? Object(new g[c], o) : c.merge(o);
+        if (o && c) return typeof c === 'string' ? Object(typeof g[c] === 'function' ? new g[c] : g[c], o) : c.merge(o);
         return o;
     }
 
