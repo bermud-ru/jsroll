@@ -164,6 +164,13 @@
         table.cell.OBJECT = 2;
 
         table.row = {};
+        table.row.insert = function (a) {
+            var i = table.rows.length - 1;
+            var x = table.insertRow(i);
+            var l = a.length;
+            for (var c=0; c<l; c++) { x.insertCell(c).innerHTML = a[c]; }
+        }
+
         table.row.add = function(index) {
             var l = table.rows[index].cells.length;
             var i = parseInt(index)+1;
