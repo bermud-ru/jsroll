@@ -329,21 +329,23 @@
     g.journal = function (table, sheet, esli) {
         if (table.hasOwnProperty('cell')) return table;
 
-        table.ui.dg('[caption]','dblclick,dbltap',function (e) {
+        var body = table.ui.el('tbody');
+        table.ui.dg('tbody[busy="no"]>[caption]','dblclick,dbltap',function (e) {
             e.stopPropagation(); e.preventDefault();
-            if (e.ctrlKey || e.metaKey) return false;
+            if (e.ctrlKey || e.metaKey || body.ui.attr('busy') === 'yes') return false;
             if (e.detail === 2) emptySelection();
+            body.ui.attr('busy','yes');
             var $ = this; if (!$.hasOwnProperty('populated')) $.populated = [];
             if ($.ui.attr('caption') === 'off') {
                 $.ui.attr('caption','on');
                 if ($.populated.length) {
-                    $.populated.forEach(function (v) { v.css.del('hide') });
+                    $.populated.forEach(function (v) { v.css.del('hide') }); body.ui.attr('busy','no')
                 } else {
-                    sheet.update($, table);
+                    sheet.update($, table, body);
                 }
             } else {
                 $.ui.attr('caption','off');
-                setTimeout(fadeOut2.bind($),1);
+                setTimeout(function() { fadeOut2.call($, body) }, 1)
             }
         }, null, {bubbles: false, cancelable: true, composed: true});
 

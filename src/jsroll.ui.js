@@ -165,13 +165,13 @@ var Application = function (ver) {
     set version(s) {
         var $ = this;
         if ($.$version !== s) {
+            $.$version = s
             var wait = function() {
                 if ($.__ready__) {
                     if (wait.timer) clearTimeout(wait.timer);
                     $.__version_pool__.forEach(function (v) { v.fn.apply($, v.args) });
-                    $.$version = s
                 } else {
-                    return wait.timer = setTimeout( wait, TIMEOUT);
+                    return wait.timer = setTimeout( wait, TIMEOUT );
                 }
             }
             return wait();
@@ -648,21 +648,21 @@ var Application = function (ver) {
          **/
         dg: function (s, event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
-            event.split(/\s*,\s*/).forEach( function(e) {
-                var tags = e.split('|'), event = tags.pop();
-                a.forEach( function (i) {
+            event.split(/\s*,\s*/).forEach( function(p) {
+                var tags = p.split('|'), event = tags.pop();
+                a.forEach( function (root) {
                     switch (event) {
-                        case 'dbltap': i.addEventListener('touchend', function (e) {
+                        case 'dbltap': root.addEventListener('touchend', function (e) {
                                 var $ = this, found = false, el = g.ui.src(e);
                                 while (el && el !== $ && !(found = el.matches(s))) el = el.parentElement;
-                                if (found && (!tags.length || el.matches(tags[0]))) { return dbltap(el,e,fn,el,args); }
+                                if (found && (!tags.length || el.matches(tags[0]))) { e.rootElement = root; return dbltap(el,e,fn,el,args) }
                                 return found;
                             });
                             break;
-                        default: i.addEventListener(event, function(e) {
+                        default: root.addEventListener(event, function(e) {
                             var $ = this, found = false, el = g.ui.src(e);
                             while (el && el !== $ && !(found = el.ui.matches(s))) el = el.parentElement;
-                            if (found && (!tags.length || el.matches(tags[0]))) { return fn.apply(el,argX(args,e)); }
+                            if (found && (!tags.length || el.matches(tags[0]))) { e.rootElement = root; return fn.apply(el,argX(args,e)) }
                             return found;
                         }, opt ? opt : false);
                     }
