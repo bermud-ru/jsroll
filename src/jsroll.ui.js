@@ -414,10 +414,10 @@ var Application = function (ver) {
         get: function selected() {
             return g.getSelection ? g.getSelection().toString() : g.document.selection.createRange().text;
             // return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
-            //     g.document.selection.createRange().text; // IE, используем объект selection
+            // g.document.selection.createRange().text; // IE, используем объект selection
         }
     });
-    g.emptySelection = function (){
+    g.emptySelection = function () {
         if (g.getSelection) {
             if (g.getSelection().empty) {  // Chrome
                 g.getSelection().empty();

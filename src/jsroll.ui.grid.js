@@ -25,19 +25,36 @@
         this.selection = g.getSelection();
     }; g.Cursor.prototype = {
         current: null,
-        at: function (el, off) {
-            if (this.current) {
-                this.current.removeAttribute('contenteditable');
-                this.current.css.del('active')
-            }
+        at: function (el) {
             this.current = el;
-            el.contentEditable = true;
-
+            this.editable = true;
+            return this.offset(el,0);
+        },
+        get editable() { return !!this.current.contentEditable },
+        set editable(v) {
+            if (this.current instanceof HTMLElement) if (v) {
+                this.current.css.add('active');
+                this.current.contentEditable = true;
+            } else {
+                this.current.removeAttribute('contenteditable');
+                this.current.css.del('active');
+            }
+        },
+        offset: function (el, off) {
             this.range.setStart(el, off||0);
             this.range.collapse(true);
             this.selection.removeAllRanges();
             this.selection.addRange(this.range);
             return el;
+        },
+        toEnd: function (el) {
+            var range,selection;
+            range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
         },
         left: function (el, e){
             if (this.current === el && this.selection.focusOffset > 0) {
@@ -418,27 +435,27 @@
                 case 'ArrowUp': case 38:
                     var up = this.parentElement.previousElementSibling;
                     if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowUp')) return sheet.cellEvent.ArrowUp(this, up);
-                    else if (up) up.cells[this.cellIndex].focus();
+                    else if (up) up.cells[this.cellIndex].focus()
                     break;
                 case 'Enter': case 13: e.preventDefault();
                     var Enter = this.parentElement.nextElementSibling;
                     if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('Enter')) return sheet.cellEvent.Enter(this, Enter);
-                    else if (Enter) Enter.cells[this.cellIndex].focus();
+                    else if (Enter) Enter.cells[this.cellIndex].focus()
                     return false;
                 case 'ArrowDown': case 40:
                     var down = this.parentElement.nextElementSibling;
                     if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowDown')) return sheet.cellEvent.ArrowDown(this, down);
-                    else if (down) down.cells[this.cellIndex].focus();
+                    else if (down) down.cells[this.cellIndex].focus()
                     break;
                 case 'ArrowLeft': case 37:
                     var prev = this.previousElementSibling;
                     if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowLeft')) return sheet.cellEvent.ArrowLeft(this, prev);
-                    else if (prev && cursor.left(this, e)) prev.focus();
+                    else if (prev && cursor.left(this, e)) prev.focus()
                     break;
                 case 'ArrowRight': case 39:
                     var next = this.nextElementSibling;
                     if (sheet.cellEvent && sheet.cellEvent.hasOwnProperty('ArrowRight')) return sheet.cellEvent.ArrowRight(this, next);
-                    else if (next && cursor.right(this, e)) next.focus();
+                    else if (next && cursor.right(this, e)) next.focus()
                     break;
                 default:
             }

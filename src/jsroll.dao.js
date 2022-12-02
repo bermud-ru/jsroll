@@ -58,7 +58,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             var $ = this;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
-                store.openCursor(opt && opt.keyRange, opt && opt.keyDirection).onsuccess = function(event) {
+                store.openCursor(opt && opt.cursorRange,opt && opt.cursorDirection).onsuccess = function(event) {
                     var cursor = event.target.result;
                     if (mng.populated(cursor)) {
                         if (!mng.advanced) { mng.advanced = true; if (mng.offset > 0) cursor.advance(mng.offset) }
@@ -77,7 +77,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                 var store = $.store('readonly', $.status(IDBmodel.PAGINATOR), opt);
                 store.count(opt && opt.keyRange).onsuccess = function (e) {
                     var count = e.target.result;
-                    if (count > 0) store.openCursor(opt && opt.keyRange).onsuccess = function(event) {
+                    if (count > 0) store.openCursor(opt && opt.cursorRange,opt && opt.cursorDirection).onsuccess = function(event) {
                         var cursor = event.target.result;
                         if (cursor && result.length < l) {
                             if(!advanced) { advanced = true; cursor.advance(p*l) }
@@ -236,7 +236,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             $.processing = fn;
         }
     }, opt);
-};  IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 3;
+};  IDBmodel.UNDEFINED = 0; IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 3;
     IDBmodel.UPSERT = 4; IDBmodel.DEL = 5; IDBmodel.INDEX = 6; IDBmodel.TRUNCATE = 7;
     IDBmodel.COUNT = 8; IDBmodel.PAGINATOR = 9; IDBmodel.FILTER = 10;
 

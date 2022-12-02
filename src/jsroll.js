@@ -1694,7 +1694,7 @@
             if (typeof opt.data === 'object') opt.data = g.location.encoder(opt.data);
             if ( (['GET','DELETE'].indexOf(opt.method) >-1 ) && opt.data) {
                 opt.url += (opt.url.indexOf('?') >-1 ? '&':'?') + opt.data;
-                opt.data = null;
+                opt.data = null
             }
 
             if ( (typeof opt.before === 'function') ? [undefined,true].indexOf(opt.before()) >-1 : true ) {
