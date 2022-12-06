@@ -112,10 +112,11 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             var $ = this;
             $.getAll({index: opt.index, keyRange: $.keyRange(opt.keyRange, opt.id),
                 done: function (event, status, tx) {
-                    var data = idx ? event.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : event.result;
+                    var id = {}, data = idx ? event.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : event.result;
                     var fn = function (i, data) {
                         if (i < data.length) {
-                            tx.objectStore($.tables).index(opt.index).getAll($.keyRange(opt.keyRange, {id: data[i][$.primaryKey]})).onsuccess = function(e) {
+                            id[$.primaryKey] = data[i][$.primaryKey];
+                            tx.objectStore($.tables).index(opt.index).getAll($.keyRange(opt.keyRange, id)).onsuccess = function(e) {
                                 return fn(i+1, Array.merge(data, idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }):e.target.result))
                             }
                         } else {
@@ -129,14 +130,14 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         },
         yie1d: function (opt, fn, idx) {
             if (typeof fn !== 'function') return;
-            var $ = this, row, next = function(data, tx) {
+            var $ = this, row, id = {}, next = function(data, tx) {
                 fn(row = data.shift()); if (row) {
-                    (opt.index ? tx.objectStore($.tables).index(opt.index) : tx.objectStore($.tables)).getAll($.keyRange(opt.keyRange, {id: row[$.primaryKey]}), opt.count || null).onsuccess = function(e) {
+                    id[$.primaryKey] = row[$.primaryKey];
+                    (opt.index ? tx.objectStore($.tables).index(opt.index) : tx.objectStore($.tables)).getAll($.keyRange(opt.keyRange, id), opt.count || null).onsuccess = function(e) {
                         return next(Array.merge(idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : e.target.result, data), tx);
                     }
                 }
             };
-
             return $.getAll({index: opt.index, keyRange: opt.keyRange, done: function (event, status, tx) { return next(event.result, tx) }}, idx);
         },
         get: function (idx, opt) {
