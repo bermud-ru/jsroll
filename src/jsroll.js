@@ -256,7 +256,7 @@
             tx.onabort = function (e) {
                 if ($.primaryKey && row && row.hasOwnProperty($.primaryKey))
                     console.error('PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + ' already has!');
-                else return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store);
+                else return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : (opt.hasOwnProperty('fail') ? opt.fail : $.fail(e, status, store));
             };
             store = tx.objectStore(!k || k === 'readwrite' ? $.name : $.tables);
             if (typeof opt === 'object' && opt.index) {
@@ -265,7 +265,7 @@
                 } else { console.warn('IDB.'+JSON.stringify($.tables)+' index ['+opt.index+'] not exist!') }
             }
             store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
-                opt.done.call($, event, status, tx) : $.done(event, status, tx);
+                opt.done.call($, event, status, tx) : (opt.hasOwnProperty('done') ? opt.done : $.done(event, status, tx));
             }
             return store;
         },
@@ -313,6 +313,9 @@
         next: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page.push(this.offset); this.advanced = false; return this },
         reset: function () { this.run = true; if (arguments.length) this.args = obj2array(arguments); this.chunk=[]; this.page=[]; this.advanced = true; this.offset = 0; return this },
     };
+    g.IDBFilter.LIMITLESS = 0;
+    g.IDBFilter.only = function (a) { if (a instanceof Array) a.__proto__.method = 'only'; return a };
+    g.IDBFilter.bound = function (a) { if (a instanceof Array) a.__proto__.method = 'bound'; return a };
 
     /**
      * Constant            Code    Situation
