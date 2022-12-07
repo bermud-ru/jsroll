@@ -265,7 +265,7 @@
                 } else { console.warn('IDB.'+JSON.stringify($.tables)+' index ['+opt.index+'] not exist!') }
             }
             store.oncomplete = function (event) { return opt && typeof opt.done === 'function' ?
-                opt.done.call($, event, status, tx) : (opt.hasOwnProperty('done') ? opt.done : $.done(event, status, tx));
+                opt.done.call($, event, status, tx) : (opt && opt.hasOwnProperty('done') ? opt.done : $.done(event, status, tx));
             }
             return store;
         },

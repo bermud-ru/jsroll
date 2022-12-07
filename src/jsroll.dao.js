@@ -93,7 +93,13 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             $.processing = fn;
         },
         keyRange: function (args, id) {
-            var fn = function (o, i) { return o && typeof o === 'object' ? Object.keys(o.merge(i)).map(function(v){ return o[v]}) : o };
+            var fn = function (o, i) {
+                if (o && typeof o === 'object') {
+                    var r = Object.keys(o.merge(i)).map(function(v){ return o[v]});
+                    return r.length > 1 ? r : r[0]
+                }
+                return i !== undefined ? i : o
+            };
             if (args && typeof args === 'object') {
                 if (args instanceof Array) {
                     if (args.length > 1 && typeof args[0] === 'object' && typeof args[1] === 'object') {
@@ -106,39 +112,40 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     return IDBKeyRange.only(fn(args, id));
                 }
             }
-            return args ? IDBKeyRange.only(args) : (id ? IDBKeyRange.only(fn(id)) : null);
+            return id !== undefined ? IDBKeyRange.only(typeof id === 'object' ? fn(id) : id) : (args !== undefined ? IDBKeyRange.only(args) : null);
         },
         scope: function (opt, idx) {
             var $ = this;
-            $.getAll({index: opt.index, keyRange: $.keyRange(opt.keyRange, opt.id),
+            $.getAll({index: opt.index, keyRange: opt.keyRange, count: opt.count,
                 done: function (event, status, tx) {
-                    var id = {}, data = idx ? event.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : event.result;
+                    var id = opt && typeof opt.keyRange === 'object' ? {} : null, data = idx instanceof Array ? event.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : event.result;
                     var fn = function (i, data) {
                         if (i < data.length) {
-                            id[$.primaryKey] = data[i][$.primaryKey];
-                            tx.objectStore($.tables).index(opt.index).getAll($.keyRange(opt.keyRange, id)).onsuccess = function(e) {
-                                return fn(i+1, Array.merge(data, idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }):e.target.result))
+                            if (opt && typeof opt.keyRange === 'object') id[$.primaryKey] = data[i][$.primaryKey]; else id = data[i][$.primaryKey];
+                            (opt && opt.index ? tx.objectStore($.tables).index(opt.index) : tx.objectStore($.tables)).getAll($.keyRange(opt && opt.keyRange, id), (opt && opt.count) || null).onsuccess = function(e) {
+                                return (e.target.result.length) ? fn(i+1, Array.merge(data, idx instanceof Array ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : e.target.result)) : fn(i+1, data);
                             }
                         } else {
                             event.result = data;
                             return opt && typeof opt.done === 'function' ? opt.done.call($, event, status, tx) : $.done(event, status, tx);
                         }
                     }
-                    return fn(0, data);
+                    return opt ? fn(0, data) : $.done(event, status, tx);
                 }
             });
         },
         yie1d: function (opt, fn, idx) {
             if (typeof fn !== 'function') return;
-            var $ = this, row, id = {}, next = function(data, tx) {
+            var $ = this, row, id = opt && typeof opt.keyRange === 'object' ? {} : null, next = function(data, tx) {
                 fn(row = data.shift()); if (row) {
-                    id[$.primaryKey] = row[$.primaryKey];
-                    (opt.index ? tx.objectStore($.tables).index(opt.index) : tx.objectStore($.tables)).getAll($.keyRange(opt.keyRange, id), opt.count || null).onsuccess = function(e) {
+                    if (opt && typeof opt.keyRange === 'object') id[$.primaryKey] = row[$.primaryKey]; else id = row[$.primaryKey];
+                    (opt && opt.index ? tx.objectStore($.tables).index(opt.index) : tx.objectStore($.tables)).getAll($.keyRange(opt && opt.keyRange, id), (opt && opt.count)|| null).onsuccess = function(e) {
+                        if (!e.target.result.length) return next(data, tx);
                         return next(Array.merge(idx ? e.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) : e.target.result, data), tx);
                     }
                 }
             };
-            return $.getAll({index: opt.index, keyRange: opt.keyRange, done: function (event, status, tx) { return next(event.result, tx) }}, idx);
+            return $.getAll({index: opt.index, keyRange: opt.keyRange, count: opt.count, done: function (event, status, tx) { return next(event.result, tx) }}, idx);
         },
         get: function (idx, opt) {
             var $ = this, result = [], isArray = idx instanceof Array;
@@ -166,7 +173,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
         getAll: function (opt, idx) {
             var $ = this, nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.GETALL), opt);
-                store.getAll(opt && $.keyRange(opt.keyRange), opt && opt.count || null).onsuccess = function (event) {
+                store.getAll($.keyRange(opt && opt.keyRange), (opt && opt.count) || null).onsuccess = function (event) {
                     if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.GETALL), store);
                     else store.oncomplete({result: idx ? event.target.result.filter(function (v) { return idx.indexOf(v[$.primaryKey]) >-1 }) :event.target.result});
                     if (nexted) { nexted = false; return $.processing }
