@@ -13,7 +13,7 @@ for js in ${extra[@]}
 do
 fname="${js%.*}.min.${js##*.}"
 if [ -f ./$js ]; then
-printf "Build $fname : "
+printf "Build $fname ( "
 java -jar yuicompressor-2.4.8.jar ./$js -o ./$fname
 fi
 if [ -f ./$fname ]; then
@@ -31,9 +31,10 @@ echo "
  */
 " > ../build/$fname
 cat ./$fname >> ../build/$fname
-cat ./$fname | openssl dgst -sha384 -binary | openssl base64 -A > ./${fname%.*}.sha384
+cat ../build/$fname | openssl dgst -sha384 -binary | openssl base64 -A > ./${fname%.*}.sha384
+printf sha384-$(cat ./${fname%.*}.sha384)
 rm ./$fname
-printf "Done\n"
+printf " ) : Done\n"
 else
 printf "$js : Fail\n"
 fi

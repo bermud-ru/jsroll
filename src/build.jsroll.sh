@@ -31,7 +31,11 @@ cat ./$fname >> ../build/jsroll.min.js
 rm ./$fname
 else                                                                                                                                  
 printf "$js : Fail\n" 
+rm ./jsroll.min.sha384 
+exit
 fi
 done
-cat ../build/jsroll.min.js | openssl dgst -sha384 -binary | openssl base64 -A > ./jsroll.ui.min.sha384
+#cshasum -b -a 384 ../build/jsroll.min.js | awk '{ print $1 }' | xxd -r -p | base64 > ./jsroll.ui.min.sha384 
+cat ../build/jsroll.min.js | openssl dgst -sha384 -binary | openssl base64 -A > ./jsroll.min.sha384
+echo sha384-$(cat ./jsroll.min.sha384) 
 exit
