@@ -458,6 +458,7 @@
                     else if (next && cursor.right(this, e)) next.focus()
                     break;
                 default:
+                    if (key.length === 1 && !(key >= 0 && key <= 9) || key === ' ') e.preventDefault();
             }
             // e.preventDefault();
             e.stopPropagation();
