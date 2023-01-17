@@ -19,7 +19,8 @@ echo " /**
  * @status $status
  * @version $version
  * @revision $id 0004 $(date +"%d/%m/%Y %H:%M":%S)Z $
- */\n" > ../build/jsroll.min.js
+ */
+" > ../build/jsroll.min.js
 
 for js in ${extra[@]}
 do
@@ -28,6 +29,8 @@ fname="${js%.*}.min.${js##*.}"
 if [ -f ./$fname ]; then
 cat ./$fname >> ../build/jsroll.min.js
 rm ./$fname
+else                                                                                                                                  
+printf "$js : Fail\n" 
 fi
 done
 cat ../build/jsroll.min.js | openssl dgst -sha384 -binary | openssl base64 -A > ./jsroll.ui.min.sha384

@@ -28,7 +28,7 @@ echo "
  * @status $status
  * @version $version
  * @revision $id 0004 $(date +"%d/%m/%Y %H:%M":%S)Z $
- */\n
+ */
 " > ../build/$fname
 cat ./$fname >> ../build/$fname
 cat ./$fname | openssl dgst -sha384 -binary | openssl base64 -A > ./${fname%.*}.sha384
