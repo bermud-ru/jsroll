@@ -186,6 +186,7 @@
             var x = table.insertRow(i);
             var l = a.length;
             for (var c=0; c<l; c++) { x.insertCell(c).innerHTML = a[c]; }
+            return x;
         }
 
         table.row.add = function(index) {
@@ -197,6 +198,7 @@
             for (var c=1; c<l; c++) {
                 cellEvent(ui.wrap(table.rows[i].insertCell(c))).ui.attr(table.cell(index, c,true));
             }
+            return x;
         }
 
         table.col = {};
