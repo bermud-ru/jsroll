@@ -58,14 +58,14 @@
         },
         left: function (el, e){
             if (this.current === el && this.selection.focusOffset > 0) {
-                e.stopPropagation(); e.stopPropagation();
+                e.stopPropagation(); e.preventDefault();
                 return false;
             }
             return true;
         },
         right: function (el, e) {
             if (this.current === el && this.selection.focusOffset < el.innerHTML.replace(/(<([^>]+)>)/g, '').trim().length) {
-                e.stopPropagation(); e.stopPropagation();
+                e.stopPropagation(); e.preventDefault();
                 return false;
             }
             return true;
@@ -194,9 +194,9 @@
             var i = parseInt(index)+1;
             var x = table.insertRow(i);
             x.setAttribute('class',table.rows[index].ui.attr('class'));
-            ui.wrap(table.rows[i].insertCell(0)).ui.attr(table.cell(index, 0,true));
+            ui.wrap(table.rows[i].insertCell(0)).ui.attr(table.cell(index, 0));
             for (var c=1; c<l; c++) {
-                cellEvent(ui.wrap(table.rows[i].insertCell(c))).ui.attr(table.cell(index, c,true));
+                cellEvent(ui.wrap(table.rows[i].insertCell(c))).ui.attr(table.cell(index, c));
             }
             return x;
         }
@@ -205,7 +205,7 @@
         table.col.add = function(index) {
             var i = parseInt(index)+1, owner;
             for (var r = 0, n = table.rows.length; r < n; r++) {
-                owner = table.cell(r, index,true);
+                owner = table.cell(r, index);
                 if (owner.tagName === 'TH') {
                     var th = document.createElement("TH");
                     ui.wrap(th).ui.attr(owner);
@@ -251,7 +251,7 @@
         });
 
         var setupControl = function (el) {
-            if (el.tabIndex === '1') return false;
+            if (el.tabIndex === 1) return false;
             el.tabIndex = '1';
             var control = '<div class="row th-control" ui="th-control">'+
                 '<div class="d-inline-block w-1em align-middle"><button ui="th-control" class="btn btn-outline-danger btn-sm delete mr-2 pr-1 pl-1">-</button></div>';
@@ -259,7 +259,7 @@
             control +='<div class="d-inline-block w-1em align-middle"><button ui="th-control" class="btn btn-outline-success btn-sm delete">+</button></div></div>';
             el.innerHTML = control;
             var fn = function (e) {
-                if (!e.relatedTarget || !e.relatedTarget.matches('[ui="th-control"')) {
+                if (!e.relatedTarget || !e.relatedTarget.matches('[ui="th-control"]')) {
                     el.innerHTML = this.value;
                     el.tabIndex = '-1';
                 }
@@ -289,7 +289,7 @@
         };
 
         table.controlled = function () {
-            table.ui.dg('tbody tr td:first-of-type,thead tr:first-of-type th', 'dblclick,dbltap,', function (e) {
+            table.ui.dg('tbody tr td:first-of-type,thead tr:first-of-type th', 'dblclick,dbltap', function (e) {
                 var el = ui.src(e);
                 if (['TD', 'TH'].indexOf(el.tagName) > -1) {
                     setupControl(el);
@@ -310,8 +310,6 @@
                 case 'ArrowUp': case 38:
                     var up = this.parentElement.previousElementSibling;
                     if (up) up.cells[this.cellIndex].focus(); //ui.focus(up.cells[this.cellIndex]);
-                    // if ((idx = this.parentElement.rowIndex-1) >-1 )
-                    //     ui.focus(table.rows[idx].cells[this.cellIndex]);
                     break;
                 case 'Enter': case 13: e.preventDefault();
                     var down = this.parentElement.nextElementSibling;
@@ -320,20 +318,14 @@
                 case 'ArrowDown': case 40:
                     var down = this.parentElement.nextElementSibling;
                     if (down) down.cells[this.cellIndex].focus(); //ui.focus(down.cells[this.cellIndex]);
-                    // if ((idx = this.parentElement.rowIndex+1) < table.rows.length)
-                    //     ui.focus(table.rows[idx].cells[this.cellIndex]);
                     break;
                 case 'ArrowLeft': case 37:
                     var prev = this.previousElementSibling;
                     if (prev && cursor.left(this, e)) prev.focus(); //ui.focus(prev);
-                    // if ((idx = this.cellIndex-1) >-1 )
-                    //     ui.focus(table.rows[this.parentElement.rowIndex].cells[idx]);
                     break;
                 case 'ArrowRight': case 39:
                     var next = this.nextElementSibling;
                     if (next && cursor.right(this, e)) next.focus(); // ui.focus(next);
-                    // if ((idx = this.cellIndex+1) < table.rows[this.parentElement.rowIndex].cells.length)
-                    //     ui.focus(table.rows[this.parentElement.rowIndex].cells[idx]);
                     break;
                 default:
             }

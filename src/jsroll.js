@@ -69,7 +69,7 @@
         1002: 'protocol error',
         1003: 'unknown data (opcode)',
         1004: 'frame too large',
-        1005: 'rrmote host error',
+        1005: 'remote host error',
         1006: 'remote host error',
         1007: 'utf8 expected',
         1008: 'message violates server policy',
@@ -88,7 +88,13 @@
     var ws = function (url, opt) {
         this.opt = Object.assign(this.opt, opt);
         this.opt.url = url;
-    }; ws.prototype = {
+    };
+    ws.CONNECTING = 0;
+    ws.OPEN = 1;
+    ws.CLOSING = 2;
+    ws.CLOSED = 3;
+    ws.RECONNECTING = 4;
+    ws.prototype = {
         opt: {protocol:[], binaryType:'blob', reconnect:false, reconnectTimeout:1000, error:null, open:null, message:null, close:null},
         socket: null,
         connected: false,
@@ -148,11 +154,6 @@
             if (this.connected) this.socket.send(typeof data === 'string' ? data : JSON.stringify(data)); else console.warn(this.url + ' not connected!');
         }
     };
-    ws.CONNECTING = 0;
-    ws.OPEN = 1;
-    ws.CLOSING = 2;
-    ws.CLOSED = 3;
-    ws.RECONNECTING = 4;
     g.ws = ws;
 
     /**
@@ -252,7 +253,7 @@
         },
         store: function (k, status, opt, row) {
             var store, $ = this, tx = k ? $.owner.db.transaction($.tables, k) : $.owner.db.transaction($.tables);
-            tx.onerror = function (e) { return opt && typeof opt.cancel === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store); };
+            tx.onerror = function (e) { return opt && typeof opt.fail === 'function' ? opt.fail.call($, e, status, store) : $.fail(e, status, store); };
             tx.onabort = function (e) {
                 if ($.primaryKey && row && row.hasOwnProperty($.primaryKey))
                     console.error('PrimaryKey[' + $.primaryKey + '] = ' + row[$.primaryKey] + ' in ' + JSON.stringify($.tables) + ' already has!');
@@ -291,7 +292,7 @@
             return Object.createChild(this, model);
         }
     };
-    g.IDB.READY = 0; g.IDB.INITIALIZING = 1; g.IDB.BUILD = 2; g.IDB.LAUNCH = 4; g.IDB.PROCCESS = 8;
+    g.IDB.READY = 0; g.IDB.INITIALIZING = 1; g.IDB.BUILD = 2; g.IDB.LAUNCH = 4; g.IDB.PROCESS = 8;
 
     /**
      * @class IDBFilter
@@ -623,7 +624,7 @@
      * @returns {{cancel: (function(): boolean), filter: (function(*=, *=, *=): instansce), fail: fail, opt: {}, done: done, db: *}|void}
      */
     var dbf = function (webSQLinstance, opt) {
-        if (!db) return console.warn('webSQL ' + opt.naeme + ' not exit!');
+        if (!webSQLinstance) return console.warn('webSQL ' + (opt && opt.name) + ' not exist!');
         return {
             opt: {},
             webSQLinstance: webSQLinstance,
@@ -719,7 +720,7 @@
 
     /**
      * @function quoter
-     * Заменяет одинарные и двойные кавычки на Html коды и возрващает строку
+     * Заменяет одинарные и двойные кавычки на Html коды и возрращает строку
      *
      * @param { * }  v
      * @param { int } opt
@@ -832,46 +833,6 @@
      */
     g.base64 = function(s) { return g.btoa(unescape(encodeURIComponent(s instanceof HTMLElement ? s.innerHTML : s))); };
 
-    /**
-     * @function base64_encode Encodes data with MIME base64
-     * original by: Tyler Akins (http://rumkin.com)
-     * improved by: Bayron Guevara
-     *
-     * @param data {string}
-     * @return {string}
-     */
-    // g.base64_encode = function( data ) {
-    //     var b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-    //     var o1, o2, o3, h1, h2, h3, h4, bits, i=0, enc='';
-    //
-    //     do { // pack three octets into four hexets
-    //         o1 = data.charCodeAt(i++);
-    //         o2 = data.charCodeAt(i++);
-    //         o3 = data.charCodeAt(i++);
-    //
-    //         bits = o1<<16 | o2<<8 | o3;
-    //
-    //         h1 = bits>>18 & 0x3f;
-    //         h2 = bits>>12 & 0x3f;
-    //         h3 = bits>>6 & 0x3f;
-    //         h4 = bits & 0x3f;
-    //
-    //         // use hexets to index into b64, and append result to encoded string
-    //         enc += b64.charAt(h1) + b64.charAt(h2) + b64.charAt(h3) + b64.charAt(h4);
-    //     } while (i < data.length);
-    //
-    //     switch( data.length % 3 ){
-    //         case 1:
-    //             enc = enc.slice(0, -2) + '==';
-    //             break;
-    //         case 2:
-    //             enc = enc.slice(0, -1) + '=';
-    //             break;
-    //     }
-    //
-    //     return enc;
-    // };
-
     JSON.serialize = function (o, opt, c) {
         if (o) {
             var cls, s;
@@ -886,7 +847,7 @@
                 }
             }
             var src = cls + JSON.stringify(s).replace(/(^"|"$)/g, '');
-            return parseInt(opt) && JSON.BASE64 ? base64(src) : src;
+            return parseInt(opt) & JSON.BASE64 ? base64(src) : src;
         }
         return null;
     };
@@ -894,11 +855,11 @@
     JSON.BASE64 = 2;
 
     JSON.unserialize = function (s, opt, c) {
-        var src = parseInt(opt) && JSON.BASE64 ? atob(s)  : s;
+        var src = parseInt(opt) & JSON.BASE64 ? atob(s)  : s;
         var pair = src.match(/^(([a-zA-Z0-9_]+?):)*(.*)$/);
         var o = str2json(pair[3], null);
         if (!c) c = pair[2];
-        if (o && c) return typeof c === 'string' ? Object(typeof g[c] === 'function' ? new g[c] : g[c], o) : c.merge(o);
+        if (o && c) return typeof c === 'string' ? (typeof g[c] === 'function' ? new g[c] : g[c]).merge(o) : c.merge(o);
         return o;
     }
 
@@ -1624,8 +1585,8 @@
         s.async = opt.async; // дождаться заргрузки или нет
         if (opt.hasOwnProperty('id')) s.id = opt.id;
         if (src.match(is_url)) { s.src = src; } else { s.text = src; }
-        if (typeof opt.onload === 'function') s.onload = onload;
-        if (typeof opt.onreadystatechange === 'function') s.onreadystatechange = onreadystatechange;
+        if (typeof opt.onload === 'function') s.onload = opt.onload;
+        if (typeof opt.onreadystatechange === 'function') s.onreadystatechange = opt.onreadystatechange;
 
         if (typeof opt.container.appendChild === 'function') opt.container.appendChild(s);
         else console.error('jsRoll::js() Не существущий контейнер', opt.container);
@@ -1758,7 +1719,7 @@
                 this.__tpl__ = v;
             },
             onTplError: function (type, id, str, args, e ) {
-                var msg = e && typeof е === 'object' ? e.message : String(e);
+                var msg = e && typeof e === 'object' ? e.message : String(e);
                 return console.error('tpl type=['+type+']', [id, str], args,  msg + "\n");
             }
         };

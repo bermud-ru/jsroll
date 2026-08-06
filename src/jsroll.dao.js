@@ -54,7 +54,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             else store.count(opt && opt.keyRange).onsuccess = store.oncomplete;
         },
         filter: function (mng, opt) {
-            if (!mng instanceof IDBFilter) throw "IDBmodel::filter() mng - must be of IDBFilter object!";
+            if (!(mng instanceof IDBFilter)) throw "IDBmodel::filter() mng - must be of IDBFilter object!";
             var $ = this;
             var nexted = true, fn = function () {
                 var store = $.store('readonly', $.status(IDBmodel.FILTER), opt);
@@ -240,7 +240,7 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
                     var i=0, l = idx.length, loop = function () {
                         //!!! store.delete(idx) yuicompressor-2.4.8.jar =>> store['delete'](idx)
                         store['delete'](idx[i++]).onsuccess = function (event) {
-                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.DEL), store, i, rows);
+                            if (opt && typeof opt.success === 'function') opt.success.call($, event, $.status(IDBmodel.DEL), store, i, idx);
                             if (i < l) return loop();
                             store.oncomplete({result:idx});
                             if (nexted) { nexted = false; return $.processing }
@@ -255,9 +255,9 @@ var IDBmodel = function (tables, primaryKey, schema, launch, opt) {
             $.processing = fn;
         }
     }, opt);
-};  IDBmodel.UNDEFINED = 0; IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 3;
-    IDBmodel.UPSERT = 4; IDBmodel.DEL = 5; IDBmodel.INDEX = 6; IDBmodel.TRUNCATE = 7;
-    IDBmodel.COUNT = 8; IDBmodel.PAGINATOR = 9; IDBmodel.FILTER = 10;
+};  IDBmodel.UNDEFINED = 0; IDBmodel.GET = 1; IDBmodel.GETALL = 2; IDBmodel.ADD = 3; IDBmodel.PUT = 4;
+    IDBmodel.UPSERT = 5; IDBmodel.DEL = 6; IDBmodel.INDEX = 7; IDBmodel.TRUNCATE = 8;
+    IDBmodel.COUNT = 9; IDBmodel.PAGINATOR = 10; IDBmodel.FILTER = 11;
 
 g.IDBmodel = IDBmodel;
 
@@ -328,7 +328,7 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                                 'Content-type': 'application/json',
                                 ver: model.webSQLinstance.version,
                                 pk: model.primaryKey,
-                                model: model.tablelName,
+                                model: model.tableName,
                                 limit: opt.limit,
                                 page: opt.page,
                             },
@@ -349,7 +349,7 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                             },
                             fail: function (e) {
                                 if (typeof opt.after === 'function') opt.after(model, e);
-                                console.error('Model[' + model.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
+                                console.error('Model[' + model.modelName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
                             }
                         });
                         return false;
@@ -371,13 +371,13 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                 //     // limit: opt.limit,
                 //     // page: opt.page,
                 //     // pk: model.primaryKey,
-                //     // model: model.tablelName
+                //     // model: model.tableName
                 //     // ,idx: idx ? JSON.stringify(idx) : []
                 // }, opt.params)),
                 rs: { //'Content-type': 'application/json',
                     ver: model.webSQLinstance.version,
                     pk: model.primaryKey,
-                    model: model.tablelName,
+                    model: model.tableName,
                     limit: opt.limit,
                     page: opt.page,
                 },
@@ -405,7 +405,7 @@ var webSQLmodel = function ( webSQLinstance, opt) {
                 },
                 fail: function (e) {
                     if (typeof opt.after === 'function') opt.after(model, e);
-                    console.error('Model[' + model.modalName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
+                    console.error('Model[' + model.modelName + ']' + this.status + ': ' + HTTP_RESPONSE_CODE[this.status], this);
                 }
             });
             return false;

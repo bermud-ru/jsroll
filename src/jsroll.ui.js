@@ -74,10 +74,6 @@ var Initializer = function(eventType,target) {
 var Application = function (ver) {
     var $ = this;
     $.localStorage = storage();
-    //TODO: fix for safary
-    // var serialize = str2json($.localStorage.getItem('Application'));
-    // if (serialize && typeof serialize === 'object') for(var v in serialize) $.__proto__[v]=serialize[v];
-    // console.warn('proto',Object.getPrototypeOf(this));
     $.merge(str2json($.localStorage.getItem('Application')));
     $.sessionStorage = sessionStorage;
     $.version = ver || new Date();
@@ -85,10 +81,6 @@ var Application = function (ver) {
     window.onresize = $.resize.bind($);
     window.onbeforeunload = function (event) { if ($.confirmReload) return $.reload(event) };
     if (window.addEventListener) {
-        // window.document.addEventListener('deviceready', function() {
-        //     // Heavy cordova sorces redy to work (espesial for
-        //     return $.ready(e)
-        // }, false);
         if ('onpagehide' in window) {
             this.persisted = true;
             window.addEventListener("pageshow", $.run.bind($), false);
@@ -107,22 +99,9 @@ var Application = function (ver) {
                 if (typeof urn.handled.handler === 'function') urn.handled.handler.call($, location.pathname, location.search, false);
             }
             return false;
-            // var r = confirm("You pressed a Back button! Are you sure?!");
-            // if (r === true) {
-            //     // Call Back button programmatically as per user confirmation.
-            //     history.back();
-            //     // Uncomment below line to redirect to the previous page instead.
-            //     // window.location = document.referrer // Note: IE11 is not supporting this.
-            // } else {
-            //     // Stay on the current page.
-            //     history.pushState(null, null, window.location.pathname+window.location.search);
-            // }
-            // history.pushState(null, null, window.location.pathname+window.location.search);
         }, false);
         this.events = {};
-        // var target = document.createTextNode(null);
         var target = new EventTarget();
-        // Pass EventTarget interface calls to DOM EventTarget object
         this.addEventListener = target.addEventListener.bind(target);
         this.removeEventListener = target.removeEventListener.bind(target);
         this.dispatchEvent = function (e) {
@@ -154,9 +133,6 @@ var Application = function (ver) {
         window.document.onreadystatechange = function (e) {
             if (window.document.readyState === 'complete') { return $.ready(e) }
         }
-        // window.onhashchange = function() {
-        //     console.log(window.location.pathname+window.location.search);
-        // }
     }
 }; Application.prototype = {
     persisted: false,
@@ -178,38 +154,21 @@ var Application = function (ver) {
         }
     },
     __ready__: false,
-    notsupport:null, //'/notsupport.html',
+    notsupport:null,
     url: null,
     socket: null,
     run: function (e) {
         if (e.persisted) {
-            // This is actually a pageshow event and the page is coming out of the Page Cache.
-            // Make sure to not perform the "one-time work" that we'd normally do in the onload handler.
             return;
         }
-        // This is either a load event for older browsers,
-        // or a pageshow event for the initial load in supported browsers.
-        // It's safe to do everything my old load event handler did here.
         if (typeof window.ui === 'undefined') return this.notsupport ? window.location.href = this.notsupport : alert('Application not supported!');
         return  navigator.onLine ? this.online() : this.offline();
     },
     online: function (e) { return console.log('app online ' + datetimer(new Date())); },
     offline: function (e) { return console.warn('app offline ' + datetimer(new Date())); },
     __version_pool__: [],
-    /**
-     *
-     * @param fn { closure }
-     * @param args { arguments }
-     * @return {*|number}
-     */
     changeVersion: function (fn, args) { return this.__version_pool__.push({fn:fn, args:args||[]}) },
     readyFnpool:[],
-    /**
-     *
-     * @param fn { closure }
-     * @param args { arguments }
-     * @return {*|number}
-     */
     onready: function (fn, args) {
         if (typeof fn !== 'function') return console.error("Fn not exist!");
         var $ = this, wait = function(fn, args) {
@@ -224,11 +183,6 @@ var Application = function (ver) {
         }
         return $.__ready__ ? fn.apply($,args||[]) : wait(fn, args||[]);
     },
-    /**
-     *
-     * @param e { Event }
-     * @return {boolean}
-     */
     resize: function (e) { return false; },
     serialize: function (e) {
         var props = {}, $ = this;
@@ -244,10 +198,8 @@ var Application = function (ver) {
     confirmReload: false,
     reload: function (e) {
         if (e || (e = window.event)) {
-            //e.cancelBubble is supported by IE - this will kill the bubbling process.
             e.cancelBubble = true;
-            e.returnValue = this.confirmReload; //This is displayed on the dialog
-            //e.stopPropagation works in Firefox.
+            e.returnValue = this.confirmReload;
             if (e.stopPropagation) {  e.stopPropagation();  e.preventDefault(); }
             return  false;
         }
@@ -257,23 +209,12 @@ var Application = function (ver) {
     ondestroy: function (fn, arg) { if (typeof fn === 'function') this.__destroyers__.push({fn:fn, arg: arg||[] }) },
     destroy: function (e) {
         var $=this;
-        // if ($.persisted) {
-        //     // This is actually a pageshow event and the page is coming out of the Page Cache.
-        //     // Make sure to not perform the "one-time work" that we'd normally do in the onload handler.
-        //     return;
-        // }
-        // This is either a load event for older browsers,
-        // or a pageshow event for the initial load in supported browsers.
-        // It's safe to do everything my old load event handler did here.
         $.serialize();
         $.__destroyers__.forEach(function (v) { v.fn.apply($, v.args) });
         if (!navigator.sendBeacon || !navigator.onLine) return;
         var url = "/logout";
-        // // Create the data to send
-        var data = "state=" + event.type + "&location=" + location.href;
-        // // Send the beacon
+        var data = "state=" + e.type + "&location=" + location.href;
         var status = navigator.sendBeacon(url, data);
-        // // Log the data and result
         console.log("; data = ", data, "; status = ", status);
     },
     setCookie: function (name, value, days, path) {
@@ -311,64 +252,31 @@ var Application = function (ver) {
     'suspected';
     'use strict';
 
-    /**
-     * @class css - Helper for Cascading Style Sheets properties of HTMLelements
-     * @param instance
-     * @returns {css}
-     */
     var css = function(instance){
         this.instance = this.el(instance).instance;
         return this;
     }; css.prototype = {
-        /**
-         * @function el setup instance of HTMLelements
-         * @param i
-         * @returns {css}
-         */
         el: function(i) {
             this.instance = typeof i === 'string' ? g.document.querySelector(i) : i;
             return this;
         },
-        /**
-         * @function  style - setup value of Cascading Style Sheets properties of HTMLelement
-         * @param k
-         * @param v
-         * @returns {css}
-         */
         style:function(k,v) {
             this.instance.style[k] = v;
             return this;
         },
-        /**
-         * @function has return [" <clssname>", ...] | null is exist Cascading Style Sheets class in HTMLelement
-         * @param c {string|array}
-         * @returns {Array|{index: number, input: string}}
-         */
         has: function(c){
             var cls = this.instance.className;
             if (typeof c !== 'string' && cls) return null;
 
-            var result = []; c .split(' +').forEach(function (e, i, a) {
+            var result = []; c.split(/\s+/).forEach(function (e, i, a) {
                 if (cls.match(re('/(?:^|\\s)' + e + '(?!\\S)/'))) result.push(e);
             });
             return result.length ? result : null;
         },
-        /**
-         * @function replace Repalace mephod Cascading Style Sheets class name
-         * @param r {regexp|substr}
-         * @param n {newSubStr|function}
-         * @param f flags
-         * @returns {css}
-         */
         replace: function (r, n, f) {
             this.instance.className = this.instance.className.replace(r, n, f);
             return this;
         },
-        /**
-         * @function add - Add Cascading Style Sheets class to HTMLelement
-         * @param c {string|array}
-         * @returns {css}
-         */
         add: function (c) {
             var a = (typeof c === 'string') ? c.split(/(\s+|,)/): c, $ = this;
             a.forEach(function (v,i,a) {
@@ -376,11 +284,6 @@ var Application = function (ver) {
             });
             return this;
         },
-        /**
-         * @function del - Delete Cascading Style Sheets class from HTMLelement
-         * @param c {string|array}
-         * @returns {css}
-         */
         del: function (c) {
             var h = this.instance;
             if (typeof c === 'string' || c instanceof Array) {
@@ -393,11 +296,6 @@ var Application = function (ver) {
             }
             return this;
         },
-        /**
-         * @function tgl - Toggle Cascading Style Sheets class of HTMLelement
-         * @param c {string|array}
-         * @returns {css}
-         */
         tgl: function (c) {
             if (this.instance) {
                 if (!this.has(c)) this.instance.className += ' ' + c;
@@ -407,41 +305,23 @@ var Application = function (ver) {
         }
     }; g.css = new css(g);
 
-    /**
-     * TODO: Fix selected (not work in FF)
-     */
     Object.defineProperty(g, 'selected', {
         get: function selected() {
             return g.getSelection ? g.getSelection().toString() : g.document.selection.createRange().text;
-            // return  g.getSelection ? g.getSelection().toString() : // Not IE, используем метод getSelection
-            // g.document.selection.createRange().text; // IE, используем объект selection
         }
     });
     g.emptySelection = function () {
         if (g.getSelection) {
-            if (g.getSelection().empty) {  // Chrome
+            if (g.getSelection().empty) {
                 g.getSelection().empty();
-            } else if (g.getSelection().removeAllRanges) {  // Firefox
+            } else if (g.getSelection().removeAllRanges) {
                 g.getSelection().removeAllRanges();
             }
-        } else if (document.selection) {  // IE?
+        } else if (document.selection) {
             g.selection.empty();
         }
     }
 
-    /**
-     * CustomEvent
-     *
-     * @param event { eventinterface }
-     * @param params { object }
-     * -- capture:  Boolean указывает, что события этого типа будут отправлены зарегистрированному обработчику listener
-     * перед отправкой на EventTarget, расположенный ниже в дереве DOM.
-     * -- once: Boolean указывает, что обработчик должен быть вызван не более одного раза после добавления. Если true,
-     * обработчик автоматически удаляется при вызове.
-     * -- passive:  Boolean указывает, что обработчик никогда не вызовет preventDefault(). Если всё же вызов будет
-     * произведён, браузер должен игнорировать его и генерировать консольное предупреждение.
-     *  polyfill
-     */
     var CustomEvent = ('CustomEvent' in g ? g.CustomEvent : (function () {
         function CustomEvent ( e, params ) {
             var opt = Object.assign({ bubbles: false, cancelable: false, detail: undefined }, params);
@@ -453,7 +333,7 @@ var Application = function (ver) {
         return CustomEvent;
     })()); g.ce = CustomEvent;
 
-    Element.matches = Element.matches || Element.matchesSelector || Element.webkitMatchesSelector || Element.msMatchesSelector ||
+    Element.prototype.matches = Element.prototype.matches || Element.prototype.matchesSelector || Element.prototype.webkitMatchesSelector || Element.prototype.msMatchesSelector ||
         function(selector) {
             var node = this, nodes = (node.parentNode || node.document).querySelectorAll(selector), i = -1;
             while (nodes[++i] && nodes[i] !== node);
@@ -461,17 +341,6 @@ var Application = function (ver) {
     };
 
     var he = function () { clearTimeout(he.timer); he.timer=0;};
-    /**
-     * Extra pathc for mubile devices
-     * Double Tab Event Handker
-     *
-     * @param el { HTMLElement }
-     * @param e { Event }
-     * @param fn { function }
-     * @param i { HTMLElement }
-     * @param args { arguments }
-     * @return {*}
-     */
     var dbltap = function (el, e, fn, i, args) {
         if (!he.timer || he.element !== el) {
             he.timer = setTimeout(he, g.ui.DOUBLE_TIMEOUT);
@@ -483,21 +352,10 @@ var Application = function (ver) {
         }
     }
 
-    /**
-     * @class ui - HTML elements Extention
-     * @param instance
-     * @returns {*}
-     */
     var ui = function(instance) {
         if (instance.parentElement) this.wrap(instance.parentElement);
         this.instance = instance || g;
     };
-    /**
-     * @function argX Arguments helper
-     * @param args { arguments }
-     * @param e { event }
-     * @return {0|{length}|*|[undefined]}
-     */
     var argX = function (args, e) { if (args && args.length) { if (args[0] instanceof Event) return args; args.unshift(e); return args; } return[e] }
     ui.prototype = {
         wrap:function(i, v){
@@ -508,12 +366,6 @@ var Application = function (ver) {
             }
             return i;
         },
-        /**
-         * @param s { string }
-         * @param fn { closure }
-         * @param args { arguments }
-         * @return { null|HTMLElement }
-         */
         el: function (s, fn, args) {
             var el = null;
             if (typeof s === 'string') {
@@ -523,12 +375,6 @@ var Application = function (ver) {
             if (el) { this.wrap(el); if (typeof fn === 'function') fn.apply(el, args || []); }
             return el;
         },
-        /**
-         * @param s { string }
-         * @param fn { closure }
-         * @param args { arguments }
-         * @return { null|HTMLElement }
-         */
         els: function (s, fn, args) {
             var r = new Array(0), $ = this;
             if (typeof s === 'string'|| s instanceof Array) {
@@ -578,12 +424,6 @@ var Application = function (ver) {
             }
             return this
         },
-        /**
-         * @param str { string }
-         * @param data { object }
-         * @param cb { function }
-         * @param opt { object }
-         */
         tpl: function (str, data, cb, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             a.forEach( function (v, i, z) {
@@ -593,7 +433,7 @@ var Application = function (ver) {
         },
         merge: function () {
             var args = arguments, a = this.instance instanceof Array ? this.instance : [this.instance];
-            a.forEach( function (i) { merge.apply(i, args); });
+            a.forEach( function (i) { i.merge.apply(i, args); });
             return this.instance;
         },
         src: function (e, def) {
@@ -604,21 +444,6 @@ var Application = function (ver) {
         de: function (event, opt){
             this.instance.dispatchEvent(new CustomEvent(event, opt||{}));
         },
-        /**
-         * Обработчик события
-         *
-         * @param event { string }
-         * @param fn { closure }
-         * @param args { IArguments }
-         * @param opt {false|Object}
-         * -- capture:  Boolean указывает, что события этого типа будут отправлены зарегистрированному обработчику listener
-         * перед отправкой на EventTarget, расположенный ниже в дереве DOM.
-         * -- once: Boolean указывает, что обработчик должен быть вызван не более одного раза после добавления. Если true,
-         * обработчик автоматически удаляется при вызове.
-         * -- passive:  Boolean указывает, что обработчик никогда не вызовет preventDefault(). Если всё же вызов будет
-         * произведён, браузер должен игнорировать его и генерировать консольное предупреждение.
-         * @return {*|Window}
-         */
         on: function (event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
@@ -637,15 +462,6 @@ var Application = function (ver) {
             });
             return this.instance;
         },
-        /**
-         * Делегирования обработчика события
-         *
-         * @param s { string | regex }
-         * @param event { string }
-         * @param fn { closure }
-         * @param args { IArguments }
-         * @param opt {false|Object}
-         **/
         dg: function (s, event, fn, args, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(p) {
@@ -670,13 +486,6 @@ var Application = function (ver) {
             });
             return this.instance;
         },
-        /**
-         * Удалить обработчик событий
-         *
-         * @param event { string }
-         * @param fn { closure }
-         * @param opt {false|Object}
-         **/
         off: function (event, fn, opt) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             event.split(/\s*,\s*/).forEach( function(e) {
@@ -687,26 +496,12 @@ var Application = function (ver) {
             });
             return this.instance;
         },
-        /**
-         *
-         * @param s { string | regex }
-         **/
         matches: function (s) {
             var a = this.instance instanceof Array ? this.instance : [this.instance];
             var rules = typeof s === 'string' ? s.split(/\s*,\s*/) : [s];
             var res = a.filter(function(el) { return rules.filter( function(r) { return el.matches(r); }).length; });
             return res.length > 0 ? res : false;
         },
-        /**
-         *
-         * @param d { string }
-         * @param mime { string }
-         * Default: [text/xml], результирующий объект будет типа XMLDocument (#document->...) !+ xmlns="http://www.w3.org/1999/xhtml"
-         * [application/xml] возвращает Document, но не SVGDocument или HTMLDocument
-         * [image/svg+xml] возвращает SVGDocument, который так же является экземпляром класса Document
-         * [text/html] возвращает  HTMLDocument (<html><body>...</body></html>, который так же является экземпляром класса Document
-         * [html/dom] Возвращает DOM структуру связанных елементов (exampl: conteiner.appendChild(DOM))
-         **/
         dom: function(d, mime) {
             if ( !d || typeof d !== 'string' ) return null;
             var nodes = mime === 'html/dom' ? g.ui.wrap(dom(d, 'text/html')).ui.el('body') : dom(d, mime);
@@ -745,14 +540,6 @@ var Application = function (ver) {
     }; g.ui = new ui(document);
     g.ui.DOUBLE_TIMEOUT = 300;
 
-    /**
-     * @function InputHTMLElementValue
-     * Хэлпер получения HTML элемента
-     *
-     * @param { Element } el
-     * @param { * } def - Default value
-     * @returns { * }
-     */
     var InputHTMLElementValue = function(el, def) {
         var v = null;
         if (el instanceof Element) {
@@ -775,14 +562,6 @@ var Application = function (ver) {
         return QueryParam(v, QueryParam.NULLSTR);
     }; g.InputHTMLElementValue = InputHTMLElementValue;
 
-    /**
-     * @function getElementsValues
-     *
-     * pack - Element Attribute 2^0 + 2^1 + 2^2 ... 2^n values of array name bits AND in single value
-     * @param { Element [] } elements
-     * @param { int } opt
-     * @returns { Object }
-     */
     var getElementsValues = function(elements, opt) {
         var empty = QueryParam(null, opt || QueryParam.NULLSTR), data = {}, next = function(keys, d, f, el) {
             if ( d === undefined ) d = [];
@@ -823,12 +602,6 @@ var Application = function (ver) {
         return data;
     };
 
-    /**
-     * @function setValueInputHTMLElement
-     *
-     * @param { Element } el
-     * @param { * } value
-     */
     var setValueInputHTMLElement = function(el, value) {
         switch ( (el.getAttribute('type') || 'text').toLowerCase() ) {
             case 'checkbox': case 'radio':
@@ -862,15 +635,6 @@ var Application = function (ver) {
         }
     };
 
-    /**
-     * @function setInputHTMLElementFromObject
-     *
-     * @param { HTMLFormElement }  el
-     * @param { Object } v - объете данных
-     * @param { Boolean } required - обязательное поле
-     * @param { string } alias альтернативное имя поля в объете данных
-     * @returns { string ['none', 'success', 'warn', 'error'] }
-     */
     var setInputHTMLElementFromObject = function(el, v, required, alias) {
         if (el && el.tagName) {
             var old = el.value; el.value = null;
@@ -896,12 +660,6 @@ var Application = function (ver) {
         return 'none';
     }; g.setInputHTMLElementFromObject = setInputHTMLElementFromObject;
 
-    /**
-     * @function crud - Create Read Update Delete interface
-     *
-     * @param api { Object } provide interface GET,DEL,POST,PUT
-     * @param meta { Object }
-     */
     var crud = function ( api, meta) {
         this.index = null;
         this.meta = meta;
@@ -916,7 +674,7 @@ var Application = function (ver) {
         else if (o instanceof Object) { c = {}; for (var a in o) { if (o.hasOwnProperty(a)) c[a] = $.clone(o[a]) }  return c }
     }
     crud.prototype.item = function (idx) {
-        return this.__data__[idx] || this.clone(this.meta); // structuredClone(this.meta);
+        return this.__data__[idx] || this.clone(this.meta);
     };
     Object.defineProperty(crud.prototype, 'data', {
         set: function (data) {
@@ -937,11 +695,6 @@ var Application = function (ver) {
     }});
     g.crud = crud;
 
-    /**
-     * dataObject
-     *
-     * @returns {function(*=): function(*=): boolean}
-     */
     var dataObject = function() {
         return function (o) {
             var index = is_empty(o.index) || parseInt(o.index);
@@ -964,7 +717,7 @@ var Application = function (ver) {
                 var res = ((Date.now() - worker.start) < opt.timeout);
                 if (!res) {
                     clearTimeout(worker.instance);
-                    if (typeof opt.cansel === 'function') opt.cansel(); else console.warn('Worker timeout');
+                    if (typeof opt.cancel === 'function') opt.cancel(); else console.warn('Worker timeout');
                 }
                 return res;
             };
@@ -986,14 +739,9 @@ var Application = function (ver) {
         };
     }; g.dataObject = dataObject;
 
-    /**
-     * XHR Interface for common query
-     *
-     * @type {{fail: (function(*, *): void), method: string, before: (function(*): boolean), after: (function(*, *): boolean), api: (function(*=): (null|XMLHttpRequest)), done: (function(*=): boolean), url: string}}
-     */
     g.group_xhr_opt = {
         method: 'post',
-        url: location.pathname, //location.href,
+        url: location.pathname,
         before: function (e) { return true; },
         after: function (e) { return false; },
         done: function(e) {
@@ -1007,12 +755,6 @@ var Application = function (ver) {
         crud: function (p) { return this.hXHR = xhr(p); }
     };
 
-    /**
-     * @Helper group
-     * Позвозят работать с группой элементов, выбранных по селектору. как с элементом форма
-     * @param { HTMLForm | Element [] } els
-     * @param { Object } opt
-     */
     var group = function (els, opt) {
         var $ = this, fields_set = true;
         $.opt = Object.merge({event: null, srcElement:this, method:null, done:null, fail: null, keyup: null, submit: null, crud:null}, opt);
@@ -1139,12 +881,6 @@ var Application = function (ver) {
         }
     }; g.group = group;
 
-    /**
-     * @function isvalid
-     *
-     * @param { Element } element
-     * @returns {boolean}
-     */
     g.isvalid = function (element) {
         var res = true, validator = null, pattern;
         if (element.validity.typeMismatch) res = false;
@@ -1177,13 +913,6 @@ var Application = function (ver) {
         return res;
     };
 
-    /**
-     * UIElementDecorator
-     * bind STATUS property InputHTMLElement
-     *
-     * @param { Element } el
-     * @returns {*}
-     */
     g.UIElementDecorator = function(el) {
         if (el instanceof Element && !el.hasOwnProperty('status') && !el.css.has('no-status') && g.ui.wrap(el)) {
             Object.defineProperty(el, 'status', {
@@ -1225,13 +954,6 @@ var Application = function (ver) {
         return el;
     };
 
-    /**
-     * input_validator
-     *
-     * @param { Element } element
-     * @param { string } tags
-     * @returns { boolean }
-     */
     g.input_validator = function(element, tags) {
         if (element && ((tags||['INPUT','SELECT','TEXTAREA']).indexOf(element.tagName) >-1)) {
             var res = isvalid(element) && (element.hasOwnProperty('couple') ? isvalid(element.couple) : true);
@@ -1250,12 +972,6 @@ var Application = function (ver) {
         return true;
     };
 
-    /**
-     * @function pattern_validator
-     *
-     * @param element { Element }
-     * @returns {*}
-     */
     g.pattern_validator = function (element) {
         if (!element) return console.error('can\'t pattern_validator on null!');
 
@@ -1264,24 +980,9 @@ var Application = function (ver) {
             if (el instanceof Element) UIElementDecorator(el).ui.on('input', function (e) {
                 return ( ['INPUT','TEXTAREA'].indexOf(this.tagName) >-1 && this.value.length) ? input_validator(this) : this.status = 'none';
             });
-            //     .ui.on('focus', function (e) {
-            //     return ( ['INPUT','TEXTAREA'].indexOf(this.tagName) >-1 && this.value.length) ? input_validator(this) : this.status = 'none';
-            // }).ui.on('blur', function (e) {
-            //     return input_validator(this);
-            // });
         });
     };
 
-    /**
-     * @class tabpanel
-     *
-     * @param tabs { HTMLElement[] } Вкладки
-     * @param panels { HTMLElement[] } Панели
-     * @param fn { function } @return { Object } Callback после создания группы вкладок
-     * @param cb { function } @return { Object } Callback при инициализизации связки закладка-панель
-     * @param active { function } @return { Object } Обработка при активации закладки
-     * @return { Object }
-     */
     g.tabpanel = function ( tabs, panels, fn, cb, active ) {
         var nav = {
             tabs: tabs||[], panels: panels||[], current: 0,
@@ -1319,14 +1020,6 @@ var Application = function (ver) {
 
     if ( typeof ui === 'undefined' ) return false;
 
-    /**
-     * Paginator List Items View
-     *
-     * @param { int } pg
-     * @param { string } model
-     * @param { int } limit
-     * @returns {*}
-     */
     g.paginator = function(pg, model, limit) {
         var lm = limit ? parseInt(limit) : 10;
         if (pg) this.ui.el('.paginator', function (e) {
@@ -1334,13 +1027,6 @@ var Application = function (ver) {
         });
     };
 
-    /**
-     * typeahead
-     *
-     * @param element
-     * @param opt
-     * @returns {*}
-     */
     var typeahead = function (element, opt) {
     if (element && element.tagName === 'INPUT') {
         var th = {
@@ -1348,7 +1034,6 @@ var Application = function (ver) {
             index: 0,
             key: null,
             cache: {},
-            // value: null,
             opt: {},
             delta: 250,
             timer: null,
@@ -1498,7 +1183,6 @@ var Application = function (ver) {
                         th.tpl(data);
                         if (th.index !== -1) owner.setValue(th.value);
                         if (owner.pannel) {
-                            // if (!th.opt.wrapper) owner.pannel.setAttribute('style','margin-top:-'+g.getComputedStyle(owner).marginBottom+';left:'+owner.offsetLeft+'px;width:'+owner.clientWidth+'px;');
                             owner.pannel.css.del('fade');
                         }
                     } else if (owner.pannel ) {
@@ -1544,7 +1228,6 @@ var Application = function (ver) {
                     th.stoped();
                     if ($.pannel) $.pannel.css.add('fade');
                 }
-                // setTimeout(th.valueChanger.bind(th), 0);
                 return false;
             },
             onFocus:function(e){
@@ -1634,13 +1317,6 @@ var Application = function (ver) {
     }
     }; g.typeahead = typeahead;
 
-    /**
-     *
-     * @param element
-     * @param pattern
-     * @param cleared
-     * @returns {*}
-     */
     var maskedigits = function(element, pattern, cleared) {
     if (element.tagName === 'INPUT') {
         var el = UIElementDecorator(element);
@@ -1710,7 +1386,7 @@ var Application = function (ver) {
             var dg = ((key >= 96 && key <= 105)) ? (key-96).toString() : key;
 
             if (/\d/.test(dg)) {
-                this.insertDigit(dg, selected);
+                this.insertDigit(dg, g.selected);
             } else {
                 if (this.ui.attr('placeholder').length && !this.value) {
                     this.value = this.ui.attr('placeholder');
@@ -1720,11 +1396,11 @@ var Application = function (ver) {
                 }
                 switch (key) {
                     case 'Backspace': case 8:
-                        if (selected) {
-                            var pos = this.value.indexOf(selected);
-                            this.value = this.value.substr(0, pos) + this.ui.attr('placeholder').substr(pos, selected.length) +
-                                this.value.substr(pos + selected.length, this.value.length);
-                            var shift = this.ui.attr('placeholder').substr(pos, selected.length).indexOf('_');
+                        if (g.selected) {
+                            var pos = this.value.indexOf(g.selected);
+                            this.value = this.value.substr(0, pos) + this.ui.attr('placeholder').substr(pos, g.selected.length) +
+                                this.value.substr(pos + g.selected.length, this.value.length);
+                            var shift = this.ui.attr('placeholder').substr(pos, g.selected.length).indexOf('_');
                             if (shift > 0) pos += shift;
                             this.selectionStart = this.e1 = this.selectionEnd = this.s1 = pos;
                         } else {
@@ -1771,8 +1447,8 @@ var Application = function (ver) {
                     case 'Delete': case 46:
                         var sl = this.value.slice(this.selectionStart),
                             tt, ts = this.ui.attr('placeholder').slice(this.selectionStart);
-                        if (selected) {
-                            tt = (this.value.substr(this.selectionStart + selected.length, this.value.length).match(/\d+/g) || []).join('');
+                        if (g.selected) {
+                            tt = (this.value.substr(this.selectionStart + g.selected.length, this.value.length).match(/\d+/g) || []).join('');
                             this.e1 = this.s1;
                         } else {
                             tt = (this.value.slice(this.selectionStart).match(/\d+/g) || []).join('').slice(1);
@@ -1801,11 +1477,11 @@ var Application = function (ver) {
             e.stopPropagation();
             e.preventDefault();
             if (g.clipboardData && g.clipboardData.setData) {
-                g.clipboardData.setData('Text', selected);
+                g.clipboardData.setData('Text', g.selected);
             } else {
                 var clipboardData = (e.originalEvent || e).clipboardData;
                 if (clipboardData && clipboardData.getData) {
-                    clipboardData.setData('text/plain', selected);
+                    clipboardData.setData('text/plain', g.selected);
                 }
             }
             return false;
@@ -1823,7 +1499,7 @@ var Application = function (ver) {
             }
             if (buff) {
                 var dgs = buff.match(/\d+/g) ? buff.match(/\d+/g).join('') : '';
-                for (var i in dgs) this.insertDigit(dgs[i], selected);
+                for (var i in dgs) this.insertDigit(dgs[i], g.selected);
             }
             return false;
         });
