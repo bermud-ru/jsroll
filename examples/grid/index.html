@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — электронная таблица (grid)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<script type="text/javascript" src="../../build/jsroll.ui.grid.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+
+    /* ---- таблица-спредшит ---- */
+    #sheet-wrapper { overflow: auto; max-width: 100%; }
+    table.sheet { border-collapse: collapse; user-select: none; }
+    table.sheet th, table.sheet td {
+        border: 1px solid #dee2e6;
+        min-width: 6.5em;
+        height: 2em;
+        padding: .2rem .5rem;
+        text-align: left;
+        white-space: nowrap;
+    }
+    table.sheet thead th {
+        background-color: #eef1f4;
+        text-align: center;
+        font-weight: 600;
+        position: sticky; top: 0; z-index: 2;
+    }
+    table.sheet thead th:first-of-type { background: #fff; border: none; }
+    table.sheet tbody td:first-of-type {
+        background-color: #eef1f4;
+        text-align: center;
+        font-weight: 600;
+        cursor: default;
+        position: sticky; left: 0; z-index: 1;
+    }
+    table.sheet tbody td:not(:first-of-type) { cursor: cell; }
+    table.sheet tbody td:not(:first-of-type):focus,
+    table.sheet tbody td:not(:first-of-type).active {
+        outline: 2px solid #0d6efd;
+        outline-offset: -2px;
+        background-color: #fff;
+        position: relative; z-index: 3;
+    }
+    table.sheet td[formula] { color: #0a58ca; }
+
+    /* строка/столбец добавления-удаления, см. table.controlled() в jsroll.ui.grid.js */
+    .th-control { align-items: center; }
+    .th-control input { min-width: 4em; }
+
+    #toolbar .btn.active-align { background-color: #0d6efd; color: #fff; }
+    #status-bar { font-size: .85em; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Электронная таблица — <code>grid()</code></h2>
+    <p class="text-muted">
+        Демонстрация встроенного модуля <code>jsroll.ui.grid.js</code>: редактируемая
+        таблица с формулами, клавиатурной навигацией и добавлением/удалением строк и
+        столбцов. Ниже — рабочая, стабилизированная версия черновика <code>grid.html</code>:
+        исправлены проблемы исходного прототипа (необработанные клики по кнопкам
+        панели, отсутствие адресации ячеек вида <code>A1</code>, отсутствие
+        пересчёта зависимых формул, потеря нумерации строк/букв столбцов при
+        добавлении/удалении) и добавлены сохранение/экспорт через штатные функции
+        библиотеки.
+    </p>
+
+    <div class="alert alert-info">
+        <strong>Как пользоваться:</strong> кликните по ячейке — она станет
+        редактируемой. Формулы начинаются с <code>=</code> и используют функцию
+        <code>REF('A1')</code> для ссылки на другую ячейку по адресу
+        «столбец+строка» (например <code>=REF('B2')+REF('B3')</code>). Двойной клик
+        по номеру строки или букве столбца открывает мини-панель добавления/удаления
+        (её же дублируют кнопки на панели инструментов). <kbd>↑</kbd>/<kbd>↓</kbd>/<kbd>←</kbd>/<kbd>→</kbd>
+        и <kbd>Enter</kbd> — навигация по ячейкам, <kbd>Ctrl</kbd>+<kbd>Z</kbd> — отмена.
+    </div>
+
+    <div id="toolbar" class="btn-toolbar mb-3" role="toolbar">
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-save" title="Сохранить в localStorage">💾 Сохранить</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-undo" title="Отменить (Ctrl+Z)">↺ Отменить</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-clear" title="Очистить всю таблицу">🗑 Очистить</button>
+        </div>
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" data-align="left" title="По левому краю">⇤</button>
+            <button type="button" class="btn btn-outline-secondary" data-align="center" title="По центру">⇔</button>
+            <button type="button" class="btn btn-outline-secondary" data-align="right" title="По правому краю">⇥</button>
+            <button type="button" class="btn btn-outline-secondary" data-align="justify" title="По ширине">☰</button>
+        </div>
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-add-row">+ строка</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-add-col">+ столбец</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-del-row">− строка</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-del-col">− столбец</button>
+        </div>
+        <div class="btn-group mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-csv">Экспорт CSV</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-xls">Экспорт Excel</button>
+        </div>
+    </div>
+
+    <div id="sheet-wrapper" class="border rounded mb-2">
+        <table id="sheet" class="sheet table table-sm mb-0">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>1</td><td>Статья</td><td>Янв</td><td>Фев</td><td>Мар</td><td></td><td></td></tr>
+                <tr><td>2</td><td>Аренда</td><td>1000</td><td>1000</td><td>1050</td><td></td><td></td></tr>
+                <tr><td>3</td><td>Связь</td><td>150</td><td>140</td><td>160</td><td></td><td></td></tr>
+                <tr><td>4</td><td>Итого</td><td formula="REF('B2')+REF('B3')"></td><td formula="REF('C2')+REF('C3')"></td><td formula="REF('D2')+REF('D3')"></td><td></td><td></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div id="status-bar" class="text-muted"></div>
+
+    <h5 class="mt-4">Как заданы формулы</h5>
+    <p class="text-muted">
+        Формула — это обычное JS-выражение в атрибуте <code>formula</code> ячейки
+        (так его понимает <code>grid()</code> из <code>jsroll.ui.grid.js</code>), либо то же
+        самое можно ввести прямо в ячейке, начав текст с <code>=</code>. Функция
+        <code>REF('A1')</code> объявлена прямо в этом примере (см. код ниже) —
+        библиотека формул «по буквам столбцов» не содержит, только низкоуровневый
+        доступ <code>table.cell(rowIndex, colIndex, true)</code>; <code>REF()</code>
+        транслирует адрес <code>A1</code> в такой вызов.
+    </p>
+    <pre class="p-3 bg-light border rounded"><code>function REF(addr) {
+    var m = /^([A-Za-z]+)(\d+)$/.exec(String(addr).trim());
+    if (!m) return 0;
+    var col = colIndex(m[1].toUpperCase());   // 'A' -&gt; 1, 'B' -&gt; 2, ...
+    var row = parseInt(m[2], 10);              // подпись строки совпадает с table.rows-индексом
+    var v = table.cell(row, col, true);
+    return v === null || v === '' || isNaN(Number(v)) ? 0 : Number(v);
+}</code></pre>
+
+    <div class="alert alert-warning">
+        <strong>Ограничение (как и в большинстве упрощённых реализаций такого рода):</strong>
+        <code>REF('A1')</code> ссылается на ячейку по её текущему положению в таблице
+        (индексу строки/столбца), а не «умно» отслеживает адрес при вставке/удалении
+        строк и столбцов. Если удалить или вставить строку/столбец ДО ячейки, на
+        которую ссылается формула, адрес нужно поправить вручную — так же, как это
+        обычно приходится делать при работе с низкоуровневыми механизмами без
+        полноценного движка пересчёта адресов (в отличие от Excel/Google Sheets).
+    </div>
+</div>
+
+<script>
+(function () {
+    // ВАЖНО: свойства .ui/.css появляются на элементе только через "оборачивание" —
+    // ui.wrap(), которое неявно вызывается методами ui.el()/ui.els() (или другими
+    // методами .ui у уже обёрнутого элемента). "Голый" document.querySelector(...)
+    // .ui вернёт undefined, а .ui.on(...) на нём упадёт с ошибкой — это одна из
+    // причин нестабильности исходного черновика grid.html. Поэтому здесь везде,
+    // где нужен .ui/.css, элементы получены через ui.el()/ui.els().
+    var table = ui.el('#sheet');
+    var statusBar = document.querySelector('#status-bar'); // читаем/пишем только .textContent — .ui не нужен
+    var STORAGE_KEY = 'jsroll-grid-example';
+
+    // ---------------------------------------------------------------
+    // 1) Адресация в стиле "A1" поверх table.cell(rowIndex, colIndex)
+    // ---------------------------------------------------------------
+    function colIndex(letters) {
+        var n = 0;
+        for (var i = 0; i < letters.length; i++) n = n * 26 + (letters.charCodeAt(i) - 64);
+        return n; // 'A' -> 1 (0-й столбец занят подписью строки)
+    }
+    function colLetter(n) {
+        var s = '';
+        while (n > 0) { var r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+        return s;
+    }
+    // Глобальная (доступна из eval()/new Function() внутри calc()/recalcAll(),
+    // т.к. формулы выполняются как обычный JS-код в контексте страницы).
+    window.REF = function (addr) {
+        var m = /^([A-Za-z]+)(\d+)$/.exec(String(addr).trim());
+        if (!m) return 0;
+        var col = colIndex(m[1].toUpperCase());
+        var row = parseInt(m[2], 10);
+        var v = table.cell(row, col, true);
+        return v === null || v === '' || isNaN(Number(v)) ? 0 : Number(v);
+    };
+
+    // ---------------------------------------------------------------
+    // 2) Включаем grid(): формулы через '=', навигация стрелками,
+    //    двойной клик по заголовку строки/столбца — управление структурой.
+    // ---------------------------------------------------------------
+    grid(table);
+    table.rowNumber = true; // подсказка exportToCSV()/table.value — не экспортировать колонку с номером строки
+    table.controlled();
+
+    // ---------------------------------------------------------------
+    // 3) Пересчёт формул.
+    //    В текущей реализации grid() (jsroll.ui.grid.js) граф зависимостей
+    //    формул заполняется только при входе в режим редактирования
+    //    "journal"-ячейки и не используется при обычном редактировании
+    //    обычной таблицы — то есть сама библиотека не гарантирует
+    //    автоматический пересчёт ячейки B, ссылающейся на ячейку A, при
+    //    изменении A. Поэтому здесь это сделано явно: после выхода
+    //    фокуса из любой ячейки пересчитываются ВСЕ ячейки с атрибутом
+    //    formula (в 2 прохода — этого достаточно для типичных цепочек
+    //    формул уровня демо; циклические зависимости не отслеживаются).
+    // ---------------------------------------------------------------
+    function recalcAll() {
+        for (var pass = 0; pass < 2; pass++) {
+            var cells = table.querySelectorAll('td[formula]');
+            for (var i = 0; i < cells.length; i++) {
+                var cell = cells[i], formula = cell.getAttribute('formula');
+                try {
+                    var fn = new Function('return (' + formula + ');');
+                    cell.innerHTML = fn.call(table);
+                } catch (e) {
+                    cell.innerHTML = '#ERR';
+                }
+            }
+        }
+    }
+    function scheduleRecalc() { setTimeout(recalcAll, 0); }
+
+    // ---------------------------------------------------------------
+    // 4) Обработчики на каждой редактируемой ячейке.
+    //    ВАЖНО: grid() сама вызывает e.stopPropagation() в своих
+    //    обработчиках focusin/focusout на ячейках (см. cellEvent() в
+    //    jsroll.ui.grid.js) — событие НЕ доходит до делегированных
+    //    обработчиков на table (table.ui.dg(..., 'focusin'/'focusout', ...)
+    //    в этом месте молчал бы). Поэтому обработчики вешаются напрямую
+    //    на каждую ячейку — и на уже существующие, и (через wireCell) на
+    //    вновь создаваемые при добавлении строк/столбцов.
+    // ---------------------------------------------------------------
+    var activeCell = null;
+    function wireCell(cell) {
+        cell.ui.on('focusin', function () { activeCell = this; pushUndo(); });
+        cell.ui.on('focusout', function () { scheduleRecalc(); });
+    }
+    table.ui.els('tbody tr td:not(:first-of-type)').forEach(wireCell);
+
+    // ---------------------------------------------------------------
+    // 5) Нумерация строк / буквы столбцов — обновляются после
+    //    добавления/удаления (сам grid() копирует только атрибуты
+    //    соседней ячейки, не содержимое, и не занимается подписями).
+    //    Заодно снимаем случайно унаследованный атрибут formula у новых
+    //    пустых ячеек (grid() копирует ВСЕ атрибуты ячейки-образца) и
+    //    навешиваем на новые ячейки те же обработчики, что и на исходные.
+    // ---------------------------------------------------------------
+    function renumberRows() {
+        var rows = table.tBodies[0].rows;
+        for (var i = 0; i < rows.length; i++) rows[i].cells[0].innerHTML = String(i + 1);
+    }
+    function relabelCols() {
+        var head = table.tHead.rows[0].cells;
+        for (var i = 1; i < head.length; i++) head[i].innerHTML = colLetter(i);
+    }
+    function stripFormula(el) {
+        var tds = el.tagName === 'TR' ? el.cells : [el];
+        for (var i = 0; i < tds.length; i++) if (tds[i].hasAttribute && tds[i].hasAttribute('formula')) tds[i].removeAttribute('formula');
+    }
+
+    (function () {
+        var origAdd = table.row.add, origDel = table.row.del;
+        table.row.add = function (index) {
+            var r = origAdd.call(table.row, index);
+            if (r) {
+                stripFormula(r);
+                for (var i = 1; i < r.cells.length; i++) wireCell(r.cells[i]);
+            }
+            renumberRows();
+            scheduleRecalc();
+            return r;
+        };
+        table.row.del = function (index) {
+            var r = origDel.call(table.row, index);
+            renumberRows();
+            scheduleRecalc();
+            return r;
+        };
+    })();
+
+    (function () {
+        var origAdd = table.col.add, origDel = table.col.del;
+        // col.add(index) вставляет новый столбец сразу ПОСЛЕ index — считаем точную
+        // позицию заранее, чтобы снять унаследованный formula-атрибут и навесить
+        // обработчики именно на новые ячейки (вставка может быть и посередине,
+        // например через мини-панель table.controlled() по двойному клику).
+        table.col.add = function (index) {
+            var pos = parseInt(index, 10) + 1;
+            var r = origAdd.call(table.col, index);
+            var rows = table.tBodies[0].rows;
+            for (var k = 0; k < rows.length; k++) {
+                if (rows[k].cells[pos]) { stripFormula(rows[k].cells[pos]); wireCell(rows[k].cells[pos]); }
+            }
+            relabelCols();
+            scheduleRecalc();
+            return r;
+        };
+        table.col.del = function (index) {
+            var r = origDel.call(table.col, index);
+            relabelCols();
+            scheduleRecalc();
+            return r;
+        };
+    })();
+
+    // ---------------------------------------------------------------
+    // 6) Кнопки "+ строка" / "+ столбец" / "− строка" / "− столбец" —
+    //    то же самое, что делает встроенная мини-панель table.controlled()
+    //    по двойному клику, но доступно явной кнопкой.
+    // ---------------------------------------------------------------
+    ui.el('#btn-add-row').ui.on('click', function () {
+        pushUndo(); table.row.add(table.tBodies[0].rows.length); // индекс последней строки в системе координат table.rows (с учётом thead)
+    });
+    ui.el('#btn-add-col').ui.on('click', function () {
+        pushUndo(); table.col.add(table.tHead.rows[0].cells.length - 1);
+    });
+    ui.el('#btn-del-row').ui.on('click', function () {
+        pushUndo(); table.row.del(table.tBodies[0].rows.length); // индекс последней tbody-строки в table.rows: заголовок занимает 0, поэтому он равен числу tbody-строк
+    });
+    ui.el('#btn-del-col').ui.on('click', function () {
+        pushUndo(); table.col.del(table.tHead.rows[0].cells.length - 1);
+    });
+
+    // ---------------------------------------------------------------
+    // 7) Выравнивание текста в активной ячейке.
+    // ---------------------------------------------------------------
+    // ui.els(selector) возвращает обёрнутый массив элементов; .ui.on(...) на нём
+    // навешивает обработчик сразу на все найденные элементы одним вызовом.
+    ui.els('#toolbar [data-align]').ui.on('click', function () {
+        if (!activeCell) return;
+        activeCell.css.style('textAlign', this.getAttribute('data-align'));
+        ui.els('#toolbar [data-align]').forEach(function (b) { b.css.del('active-align'); });
+        this.css.add('active-align');
+    });
+
+    // ---------------------------------------------------------------
+    // 8) Undo — снимок значений+формул перед началом редактирования ячейки
+    //    (вызывается из wireCell() на focusin, см. пункт 4).
+    //    Восстанавливает только содержимое существующих ячеек (без
+    //    восстановления структуры добавленных/удалённых строк/столбцов —
+    //    для полноценной истории структуры нужен отдельный, более тяжёлый
+    //    механизм, здесь сознательно оставлено простым и предсказуемым).
+    // ---------------------------------------------------------------
+    var undoStack = [];
+    function captureState() {
+        var state = [], rows = table.tBodies[0].rows;
+        for (var r = 0; r < rows.length; r++) {
+            var row = [], cells = rows[r].cells;
+            for (var c = 1; c < cells.length; c++) row.push({ html: cells[c].innerHTML, formula: cells[c].getAttribute('formula') });
+            state.push(row);
+        }
+        return state;
+    }
+    function pushUndo() {
+        undoStack.push(captureState());
+        if (undoStack.length > 50) undoStack.shift();
+    }
+    function undo() {
+        if (!undoStack.length) return;
+        var state = undoStack.pop(), rows = table.tBodies[0].rows;
+        for (var r = 0; r < rows.length && r < state.length; r++) {
+            var cells = rows[r].cells;
+            for (var c = 1; c < cells.length && (c - 1) < state[r].length; c++) {
+                var s = state[r][c - 1];
+                if (s.formula) cells[c].setAttribute('formula', s.formula); else cells[c].removeAttribute('formula');
+                cells[c].innerHTML = s.html;
+            }
+        }
+        scheduleRecalc();
+        setStatus('Отменено последнее изменение (' + undoStack.length + ' шагов осталось).');
+    }
+    ui.el('#btn-undo').ui.on('click', undo);
+    document.addEventListener('keydown', function (e) {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z' || e.keyCode === 90)) {
+            e.preventDefault(); undo();
+        }
+    });
+
+    // ---------------------------------------------------------------
+    // 9) Очистить / Сохранить (localStorage) / Экспорт CSV / Экспорт Excel
+    //    — на штатных функциях jsroll (storage(), exportToCSV, exportHTML2Excel).
+    // ---------------------------------------------------------------
+    ui.el('#btn-clear').ui.on('click', function () {
+        pushUndo();
+        var rows = table.tBodies[0].rows;
+        for (var r = 0; r < rows.length; r++) {
+            var cells = rows[r].cells;
+            for (var c = 1; c < cells.length; c++) { cells[c].removeAttribute('formula'); cells[c].innerHTML = ''; }
+        }
+        setStatus('Таблица очищена.');
+    });
+
+    ui.el('#btn-save').ui.on('click', function () {
+        var ls = storage();
+        ls.setItem(STORAGE_KEY, JSON.stringify(captureState()));
+        setStatus('Сохранено в localStorage (' + new Date().toLocaleTimeString() + ').');
+    });
+
+    (function restoreOnLoad() {
+        var ls = storage();
+        var raw = ls.getItem(STORAGE_KEY);
+        if (!raw) return;
+        try {
+            var state = str2json(raw, null);
+            if (!state) return;
+            var rows = table.tBodies[0].rows;
+            for (var r = 0; r < rows.length && r < state.length; r++) {
+                var cells = rows[r].cells;
+                for (var c = 1; c < cells.length && (c - 1) < state[r].length; c++) {
+                    var s = state[r][c - 1];
+                    if (s.formula) cells[c].setAttribute('formula', s.formula); else cells[c].removeAttribute('formula');
+                    cells[c].innerHTML = s.html;
+                }
+            }
+            setStatus('Восстановлено из localStorage.');
+        } catch (e) { console.warn('restore failed', e); }
+    })();
+
+    ui.el('#btn-csv').ui.on('click', function () {
+        exportToCSV('таблица.csv', table);
+    });
+    ui.el('#btn-xls').ui.on('click', function () {
+        exportHTML2Excel(table, 'таблица.xls', 'Лист1');
+    });
+
+    function setStatus(msg) { statusBar.textContent = msg; }
+
+    // Первичный пересчёт формул, заданных прямо в разметке (formula="...")
+    recalcAll();
+    setStatus('Готово. Ячеек с формулами: ' + table.querySelectorAll('td[formula]').length + '.');
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — Rich Editor</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+
+    #toolbar .btn.active-cmd { background-color: #0d6efd; color: #fff; border-color: #0d6efd; }
+    #toolbar .btn-b { font-weight: 700; }
+    #toolbar .btn-i { font-style: italic; }
+
+    .editor-wrapper { border: 1px solid #ced4da; border-radius: .375rem; overflow: hidden; }
+    #editor-canvas {
+        min-height: 16em;
+        padding: 1rem 1.25rem;
+        background: #fff;
+        outline: none;
+    }
+    #editor-canvas p { margin: 0 0 .75rem 0; }
+    #editor-canvas:empty:before,
+    #editor-canvas p:only-child:empty:before {
+        content: attr(data-placeholder);
+        color: #adb5bd;
+        pointer-events: none;
+    }
+    #status-bar { font-size: .85em; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Rich Editor — редактор форматированного текста</h2>
+    <p class="text-muted">
+        Небольшой WYSIWYG-редактор в духе
+        <a href="https://filamentphp.com/docs/5.x/forms/rich-editor" target="_blank" rel="noopener">Rich&nbsp;Editor
+        из Filament</a> (панель инструментов + редактируемая область формы), но
+        собранный на <code>jsroll</code>: все элементы панели инструментов и сама
+        область редактирования находятся через <code>ui.el()</code>/<code>ui.els()</code>
+        (а не «голый» <code>document.querySelector</code> — см. пояснение в коде
+        примера про то, почему это важно), а выгрузка в Word сделана штатной
+        функцией библиотеки <code>exportHTML2Word()</code>.
+    </p>
+
+    <div class="alert alert-info">
+        <strong>Как пользоваться:</strong> выделите текст и нажмите
+        <b>Ж</b> / <i>К</i> для жирного/курсивного начертания, «Обычный» — снять
+        форматирование. Кнопки выравнивания применяются к абзацу, в котором стоит
+        курсор. Внизу — выгрузка содержимого в обычный текст (<code>.txt</code>)
+        и в документ Word (<code>.doc</code>, открывается Word'ом благодаря
+        HTML-обёртке с MS-Office namespace).
+    </div>
+
+    <div id="toolbar" class="btn-toolbar mb-2" role="toolbar">
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-normal" title="Обычный текст">Обычный</button>
+            <button type="button" class="btn btn-outline-secondary btn-b" id="btn-bold" title="Жирный (Ctrl+B)">Ж</button>
+            <button type="button" class="btn btn-outline-secondary btn-i" id="btn-italic" title="Курсив (Ctrl+I)">К</button>
+        </div>
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-align-left" title="По левому краю">⇤</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-align-center" title="По центру">⇔</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-align-right" title="По правому краю">⇥</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-align-justify" title="По ширине">☰</button>
+        </div>
+        <div class="btn-group me-2 mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-undo" title="Отменить (Ctrl+Z)">↺ Отменить</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-save" title="Сохранить в localStorage">💾 Сохранить</button>
+        </div>
+        <div class="btn-group mb-2" role="group">
+            <button type="button" class="btn btn-outline-secondary" id="btn-export-txt">Скачать .txt</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-export-word">Скачать Word (.doc)</button>
+        </div>
+    </div>
+
+    <div class="editor-wrapper mb-2">
+        <div id="editor-canvas" contenteditable="true" data-placeholder="Начните вводить текст…">
+            <p>Это <b>жирный</b>, это <i>курсив</i>, а это обычный текст.</p>
+            <p style="text-align: center;">Этот абзац выровнен по центру.</p>
+        </div>
+    </div>
+
+    <div id="status-bar" class="text-muted"></div>
+
+    <h5 class="mt-4">Как это устроено</h5>
+    <p class="text-muted">
+        Собственно редактирование (жирный/курсив/выравнивание/отмена) выполняет
+        встроенный в браузер <code>document.execCommand()</code> над
+        <code>contenteditable</code>-областью — тот же низкоуровневый API, которым
+        внутри себя уже пользуется сама jsroll (см. <code>jsroll.ui.grid.js</code>,
+        где <code>execCommand('insertBrOnReturn', …)</code> подключается тем же
+        способом). jsroll здесь берёт на себя две вещи: находит элементы через
+        <code>ui.el()</code>/<code>ui.els()</code> (что важно для навешивания
+        <code>.ui.on()</code>-обработчиков, см. код) и делает выгрузку файлов —
+        <code>exportHTML2Word()</code>, <code>bb()</code>/<code>dwnBlob()</code>,
+        <code>storage()</code>.
+    </p>
+    <pre class="p-3 bg-light border rounded"><code>// клик по кнопке "Ж" — переключить жирное начертание у выделения
+ui.el('#btn-bold').ui.on('mousedown', function (e) {
+    e.preventDefault();               // не даём кнопке забрать фокус — иначе выделение в редакторе слетит
+    document.execCommand('bold');
+    updateToolbarState();
+});
+
+// выгрузка в Word — штатная функция jsroll, ничего писать вручную не нужно
+ui.el('#btn-export-word').ui.on('click', function () {
+    exportHTML2Word(canvas, 'document.doc');
+});</code></pre>
+</div>
+
+<script>
+(function () {
+    // ВАЖНО: свойства .ui/.css появляются на DOM-элементе только через
+    // "оборачивание" (ui.wrap()), которое неявно делают ui.el()/ui.els().
+    // "Голый" document.querySelector(...).ui — всегда undefined, а
+    // .ui.on(...) на нём упадёт с ошибкой. Поэтому весь пример намеренно
+    // получает элементы через ui.el()/ui.els(), как и просили в задаче.
+    var canvas = ui.el('#editor-canvas');
+    var statusBar = document.querySelector('#status-bar'); // читаем/пишем только .textContent — .ui не нужен
+    var STORAGE_KEY = 'jsroll-richeditor-example';
+
+    // Единый разделитель абзацев — по умолчанию не все браузеры используют <p>
+    // (Chrome исторически предпочитал <div>) — а нам явно нужны именно абзацы
+    // для кнопок выравнивания ("выравнивание текста в параграфе").
+    try { document.execCommand('defaultParagraphSeparator', false, 'p'); } catch (e) {}
+
+    // ---------------------------------------------------------------
+    // 1) Кнопки начертания: обычный / жирный / курсив.
+    // ---------------------------------------------------------------
+    var btnNormal = ui.el('#btn-normal');
+    var btnBold = ui.el('#btn-bold');
+    var btnItalic = ui.el('#btn-italic');
+
+    // Клик по кнопке toolbar обычным образом сначала переводит фокус на
+    // саму кнопку — и выделение текста в редакторе к моменту события
+    // "click" уже потеряно. Стандартное решение — блокировать это в
+    // mousedown (событие срабатывает раньше и позволяет отменить именно
+    // перевод фокуса, а не сам клик).
+    function exec(cmd, value) {
+        canvas.focus();
+        document.execCommand(cmd, false, value || null);
+        updateToolbarState();
+        scheduleAutosaveHint();
+    }
+
+    btnBold.ui.on('mousedown', function (e) { e.preventDefault(); exec('bold'); });
+    btnItalic.ui.on('mousedown', function (e) { e.preventDefault(); exec('italic'); });
+    btnNormal.ui.on('mousedown', function (e) { e.preventDefault(); exec('removeFormat'); });
+
+    // ---------------------------------------------------------------
+    // 2) Выравнивание абзаца, в котором находится курсор.
+    // ---------------------------------------------------------------
+    var alignButtons = {
+        justifyLeft: ui.el('#btn-align-left'),
+        justifyCenter: ui.el('#btn-align-center'),
+        justifyRight: ui.el('#btn-align-right'),
+        justifyFull: ui.el('#btn-align-justify')
+    };
+    ui.els('#btn-align-left, #btn-align-center, #btn-align-right, #btn-align-justify')
+        .forEach(function (btn, i) {
+            var cmd = ['justifyLeft', 'justifyCenter', 'justifyRight', 'justifyFull'][i];
+            btn.ui.on('mousedown', function (e) { e.preventDefault(); exec(cmd); });
+        });
+
+    // ---------------------------------------------------------------
+    // 3) Подсветка активного состояния (курсив/жирный/выравнивание) по
+    //    текущему положению курсора/выделения.
+    // ---------------------------------------------------------------
+    function setActive(btn, on) { if (on) btn.css.add('active-cmd'); else btn.css.del('active-cmd'); }
+    function updateToolbarState() {
+        try {
+            setActive(btnBold, document.queryCommandState('bold'));
+            setActive(btnItalic, document.queryCommandState('italic'));
+            for (var cmd in alignButtons) setActive(alignButtons[cmd], document.queryCommandState(cmd));
+        } catch (e) { /* некоторые команды браузер может не поддерживать — не критично для демо */ }
+    }
+    canvas.ui.on('keyup,mouseup,focus,input', updateToolbarState);
+
+    // ---------------------------------------------------------------
+    // 4) Отменить (нативный undo браузера внутри contenteditable) + Ctrl+Z.
+    // ---------------------------------------------------------------
+    ui.el('#btn-undo').ui.on('click', function () { canvas.focus(); document.execCommand('undo'); });
+
+    // ---------------------------------------------------------------
+    // 5) Сохранение в localStorage / восстановление при открытии страницы —
+    //    через storage() и str2json() из jsroll.
+    // ---------------------------------------------------------------
+    function setStatus(msg) { statusBar.textContent = msg; }
+    var autosaveTimer = null;
+    function scheduleAutosaveHint() {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(function () { setStatus('Есть несохранённые изменения — нажмите «Сохранить».'); }, 400);
+    }
+    canvas.ui.on('input', scheduleAutosaveHint);
+
+    ui.el('#btn-save').ui.on('click', function () {
+        var ls = storage();
+        ls.setItem(STORAGE_KEY, canvas.innerHTML);
+        setStatus('Сохранено в localStorage (' + new Date().toLocaleTimeString() + ').');
+    });
+
+    (function restoreOnLoad() {
+        var ls = storage();
+        var saved = ls.getItem(STORAGE_KEY);
+        if (saved) { canvas.innerHTML = saved; setStatus('Восстановлено из localStorage.'); }
+        else setStatus('Готово.');
+    })();
+
+    // ---------------------------------------------------------------
+    // 6) Выгрузка в обычный текст (.txt) и в Word (.doc).
+    // ---------------------------------------------------------------
+    ui.el('#btn-export-txt').ui.on('click', function () {
+        dwnBlob(canvas.innerText, 'document.txt', 'text/plain;base64;');
+        setStatus('Выгружено в document.txt.');
+    });
+    ui.el('#btn-export-word').ui.on('click', function () {
+        exportHTML2Word(canvas, 'document.doc');
+        setStatus('Выгружено в document.doc.');
+    });
+
+    updateToolbarState();
+})();
+</script>
+</body>
+</html>
