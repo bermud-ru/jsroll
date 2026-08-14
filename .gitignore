@@ -1,0 +1,14 @@
+.buildpath
+.empty
+.htaccess
+.idea
+.project
+.settings
+.DS_Store
+Capfile
+vendor
+library*
+/logs
+public/fonts
+public/css/fonts
+.phpunit.cache/
