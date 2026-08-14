@@ -1,4 +1,6 @@
-# jsroll — документация по API
+# JsRoll RIA (Rich Internet Application) / SPA (Single-page Application) javascript framework
+
+# Документация по API
 
 > Версия библиотеки: **2.1.2b** (см. `composer.json`, `src/jsroll.js`).
 > Документация подготовлена по фактическому исходному коду в `src/*.js`
