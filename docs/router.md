@@ -1,34 +1,77 @@
-# Маршрутизатор window.router
+# Маршрутизатор window.urn
 
-Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд. По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
+> В более ранней версии этого файла документировался объект `window.router`.
+> Такого объекта в библиотеке нет и никогда не было — реальный маршрутизатор
+> называется **`window.urn`**. Ниже — актуальное описание, проверенное
+> напрямую по `src/jsroll.js`; рабочий пример — `examples/router/index.html`.
 
-**example**
+`urn` — единственный, заранее созданный внутри библиотеки экземпляр
+(`g.urn = urn('/')`), а не конструктор, который можно вызвать самостоятельно
+с другим корнем — сама функция `urn(root)` наружу не экспортируется. Это
+значит, что `urn` рассчитан на приложение, полностью отдаваемое с корня
+домена одной точкой входа (как это сделано в `dashboard-web`), а не на
+подключение к произвольной вложенной директории.
+
+Если браузер поддерживает `history.pushState` (сейчас — всегда), `urn`
+работает через History API: адрес меняется по-настоящему, без `#`. Слежение
+за изменением адреса реализовано поллингом (`setInterval`, 30&nbsp;мс), а не
+через `popstate`.
+
+## Методы
+
+- **`urn.add(pattern, handler)`** — зарегистрировать маршрут. `pattern` —
+  регулярное выражение, проверяемое против `urn.fr()`. Можно вызывать без
+  первого аргумента (`urn.add(handler)`) — такой обработчик действует как
+  "поймай всё", поскольку внутри `add()` маршруты сортируются по длине
+  строкового представления шаблона (от длинных к коротким), и пустой шаблон
+  оказывается в конце очереди проверки. Метод возвращает `this` — вызовы
+  можно цепочкой.
+- **`urn.lsn()`** — запустить слежение за изменением адреса.
+- **`urn.chk()`** — вручную проверить текущий адрес против всех маршрутов
+  (полезно один раз при загрузке страницы, чтобы обработать первичный URL).
+- **`urn.set(path)`** — перейти по маршруту (`history.pushState`).
+- **`urn.fr()`** — вернуть нормализованный текущий адрес: всегда с ведущим
+  `/` (даже для главной страницы — `fr()` вернёт `'/'`, а не `''`). Регулярные
+  выражения в `add()` должны это учитывать.
+- **`urn.rm(handler)`** — снять ранее зарегистрированный обработчик.
+
+Обработчик вызывается с аргументами `(location.pathname, location.search, true)`.
+
+## Пример
+
 ```html
 <div role="application">
-    <h1>Test</h1>
-    <a onclick="javascript:router.set(router.base)">base</a>
-    <a onclick="javascript:router.set()">root</a>
-    <a onclick="javascript:router.set('/about/')">about</a>
-    <a onclick="javascript:router.set('/app/22')">/app/22</a>
-    <a onclick="javascript:router.set('/app/22/edit/3')">/app/22/edit/3</a>
-
+    <button data-path="">Главная</button>
+    <button data-path="users">Пользователи</button>
+    <button data-path="users/42">Пользователь #42</button>
 </div>
 <script>
-    router.add(/about/, function() {
-                console.log('about');
-            })
-            .add(/app\/(.*)\/edit\/(.*)/, function() {
-                console.log('!app-edit', arguments);
-            })
-            .add(/app\/(.*)/, function() {
-                console.log('!app', arguments);
-            })
-            .add(function() {
-                console.log('default');
-            })
-            .chk('/app1/22')
-            .lsn();
-    ;
-    router.set('/app/router.html?t=2');
+    urn
+        .add(/^\/users\/(\d+)$/, function () {
+            var id = urn.fr().match(/^\/users\/(\d+)$/)[1];
+            console.log('карточка пользователя', id);
+        })
+        .add(/^\/users$/, function () {
+            console.log('список пользователей');
+        })
+        .add(/^\/$/, function () {
+            console.log('главная');
+        })
+        .add(function () {
+            console.log('404:', urn.fr());
+        })
+        .lsn();
+
+    urn.chk(); // обработать адрес, с которым страница была открыта
+
+    document.querySelectorAll('[data-path]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            urn.set(btn.getAttribute('data-path'));
+        });
+    });
 </script>
 ```
+
+Полный рабочий пример, включая комментарии по граничным случаям (в т.ч.
+предупреждение про жёстко заданный `root = '/'`) — в
+`examples/router/index.html`.

@@ -1,8 +1,8 @@
-# Шаблонизатор window.tmpl
+# Шаблонизатор window.tpl
 
 Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так и использования швнешнего ресурса запрошенного
 
-### `window.tmpl( id [, data [, callback]]) returns: String`
+### `window.tpl( id [, data [, callback]]) returns: String`
 
 **id**  
 Type: String  
@@ -15,17 +15,17 @@ Type: Object
 **callback**  
 Type: Function  
 Arguments: context  
-Параметр callback функция javascript определяет как tmpl воздвращает результат генерации контента при условиии корректной работы скрипта, если функция не определена то tmpl возвращает конетент как результа функции и если id в формате URL, то объект XMLHttpRequest внутри скрита работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся сгнерерированные контент и сли id в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
+Параметр callback функция javascript определяет как tpl воздвращает результат генерации контента при условиии корректной работы скрипта, если функция не определена то tpl возвращает конетент как результа функции и если id в формате URL, то объект XMLHttpRequest внутри скрита работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся сгнерерированные контент и сли id в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
 
 **HTMLElementObject.id**
 ```html
-    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
+    <script type="text/x-tpl" id="welcome" charset="UTF-8">
     <h3>{%=caption%}</h3>
     <p>{%=text%}</p>
     </script>
     ...
     <script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
+    document.querySelector('.navbar .container').innerHTML = tpl('welcome', {
     caption: 'JsRoll',
     text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
     });
@@ -34,7 +34,7 @@ Arguments: context
                     
 **XMLHttpRequest async = *false* mode**
 ```js
-    document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
+    document.querySelector('.navbar .container').innerHTML = tpl('/js/welcome.tpl', {
     caption: 'JsRoll',
     text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
     });
@@ -42,7 +42,7 @@ Arguments: context
                     
 **XMLHttpRequest async = *true* mode**
 ```js
-    tmpl('/js/welcome.tmpl',
+    tpl('/js/welcome.tpl',
     {
     caption: 'JsRoll',
     text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'

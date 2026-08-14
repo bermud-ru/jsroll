@@ -1,152 +1,97 @@
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
-    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsroll — запросы xhr()</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
     <script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
-    <style>
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-        body {
-            padding-top: 8em;
-            margin-bottom: 60px;
-        }
-
-        footer {
-            padding: 1.5em 0;
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #f5f5f5;
-        }
-        .navbar .container {color:#ccc;}
-    </style>
-    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
-        <h3>{%=caption%}</h3>
-        <p>{%=text%}</p>
+    <style>body { padding-top: 5em; padding-bottom: 3em; }</style>
+    <script type="text/x-template" id="questions-list">
+        <ul class="list-group">
+        {% for (var i = 0; i < data.length; i++) { %}
+            <li class="list-group-item">{%= data[i].question %}</li>
+        {% } %}
+        </ul>
     </script>
 </head>
 <body>
-<div id="app" role="application">
-
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container"></div>
-    </div>
-
+<nav class="navbar navbar-dark bg-dark fixed-top">
     <div class="container">
-        <div class="row">
-            <h2>Шаблонизатор tmpl</h2>
-            <div class="col-sm-8">
-                <div class="row list-group-item" style="border: none">
-                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
-                        и использования швнешнего ресурса запрошенного
-                </div>
-                <div class="row">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">tmpl( id [, data [, callback]]) <span style="float:right">returns: String</span></h3>
-                        </div>
-                        <div class="panel-body">
-                            <div class="list-group-item" style="border: none">
-                                <div class="row"><b>id</b></div>
-                                <div class="row">Type: String</div>
-                                <div class="row">
-                                    Параметр <b>id</b> принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. <a href="https://ru.wikipedia.org/wiki/URL"> wiki</a>), содержащий код шаблона.
-                                </div>
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
 
-                            </div>
-                        </div>
-                        <!-- List group -->
-                        <ul class="list-group">
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>data</b></div>
-                                    <div class="row">Type: Object</div>
-                                    <div class="row">
-                                        Параметр <b>data</b> объект javascript содержит данные которы являются источником данных длоступные внутри шаблона.
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>callback</b></div>
-                                    <div class="row">Type: Function</div>
-                                    <div class="row">Arguments: context</div>
-                                    <div class="row">
-                                        Параметр <b>callback</b> функция javascript определяет как <b>tmpl</b> воздвращает результат генерации контента при условиии корректной работы скрипта,
-                                        если функция не определена то <b>tmpl</b> возвращает конетент как результа функции и если <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита
-                                        работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся
-                                        сгнерерированные контент и сли <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
+<div class="container">
+    <h2>Запросы — <code>xhr(params)</code></h2>
+    <p class="text-muted">
+        <code>window.xhr</code> — это функция, принимающая объект настроек
+        (<code>method</code>, <code>url</code>, <code>data</code>, <code>rs</code> — заголовки,
+        <code>before</code>/<code>done</code>/<code>fail</code>/<code>after</code> — колбэки), а
+        не «строитель» с цепочкой <code>.request().process().result()</code>, как всё ещё описывает
+        устаревший <code>docs/xhr.md</code> — в текущем коде такого API нет.
+    </p>
 
-                    <h4>HTMLElementObject.id</h4>
-                    <pre>
-<code>
-    &lt;script type="text/x-tmpl" id="welcome" charset="UTF-8">
-    &lt;h3>{%=caption%}</h3>
-    &lt;p>{%=text%}</p>    &lt;/script>
-    ...
-    &lt;script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-    &lt;/script>
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>false</i> mode</h4>
-                    <pre>
-<code>
-    document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>true</i> mode</h4>
-                    <pre>
-<code>
-    tmpl('/js/welcome.tmpl',
-    {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    },
-    function(content){
-    document.querySelector('.navbar .container').innerHTML = content;
-    });
-</code>
-                    </pre>
-                </div>
-            </div>
-            <div class="col-sm-3 col-sm-offset-1">
-                <div class="row">
-                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
-                </div>
-            </div>
+    <div class="row">
+        <div class="col-md-6">
+            <h5>Успешный запрос — <code>done</code></h5>
+            <button id="load-btn" class="btn btn-primary mb-2">Загрузить sample.json</button>
+            <div id="result-block" class="p-2 bg-light border rounded"></div>
+        </div>
+        <div class="col-md-6">
+            <h5>Ошибка — <code>fail</code> и <code>x.responseJSON</code></h5>
+            <button id="fail-btn" class="btn btn-outline-danger mb-2">Запросить несуществующий адрес</button>
+            <div id="error-block" class="p-2 bg-light border rounded"></div>
         </div>
     </div>
+
+    <h5 class="mt-4">Ход выполнения — <code>before</code> / <code>after</code></h5>
+    <div id="status-block" class="p-2 bg-light border rounded">ожидание…</div>
 </div>
-<footer>
-    <div class="container">
-        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
-    </div>
-</footer>
 
 <script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-        caption: 'JsRoll',
-        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
+    var statusBlock = document.querySelector('#status-block');
+
+    document.querySelector('#load-btn').ui.on('click', function () {
+        xhr({
+            method: 'get',
+            url: 'sample.json',
+            before: function (e) {
+                statusBlock.textContent = 'запрос отправлен…';
+                return true; // false здесь отменило бы отправку запроса
+            },
+            done: function (e) {
+                // this внутри done/fail — это сам объект XMLHttpRequest;
+                // .responseJSON — геттер jsroll поверх responseText с safe-парсингом JSON
+                var res = this.responseJSON;
+                document.querySelector('#result-block').innerHTML =
+                    tpl('questions-list', {data: res.data});
+            },
+            fail: function (e) {
+                document.querySelector('#result-block').textContent =
+                    'ошибка: ' + this.status;
+            },
+            after: function (e) {
+                statusBlock.textContent = 'запрос завершён';
+            }
+        });
+    });
+
+    document.querySelector('#fail-btn').ui.on('click', function () {
+        xhr({
+            method: 'get',
+            url: 'this-file-does-not-exist.json',
+            done: function (e) {
+                document.querySelector('#error-block').textContent = 'неожиданный успех';
+            },
+            fail: function (e) {
+                // HTTP_RESPONSE_CODE — таблица кодов ответа, встроенная в jsroll.js
+                document.querySelector('#error-block').textContent =
+                    'HTTP ' + this.status + ': ' + (HTTP_RESPONSE_CODE[this.status] || 'нет описания');
+            }
+        });
     });
 </script>
-
-
 </body>
 </html>

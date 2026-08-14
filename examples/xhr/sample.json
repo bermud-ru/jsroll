@@ -1,0 +1,8 @@
+{
+    "result": "ok",
+    "data": [
+        {"id": 1, "question": "Как сбросить пароль?", "answered": true},
+        {"id": 2, "question": "Как добавить пользователя?", "answered": true},
+        {"id": 3, "question": "Почему не приходит письмо?", "answered": false}
+    ]
+}

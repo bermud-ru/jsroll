@@ -477,7 +477,7 @@ var Application = function (ver) {
                             break;
                         default: root.addEventListener(event, function(e) {
                             var $ = this, found = false, el = g.ui.src(e);
-                            while (el && el !== $ && !(found = el.ui.matches(s))) el = el.parentElement;
+                            while (el && el !== $ && !(found = el.matches(s))) el = el.parentElement;
                             if (found && (!tags.length || el.matches(tags[0]))) { e.rootElement = root; return fn.apply(el,argX(args,e)) }
                             return found;
                         }, opt ? opt : false);

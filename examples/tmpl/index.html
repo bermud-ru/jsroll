@@ -1,152 +1,86 @@
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
-    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsroll — шаблонизатор tpl()</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
     <script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
-    <style>
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-        body {
-            padding-top: 8em;
-            margin-bottom: 60px;
-        }
+    <style>body { padding-top: 5em; padding-bottom: 3em; }</style>
 
-        footer {
-            padding: 1.5em 0;
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #f5f5f5;
-        }
-        .navbar .container {color:#ccc;}
-    </style>
-    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
-        <h3>{%=caption%}</h3>
-        <p>{%=text%}</p>
+    <!-- Шаблон по DOM id: tpl('faq-list', data) найдёт этот тег script по id
+         и скомпилирует его содержимое. Тип не проверяется самим jsroll —
+         любой нестандартный MIME (в т.ч. "text/x-template") просто не даёт
+         браузеру исполнить содержимое как JS. -->
+    <script type="text/x-template" id="faq-list">
+        <ul class="list-group">
+        {% for (var i = 0; i < items.length; i++) { %}
+            <li class="list-group-item{% if (items[i].answered) { %} list-group-item-success{% } %}">
+                <strong>{%= items[i].question %}</strong>
+                {% if (items[i].answered) { %}
+                    <div class="text-muted">{%= items[i].answer %}</div>
+                {% } else { %}
+                    <div class="text-danger">без ответа</div>
+                {% } %}
+            </li>
+        {% } %}
+        </ul>
     </script>
 </head>
 <body>
-<div id="app" role="application">
-
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container"></div>
-    </div>
-
+<nav class="navbar navbar-dark bg-dark fixed-top">
     <div class="container">
-        <div class="row">
-            <h2>Шаблонизатор window.tmpl</h2>
-            <div class="col-sm-8">
-                <div class="row list-group-item" style="border: none">
-                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
-                        и использования швнешнего ресурса запрошенного
-                </div>
-                <div class="row">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">tmpl( id [, data [, callback]]) <span style="float:right">returns: String</span></h3>
-                        </div>
-                        <div class="panel-body">
-                            <div class="list-group-item" style="border: none">
-                                <div class="row"><b>id</b></div>
-                                <div class="row">Type: String</div>
-                                <div class="row">
-                                    Параметр <b>id</b> принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. <a href="https://ru.wikipedia.org/wiki/URL"> wiki</a>), содержащий код шаблона.
-                                </div>
-
-                            </div>
-                        </div>
-                        <!-- List group -->
-                        <ul class="list-group">
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>data</b></div>
-                                    <div class="row">Type: Object</div>
-                                    <div class="row">
-                                        Параметр <b>data</b> объект javascript содержит данные которы являются источником данных длоступные внутри шаблона.
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>callback</b></div>
-                                    <div class="row">Type: Function</div>
-                                    <div class="row">Arguments: context</div>
-                                    <div class="row">
-                                        Параметр <b>callback</b> функция javascript определяет как <b>tmpl</b> воздвращает результат генерации контента при условиии корректной работы скрипта,
-                                        если функция не определена то <b>tmpl</b> возвращает конетент как результа функции и если <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита
-                                        работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся
-                                        сгнерерированные контент и сли <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <h4>HTMLElementObject.id</h4>
-                    <pre>
-<code>
-    &lt;script type="text/x-tmpl" id="welcome" charset="UTF-8">
-    &lt;h3>{%=caption%}</h3>
-    &lt;p>{%=text%}</p>    &lt;/script>
-    ...
-    &lt;script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-    &lt;/script>
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>false</i> mode</h4>
-                    <pre>
-<code>
-    document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>true</i> mode</h4>
-                    <pre>
-<code>
-    tmpl('/js/welcome.tmpl',
-    {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    },
-    function(content){
-    document.querySelector('.navbar .container').innerHTML = content;
-    });
-</code>
-                    </pre>
-                </div>
-            </div>
-            <div class="col-sm-3 col-sm-offset-1">
-                <div class="row">
-                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
-                </div>
-            </div>
-        </div>
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
     </div>
+</nav>
+
+<div class="container">
+    <h2>Шаблонизатор <code>tpl(str, data, cb, opt)</code></h2>
+    <p class="text-muted">
+        Строка транслируется в JS-функцию один раз (через <code>new Function</code>) и затем
+        многократно вызывается с разными данными. Внутри тегов <code>{% ... %}</code> — обычный
+        JS-код; <code>{%= выражение %}</code> — вывод значения в результат.
+    </p>
+
+    <div class="alert alert-warning">
+        <strong>Важно:</strong> <code>{%= %}</code> выводит значение <u>без экранирования HTML</u>.
+        Если в шаблон попадают данные от пользователя (комментарии, поля форм и т.п.), экранируйте их
+        самостоятельно перед передачей в <code>tpl()</code> — готового «безопасного» тега вывода в
+        библиотеке нет.
+    </div>
+
+    <h5>1. Простая интерполяция (строка передаётся напрямую)</h5>
+    <div id="simple-block" class="mb-4 p-3 border rounded"></div>
+
+    <h5>2. Шаблон по DOM id, с циклом и условием</h5>
+    <div id="list-block" class="mb-4"></div>
+
+    <h5>3. Тот же шаблон, повторный вызов с другими данными (функция уже скомпилирована и переиспользуется)</h5>
+    <div id="list-block-2" class="mb-4"></div>
 </div>
-<footer>
-    <div class="container">
-        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
-    </div>
-</footer>
 
 <script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-        caption: 'JsRoll',
-        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
+    // 1. Шаблон как обычная строка — компилируется на лету.
+    document.querySelector('#simple-block').innerHTML =
+        tpl('Привет, {%= name %}! Сегодня {%= day %}.', {name: 'Ирина', day: 'понедельник'});
+
+    // 2. Шаблон, лежащий в <script id="faq-list">, с реальными управляющими конструкциями.
+    document.querySelector('#list-block').innerHTML = tpl('faq-list', {
+        items: [
+            {question: 'Как сбросить пароль?', answered: true,  answer: 'Через ссылку «Забыли пароль» на странице входа.'},
+            {question: 'Как добавить нового пользователя?', answered: true,  answer: 'Вкладка «Пользователи» → кнопка «+», доступно администраторам.'},
+            {question: 'Почему не приходит уведомление?', answered: false}
+        ]
+    });
+
+    // 3. Повторное использование того же скомпилированного шаблона с другим набором данных.
+    document.querySelector('#list-block-2').innerHTML = tpl('faq-list', {
+        items: [
+            {question: 'Поддерживается ли экспорт в CSV?', answered: false},
+            {question: 'Можно ли работать офлайн?', answered: true, answer: 'Да, через IDBmodel/webSQLmodel (см. jsroll.dao.js).'}
+        ]
     });
 </script>
-
-
 </body>
 </html>

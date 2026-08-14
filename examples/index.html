@@ -1,124 +1,82 @@
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
-    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
-    <script type="text/javascript"
-            src="../build/jsroll.min.js" charset="UTF-8"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsroll — примеры использования</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+    <script type="text/javascript" src="../build/jsroll.min.js" charset="UTF-8"></script>
     <style>
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-        body {
-            padding-top: 8em;
-            margin-bottom: 60px;
-        }
-
-        footer {
-            padding: 1.5em 0;
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #f5f5f5;
-        }
-        .navbar .container {color:#ccc;}
+        body { padding-top: 5em; padding-bottom: 3em; }
+        .card { margin-bottom: 1.5em; }
     </style>
-    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
-        <h3>{%=caption%}</h3>
-        <p>{%=text%}</p>
+    <script type="text/x-template" id="welcome">
+        <h1>{%=caption%}</h1>
+        <p class="lead">{%=text%}</p>
     </script>
 </head>
 <body>
-<div id="app" role="application">
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container"><span class="navbar-brand">jsroll — примеры</span></div>
+</nav>
 
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container"></div>
-    </div>
+<div class="container">
+    <div id="welcome-block" class="mb-4"></div>
 
-    <div class="container">
-        <h2>Обекты и свойства JsRoll</h2>
-        <div class="row">
-            <div class="col-sm-8">
-                <div class="row">
-                    <h3>window.uuid()</h3>
-                    <div class="list-group-item" style="border: none">
-                        Функция возрващает 16-байтный (128-битный) идентификатор (см. <a href="https://ru.wikipedia.org/wiki/UUID"> wiki</a>)
-                    </div>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Шаблонизатор — <code>tpl()</code></h5>
+                    <p class="card-text">Компиляция строкового/DOM/URL-шаблона в функцию, интерполяция <code>{%= %}</code>, циклы и условия.</p>
+                    <a href="tmpl/index.html" class="btn btn-primary">Открыть пример</a>
                 </div>
-                <div class="row">
-                    <h3>window.storage(instance)</h3>
-                    <div class="list-group-item" style="border: none">
-                        Proxy-объект реализующий интерфейс (.setItem, .getItem, removeItem, .clear) работы с локальных хранилищем (default instance = window.localStorage)
-                        и позволяющий обойти QUOTA_EXCEEDED_ERR: DOM Exception 22: An attempt was made to add something to storage that exceeded the quota
-                        на мобильных устройствах.
-                    </div>
-                    <pre>
-<code>
-    &lt;script>
-    storage.setItem('user', JSON.stringify(params));
-    &lt;/script>
-</code>
-                    </pre>
-                </div>
-                <div class="row">
-                    <h3>window.location.params([search])</h3>
-                    <div class="list-group-item" style="border: none">
-                        Функция возрващает Object (Хеш-таблица) параметров в строке запроса (location.search, часть адреса после символа ?, включая символ ?) если не определен аргумент search или разбирает данные из переменной search.
-                    </div>
-                </div>
-                <div class="row">
-                    <h3><a href="router/index.html">window.router</a></h3>
-                    <div class="list-group-item" style="border: none">
-                        Объект маршрутизатор обеспечивает базовый функционал RIA/SPA добавить удалить обработчик маршрута, фукнция установить маршрут, проверить маршрут на совпадени и тд.
-                        По-умолчанию используется HTML5 History API и есть возможность режима location.hash.
-                    </div>
-                </div>
-                <div class="row">
-                    <h3><a href="event/index.html">window.event</a></h3>
-                    <div class="list-group-item" style="border: none">
-                        Обработчик событий обеспечивает обработку событий элементов управления RIA/SPA приложения, позволяет изменяеть функционал обработки события
-                        любых DOM объектов документа.
-                    </div>
-                </div>
-                <div class="row">
-                    <h3><a href="xhr/index.html">window.xhr</a></h3>
-                    <div class="list-group-item" style="border: none">
-                        Хелпер работы с запросами на основе xmlHttpRequest, в рамках одного инстанса позволяет мониторить и работать с серией запросов различного типа.
-                    </div>
-                </div>
-                <div class="row">
-                    <h3><a href="tmpl/index.html">window.tmpl</a></h3>
-                    <div class="list-group-item" style="border: none">
-                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
-                        и использования швнешнего ресурса запрошенного
-                    </div>
-                </div>
-
             </div>
-            <div class="col-sm-3 col-sm-offset-1">
-                <div class="row">
-                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Роутинг — <code>urn</code></h5>
+                    <p class="card-text">Обработка адресной строки (History API/hash), регистрация маршрутов и обработчиков.</p>
+                    <a href="router/index.html" class="btn btn-primary">Открыть пример</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">События — <code>ui.on / ui.dg</code></h5>
+                    <p class="card-text">Прямое и делегированное связывание обработчиков событий на DOM-элементах.</p>
+                    <a href="event/index.html" class="btn btn-primary">Открыть пример</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Запросы — <code>xhr()</code></h5>
+                    <p class="card-text">Обёртка над XMLHttpRequest с колбэками <code>done</code>/<code>fail</code>/<code>after</code>.</p>
+                    <a href="xhr/index.html" class="btn btn-primary">Открыть пример</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Подключение библиотеки</h5>
+                    <p class="card-text">Минимальная страница, подключающая <code>jsroll.min.js</code> и рендерящая первый шаблон.</p>
+                    <a href="download/index.html" class="btn btn-primary">Открыть пример</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-<footer>
-    <div class="container">
-        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
-    </div>
-</footer>
 
 <script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-        caption: 'JsRoll',
+    document.querySelector('#welcome-block').innerHTML = tpl('welcome', {
+        caption: 'jsroll',
         text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
     });
 </script>
-
-
 </body>
 </html>

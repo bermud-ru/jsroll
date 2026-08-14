@@ -1,152 +1,101 @@
-<html>
+<!DOCTYPE html>
+<html lang="ru">
 <head>
     <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>RIA (Rich Internet Application) / SPA (Single-page Application) javascript frameworkk</title>
-    <link href="http://netdna.bootstrapcdn.com/bootstrap/3.3.1/css/bootstrap.min.css" rel="stylesheet"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>jsroll — роутер urn</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
     <script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
-    <style>
-        html {
-            position: relative;
-            min-height: 100%;
-        }
-        body {
-            padding-top: 8em;
-            margin-bottom: 60px;
-        }
-
-        footer {
-            padding: 1.5em 0;
-            position: absolute;
-            bottom: 0;
-            width: 100%;
-            height: 60px;
-            background-color: #f5f5f5;
-        }
-        .navbar .container {color:#ccc;}
-    </style>
-    <script type="text/x-tmpl" id="welcome" charset="UTF-8">
-        <h3>{%=caption%}</h3>
-        <p>{%=text%}</p>
-    </script>
+    <style>body { padding-top: 5em; padding-bottom: 3em; }</style>
 </head>
 <body>
-<div id="app" role="application">
-
-    <div class="navbar navbar-inverse navbar-fixed-top" role="navigation">
-        <div class="container"></div>
-    </div>
-
+<nav class="navbar navbar-dark bg-dark fixed-top">
     <div class="container">
-        <div class="row">
-            <h2>Шаблонизатор window.tmpl</h2>
-            <div class="col-sm-8">
-                <div class="row list-group-item" style="border: none">
-                        Объект позволяет генерировать контекст на основе наборе данных (javascritp Object) и шаблона - как DOM объктом докуметнта так
-                        и использования швнешнего ресурса запрошенного
-                </div>
-                <div class="row">
-                    <div class="panel panel-primary">
-                        <div class="panel-heading">
-                            <h3 class="panel-title">tmpl( id [, data [, callback]]) <span style="float:right">returns: String</span></h3>
-                        </div>
-                        <div class="panel-body">
-                            <div class="list-group-item" style="border: none">
-                                <div class="row"><b>id</b></div>
-                                <div class="row">Type: String</div>
-                                <div class="row">
-                                    Параметр <b>id</b> принимает знаение 1) индентификатора объктата DOM HTMLElementObject.id или 2) ссылка на ресурс в формате URL (см. <a href="https://ru.wikipedia.org/wiki/URL"> wiki</a>), содержащий код шаблона.
-                                </div>
-
-                            </div>
-                        </div>
-                        <!-- List group -->
-                        <ul class="list-group">
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>data</b></div>
-                                    <div class="row">Type: Object</div>
-                                    <div class="row">
-                                        Параметр <b>data</b> объект javascript содержит данные которы являются источником данных длоступные внутри шаблона.
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="list-group-item">
-                                <div class="list-group-item" style="border: none">
-                                    <div class="row"><b>callback</b></div>
-                                    <div class="row">Type: Function</div>
-                                    <div class="row">Arguments: context</div>
-                                    <div class="row">
-                                        Параметр <b>callback</b> функция javascript определяет как <b>tmpl</b> воздвращает результат генерации контента при условиии корректной работы скрипта,
-                                        если функция не определена то <b>tmpl</b> возвращает конетент как результа функции и если <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита
-                                        работает в синхронном режиме async = false. Если функция определена то результат будет вызов callback функции и в качестве аргумента ей пеердаётся
-                                        сгнерерированные контент и сли <b>id</b> в формате URL, то объект XMLHttpRequest внутри скрита работает в асинхронном режиме async = true.
-                                    </div>
-                                </div>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <h4>HTMLElementObject.id</h4>
-                    <pre>
-<code>
-    &lt;script type="text/x-tmpl" id="welcome" charset="UTF-8">
-    &lt;h3>{%=caption%}</h3>
-    &lt;p>{%=text%}</p>    &lt;/script>
-    ...
-    &lt;script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-    &lt;/script>
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>false</i> mode</h4>
-                    <pre>
-<code>
-    document.querySelector('.navbar .container').innerHTML = tmpl('/js/welcome.tmpl', {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    });
-</code>
-                    </pre>
-                    <h4>XMLHttpRequest async=<i>true</i> mode</h4>
-                    <pre>
-<code>
-    tmpl('/js/welcome.tmpl',
-    {
-    caption: 'JsRoll',
-    text: '&lt;b>RIA&lt;/b> (Rich Internet Application) / &lt;b>SPA&lt;/b> (Single-page Application) javascript framework'
-    },
-    function(content){
-    document.querySelector('.navbar .container').innerHTML = content;
-    });
-</code>
-                    </pre>
-                </div>
-            </div>
-            <div class="col-sm-3 col-sm-offset-1">
-                <div class="row">
-                    <div class="well" style="text-align: center"><a href="download/index.html"><i class="glyphicon glyphicon-cloud-download"></i> Download JsRoll v.1.0.0</a></div>
-                </div>
-            </div>
-        </div>
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
     </div>
+</nav>
+
+<div class="container">
+    <h2>Роутер <code>urn</code></h2>
+    <p class="text-muted">
+        Ядро (<code>src/jsroll.js</code>) экспортирует глобальный объект <code>window.urn</code>
+        (не <code>window.router</code> — учтите это при переносе кода из старой документации).
+        Методы: <code>urn.add(шаблон, обработчик)</code> — зарегистрировать маршрут,
+        <code>urn.lsn()</code> — начать слежение за изменением адреса (опрос раз в 30&nbsp;мс),
+        <code>urn.set(путь)</code> — программно перейти по маршруту,
+        <code>urn.chk()</code> — вручную проверить текущий адрес против зарегистрированных маршрутов.
+    </p>
+
+    <div class="alert alert-info">
+        Если браузер поддерживает <code>history.pushState</code> (сейчас — всегда), <code>urn</code>
+        использует его: адресная строка меняется по-настоящему, без перезагрузки страницы.
+    </div>
+
+    <div class="alert alert-warning">
+        <strong>Ограничение конструкции:</strong> сама функция-конструктор <code>urn(root)</code> нигде
+        не экспортируется наружу — доступен только один готовый глобальный экземпляр
+        <code>window.urn</code>, созданный внутри библиотеки с <code>root = '/'</code>
+        (<code>g.urn = urn('/')</code>). Поэтому <code>urn.set('users/42')</code> переходит на
+        <strong>абсолютный</strong> адрес <code>/users/42</code> от корня домена, а не на путь
+        относительно текущей папки. Это нормально для приложения, которое (как dashboard-web)
+        целиком отдаётся с корня домена одной точкой входа — но делает <code>urn</code> неудобным
+        для демо-страницы, лежащей во вложенной папке <code>examples/router/</code>: после перехода
+        обновление страницы, скорее всего, вернёт 404, если сервер не отдаёт
+        <code>index.html</code> на любой путь. Ниже — панель «Текущий адрес», которая честно
+        показывает, куда именно перешёл браузер.
+    </div>
+
+    <div class="btn-group mb-3" role="group">
+        <button class="btn btn-outline-primary" data-path="">Главная</button>
+        <button class="btn btn-outline-primary" data-path="users">Пользователи</button>
+        <button class="btn btn-outline-primary" data-path="users/42">Пользователь #42</button>
+        <button class="btn btn-outline-primary" data-path="unknown-route">Несуществующий маршрут</button>
+    </div>
+
+    <div id="route-output" class="p-3 border rounded"></div>
+
+    <h5 class="mt-4">Текущий адрес (<code>urn.fr()</code>)</h5>
+    <pre id="current-url" class="p-2 bg-light border rounded"></pre>
 </div>
-<footer>
-    <div class="container">
-        <div class="copyright">&copy; <script>document.write(new Date().getFullYear())</script></div>
-    </div>
-</footer>
 
 <script>
-    document.querySelector('.navbar .container').innerHTML = tmpl('welcome', {
-        caption: 'JsRoll',
-        text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
+    var out = document.querySelector('#route-output');
+    var urlBox = document.querySelector('#current-url');
+
+    function render(html) {
+        out.innerHTML = html;
+        urlBox.textContent = 'location: ' + location.pathname + location.search + '\nurn.fr(): ' + urn.fr();
+    }
+
+    urn
+        .add(/^\/users\/(\d+)$/, function () {
+            var id = urn.fr().match(/^\/users\/(\d+)$/)[1];
+            render('<h4>Карточка пользователя</h4><p>ID: <strong>' + id + '</strong></p>');
+        })
+        .add(/^\/users$/, function () {
+            render('<h4>Список пользователей</h4><p>здесь был бы вывод из xhr()/tpl()</p>');
+        })
+        .add(/^\/$/, function () {
+            render('<h4>Главная</h4><p>маршрут по умолчанию (пустой путь)</p>');
+        })
+        // Маршрут без первого аргумента (только обработчик) — ловит всё,
+        // что не подошло под более специфичные правила выше: urn.add()
+        // сортирует маршруты по длине шаблона, от длинных к коротким,
+        // поэтому этот "поймай всё" остаётся последним по факту проверки.
+        .add(function () {
+            render('<h4>404</h4><p>маршрут не найден: <code>' + urn.fr() + '</code></p>');
+        })
+        .lsn();
+
+    // Первичная отрисовка для того пути, с которым страница была открыта.
+    urn.chk();
+
+    document.querySelectorAll('[data-path]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            urn.set(btn.getAttribute('data-path'));
+        });
     });
 </script>
-
-
 </body>
 </html>

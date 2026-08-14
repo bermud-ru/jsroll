@@ -1793,12 +1793,12 @@
         try {
             var cache;
             switch ( true ) {
-                case str.match(is_url):
+                case is_url.test(str):
                     var id = 'uri' + str.hash();
                     $.caching = true;
                     if (cache = g.sessionStorage.getItem(id)) { return build(null, id, cache); }
                     // if (t = g.sessionStorage.getItem(id)) { return build(decodeURIComponent(t), id); }
-                    var o = opt || {}; o.rs = Object.assign(opt.rs||{}, {'Content-type':'text/x-template'});
+                    var o = opt || {}; o.rs = Object.assign(o.rs||{}, {'Content-type':'text/x-template'});
                     return $.src = g.xhr(Object.assign({ owner: $, url: str, async: (typeof cb === 'function'),
                         done: function(e) { return build(ui.src(e).responseText, id); },
                         fail: function(e) { return $.onTplError('tpl-xhr', id, str, args, e); }
