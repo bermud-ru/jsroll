@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — биометрическая аутентификация (WebAuthn)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<script type="text/javascript" src="../../build/jsroll.auth.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    .section-card { margin-bottom: 1.5rem; }
+    #event-log { max-height: 12rem; overflow-y: auto; font-family: monospace; font-size: .85em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+    #event-log li.err { color: #b02a37; }
+    .user-row { display: flex; align-items: center; justify-content: space-between; padding: .4rem .6rem; border: 1px solid #e9ecef; border-radius: .375rem; margin-bottom: .4rem; }
+    fieldset:disabled { opacity: .55; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Биометрическая аутентификация — <code>WebAuthn</code></h2>
+    <p class="text-muted">
+        Вход по отпечатку пальца / Face ID / Windows Hello вместо пароля, через
+        новый модуль <code>jsroll.auth.js</code> — обёртку над браузерным
+        <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API" target="_blank" rel="noopener">Web Authentication API</a>
+        в стиле остального jsroll: класс с шиной событий как у
+        <code>Application</code> (<code>addEventListener</code>/<code>dispatchEvent</code>),
+        <code>{done,fail}</code>-колбэки как у <code>xhr()</code>.
+    </p>
+
+    <div class="alert alert-danger">
+        <strong>Это самодостаточная демонстрация без сервера — не пример
+        готовой к продакшену защиты.</strong> WebAuthn существует ради того,
+        чтобы <code>challenge</code> генерировался и подпись ответа
+        проверялась на СЕРВЕРЕ. Здесь challenge генерируется прямо в
+        браузере (<code>crypto.getRandomValues</code>), а «своим» пользователь
+        считается по совпадению <code>credential id</code>, сохранённого в
+        <code>localStorage</code> этого же браузера — то есть страница верит
+        сама себе. В реальном приложении <code>opt.challenge</code> в
+        <code>register()</code>/<code>authenticate()</code> нужно получать с
+        сервера, а результат — отправлять на сервер для криптографической
+        проверки (см. пояснение в конце страницы и комментарии в самом
+        <code>jsroll.auth.js</code>).
+    </div>
+
+    <div class="alert alert-info" id="support-status">Проверка поддержки браузером…</div>
+
+    <fieldset id="demo-fieldset" disabled>
+
+    <!-- ===================== РЕГИСТРАЦИЯ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">Регистрация — <code>webauthn.register(user, opt)</code></h5>
+            <p class="card-text text-muted">Привязывает биометрический ключ этого устройства к имени пользователя.</p>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="text" id="reg-username" class="form-control form-control-sm" style="max-width:16rem" placeholder="Имя пользователя" value="andrey">
+                <button type="button" id="btn-register" class="btn btn-primary btn-sm">🔐 Зарегистрировать биометрию</button>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>webauthn.register({ id: 'andrey', name: 'andrey', displayName: 'Андрей' }, {
+    done: function (credentialInfo) { /* ключ создан и сохранён локально */ },
+    fail: function (err) { /* пользователь отменил / ошибка */ }
+});</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== ВХОД ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">Вход — <code>webauthn.authenticate(opt)</code></h5>
+            <p class="card-text text-muted">Подтверждение личности той же биометрией, без пароля.</p>
+            <div class="d-flex gap-2 flex-wrap align-items-center">
+                <input type="text" id="login-username" class="form-control form-control-sm" style="max-width:16rem" placeholder="Имя пользователя" value="andrey">
+                <button type="button" id="btn-login" class="btn btn-primary btn-sm">🔓 Войти по этому имени</button>
+                <button type="button" id="btn-login-any" class="btn btn-outline-primary btn-sm">🔓 Войти любым сохранённым ключом</button>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>// с конкретным пользователем — предложит только его ключи
+webauthn.authenticate({ userId: 'andrey', done: function (r) { /* r.userId, r.credentialId */ } });
+// без userId — браузер сам покажет выбор из сохранённых на устройстве ключей
+webauthn.authenticate({ done: function (r) { /* r.userId определился по credential id */ } });</code></pre>
+            <div id="login-result" class="mt-2"></div>
+        </div>
+    </div>
+
+    <!-- ===================== ПОЛЬЗОВАТЕЛИ УСТРОЙСТВА ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">Зарегистрированные на этом устройстве — <code>webauthn.users()</code></h5>
+            <p class="card-text text-muted">Локальный реестр (localStorage) — какие имена пользователей привязаны к ключам этого браузера/устройства.</p>
+            <div id="user-list"><p class="text-muted">Пока никто не зарегистрирован.</p></div>
+        </div>
+    </div>
+
+    </fieldset>
+
+    <h5 class="mt-4">Журнал событий</h5>
+    <ul id="event-log"></ul>
+
+    <div class="alert alert-warning mt-4">
+        <strong>Как встроить по-настоящему, с сервером:</strong>
+        <ol class="mb-0">
+            <li>Сервер генерирует случайный <code>challenge</code> и отдаёт его вместе с параметрами
+            регистрации/входа (например, через <code>xhr({url:'/webauthn/register-options'})</code>) —
+            передайте его как <code>opt.challenge</code> в <code>register()</code>/<code>authenticate()</code>
+            вместо значения по умолчанию.</li>
+            <li>Результат <code>register()</code>/<code>authenticate()</code> (объект <code>credential</code>/
+            <code>assertion</code> из колбэка <code>done</code>) целиком уходит на сервер (тем же <code>xhr()</code>,
+            бинарные поля — через <code>bufferToBase64url()</code> из этого модуля) — сервер проверяет подпись
+            и решает, пускать пользователя или нет. Локальное совпадение <code>credential id</code>
+            в этом примере — не замена этой проверке, а просто способ показать демо без бэкенда.</li>
+            <li>Идентификатор пользователя (<code>user.id</code>) в проде — непрозрачный случайный
+            идентификатор с сервера, а не имя пользователя напрямую (здесь он используется в открытую
+            только ради простоты демонстрации).</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg, isErr) {
+        var li = document.createElement('li');
+        if (isErr) li.className = 'err';
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    var webauthn = new WebAuthn({ rpName: 'jsroll demo', rpId: location.hostname });
+
+    // ---------------------------------------------------------------
+    // Подписка на события модуля — тот же паттерн, что и у Application
+    // (app.addEventListener('app.login', …)) из примера "Application".
+    // ---------------------------------------------------------------
+    webauthn.addEventListener('webauthn.register', function (e) {
+        addLog('Событие webauthn.register: пользователь "' + e.detail.userId + '", credential ' + e.detail.credential.id.slice(0, 12) + '…');
+        renderUsers();
+    });
+    webauthn.addEventListener('webauthn.authenticate', function (e) {
+        addLog('Событие webauthn.authenticate: вход как "' + e.detail.userId + '".');
+    });
+    webauthn.addEventListener('webauthn.forget', function (e) {
+        addLog('Событие webauthn.forget: "' + e.detail.userId + '".');
+        renderUsers();
+    });
+    webauthn.addEventListener('webauthn.error', function (e) {
+        addLog('Ошибка (' + (e.detail.action || 'n/a') + '): ' + (e.detail.error && e.detail.error.message), true);
+    });
+
+    // ---------------------------------------------------------------
+    // Проверка поддержки.
+    // ---------------------------------------------------------------
+    var supportBox = ui.el('#support-status');
+    if (!webauthn.supported) {
+        supportBox.className = 'alert alert-danger';
+        supportBox.textContent = 'window.PublicKeyCredential недоступен — этот браузер не поддерживает WebAuthn.';
+        addLog('WebAuthn не поддерживается этим браузером.', true);
+    } else {
+        webauthn.platformAvailable(function (available) {
+            if (available) {
+                supportBox.className = 'alert alert-success';
+                supportBox.textContent = 'WebAuthn поддерживается, на устройстве найден биометрический/PIN-сенсор — можно пробовать.';
+                ui.el('#demo-fieldset').removeAttribute('disabled');
+            } else {
+                supportBox.className = 'alert alert-warning';
+                supportBox.textContent = 'WebAuthn поддерживается браузером, но подходящего биометрического сенсора на устройстве не нашлось (isUserVerifyingPlatformAuthenticatorAvailable() = false) — форма ниже, скорее всего, не сработает.';
+                ui.el('#demo-fieldset').removeAttribute('disabled');
+            }
+            addLog('platformAvailable() -> ' + available + '.');
+            renderUsers();
+        });
+    }
+
+    // ---------------------------------------------------------------
+    // Регистрация.
+    // ---------------------------------------------------------------
+    ui.el('#btn-register').ui.on('click', function () {
+        var $btn = this, username = ui.el('#reg-username').value.trim();
+        if (!username) return;
+        $btn.setAttribute('disabled', 'disabled'); $btn.textContent = 'Ждём подтверждение…';
+        webauthn.register({ id: username, name: username, displayName: username }, {
+            done: function (info) {
+                $btn.removeAttribute('disabled'); $btn.textContent = '🔐 Зарегистрировать биометрию';
+                addLog('register(): готово, credential id ' + info.id.slice(0, 12) + '…');
+            },
+            fail: function (err) {
+                $btn.removeAttribute('disabled'); $btn.textContent = '🔐 Зарегистрировать биометрию';
+                addLog('register(): отменено/ошибка — ' + err.message, true);
+            }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // Вход.
+    // ---------------------------------------------------------------
+    function showLoginResult(text, ok) {
+        ui.el('#login-result').innerHTML = '<div class="alert ' + (ok ? 'alert-success' : 'alert-danger') + ' py-2 mb-0">' + text + '</div>';
+    }
+
+    ui.el('#btn-login').ui.on('click', function () {
+        var username = ui.el('#login-username').value.trim();
+        if (!username) return;
+        webauthn.authenticate({
+            userId: username,
+            done: function (r) { showLoginResult('Вход выполнен как «' + r.userId + '».', true); },
+            fail: function (err) { showLoginResult('Не удалось войти: ' + err.message, false); }
+        });
+    });
+
+    ui.el('#btn-login-any').ui.on('click', function () {
+        webauthn.authenticate({
+            done: function (r) { showLoginResult('Вход выполнен как «' + (r.userId || 'неизвестный пользователь') + '».', true); },
+            fail: function (err) { showLoginResult('Не удалось войти: ' + err.message, false); }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // Список пользователей устройства + "Забыть".
+    // ---------------------------------------------------------------
+    function renderUsers() {
+        var box = ui.el('#user-list'), users = webauthn.users();
+        if (!users.length) { box.innerHTML = '<p class="text-muted">Пока никто не зарегистрирован.</p>'; return; }
+        box.innerHTML = '';
+        users.forEach(function (userId) {
+            var creds = webauthn.credentials(userId);
+            var row = document.createElement('div');
+            row.className = 'user-row';
+            row.innerHTML = '<span><b>' + userId + '</b> — ключей: ' + creds.length + '</span>';
+            var btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'btn btn-outline-danger btn-sm'; btn.textContent = 'Забыть';
+            btn.addEventListener('click', function () { webauthn.forget(userId); });
+            row.appendChild(btn);
+            box.appendChild(row);
+        });
+    }
+    renderUsers();
+
+    addLog('Модуль WebAuthn готов.');
+})();
+</script>
+</body>
+</html>

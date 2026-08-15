@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — SVG-графика (jsroll.svg.js)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<script type="text/javascript" src="../../build/jsroll.svg.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    .section-card { margin-bottom: 1.5rem; }
+    svg.chart { width: 100%; height: auto; background: #fff; border: 1px solid #e9ecef; border-radius: .375rem; }
+    .axis-label, .value-label { font: 11px sans-serif; fill: #6c757d; }
+    .value-label.strong { font-weight: 700; fill: #212529; }
+    .legend-item { display: flex; align-items: center; gap: .4rem; margin-bottom: .3rem; font-size: .9em; }
+    .legend-swatch { width: .9rem; height: .9rem; border-radius: .2rem; display: inline-block; flex: none; }
+    .big-value { font-size: 1.6rem; font-weight: 700; }
+    input[type="range"] { width: 100%; }
+    .radar-control label { font-size: .85em; margin-bottom: 0; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>SVG-графика — <code>jsroll.svg.js</code></h2>
+    <p class="text-muted">
+        Новый модуль: создание/удаление SVG-примитивов (линия, круг, дуга,
+        многоугольник, путь, текст) и управление их атрибутами через
+        <code>el.svg.attr()</code>/<code>.style()</code>/<code>.animate()</code> — по
+        аналогии с тем, как <code>jsroll.ui.js</code> даёт обычным DOM-узлам
+        <code>.ui</code>/<code>.css</code>. Три примера ниже — три разных способа
+        применения одних и тех же примитивов: постоянно обновляющийся график,
+        круговая диаграмма и «паутинка» (radar chart).
+    </p>
+
+    <!-- ===================== 1. ДИНАМИЧЕСКИЙ ГРАФИК ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">1. Динамический график — <code>circle</code>/<code>polyline</code> + <code>.animate()</code></h5>
+            <p class="card-text text-muted">Имитация показаний датчика в реальном времени: новая точка каждую секунду, маркеры плавно переезжают на новую высоту.</p>
+            <div class="row">
+                <div class="col-md-9">
+                    <svg id="line-chart" class="chart" viewBox="0 0 640 220"></svg>
+                </div>
+                <div class="col-md-3">
+                    <div class="big-value" id="line-current">—</div>
+                    <div class="text-muted mb-2">текущее значение</div>
+                    <button type="button" id="btn-toggle-avg" class="btn btn-outline-secondary btn-sm w-100 mb-1">Показать среднюю линию</button>
+                    <button type="button" id="btn-pause" class="btn btn-outline-secondary btn-sm w-100">Пауза</button>
+                </div>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var chart = new SvgCanvas('#line-chart', { viewBox: '0 0 640 220' });
+var dot = chart.circle({ cx: x, cy: y0, r: 4, fill: '#0d6efd' });
+// … при поступлении новых данных:
+dot.svg.animate({ cy: newY }, 500, { easing: svgEasing.easeInOut });
+// «Показать среднюю линию» — создание/удаление обычной линии:
+var avgLine = chart.line({ x1:0, y1:avgY, x2:640, y2:avgY, stroke:'#dc3545', 'stroke-dasharray':'4 4' });
+avgLine.svg.rm(); // удалить</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 2. КРУГОВАЯ ДИАГРАММА ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">2. Круговая диаграмма — <code>canvas.arc()</code></h5>
+            <p class="card-text text-muted">Секторы — обычные <code>&lt;path&gt;</code>, построенные помощником <code>Canvas.arc({cx,cy,r,startAngle,endAngle})</code>.</p>
+            <div class="row">
+                <div class="col-md-7">
+                    <svg id="pie-chart" class="chart" viewBox="0 0 320 260"></svg>
+                </div>
+                <div class="col-md-5">
+                    <div id="pie-legend" class="mb-3"></div>
+                    <div id="pie-controls"></div>
+                    <button type="button" id="btn-pie-random" class="btn btn-primary btn-sm mt-2">Случайные значения</button>
+                </div>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var start = 0;
+data.forEach(function (d) {
+    var end = start + d.value / total * 360;
+    chart.arc({ cx: 110, cy: 110, r: 90, startAngle: start, endAngle: end, fill: d.color });
+    start = end;
+});</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 3. ПАУТИНКА (RADAR) ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">3. Паутинка (radar chart) — <code>canvas.polygon()</code> + <code>canvas.line()</code></h5>
+            <p class="card-text text-muted">Сетка из концентрических многоугольников, оси — линии из центра, значения — ещё один многоугольник поверх.</p>
+            <div class="row">
+                <div class="col-md-7">
+                    <svg id="radar-chart" class="chart" viewBox="0 0 360 360"></svg>
+                </div>
+                <div class="col-md-5" id="radar-controls"></div>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>// сетка "паутины" — несколько вложенных многоугольников
+[0.25, 0.5, 0.75, 1].forEach(function (level) {
+    chart.polygon({ points: pointsForLevel(level), fill: 'none', stroke: '#dee2e6' });
+});
+// оси
+axes.forEach(function (a) { chart.line({ x1: cx, y1: cy, x2: a.x, y2: a.y, stroke: '#dee2e6' }); });
+// данные — многоугольник поверх сетки, при изменении значений — свой твин точек
+dataPolygon.setAttribute('points', pointsForValues(values));</code></pre>
+        </div>
+    </div>
+
+    <h5 class="mt-4">API модуля вкратце</h5>
+    <ul class="text-muted">
+        <li><code>new SvgCanvas(selector, opt)</code> — контейнер <code>&lt;svg&gt;</code>, задаёт <code>viewBox</code>/размеры.</li>
+        <li><code>canvas.line/circle/ellipse/rect/polyline/polygon/path/text/group(attrs)</code> — создание примитива, атрибуты — как в SVG, но обычным JS-объектом.</li>
+        <li><code>canvas.arc({cx,cy,r,startAngle,endAngle,...})</code> — сектор окружности как <code>&lt;path&gt;</code> (для диаграмм).</li>
+        <li><code>el.svg.attr(name)</code>/<code>.attr(name, value)</code>/<code>.attr({...})</code> — чтение/запись атрибутов.</li>
+        <li><code>el.svg.animate({attr: toValue}, duration, {easing, done, step})</code> — плавный твин числовых атрибутов через <code>requestAnimationFrame</code>.</li>
+        <li><code>el.svg.addClass/removeClass/hasClass/toggleClass</code> — классы через <code>classList</code> (у SVG-узлов <code>className</code> — не строка).</li>
+        <li><code>el.svg.rm()</code> / <code>canvas.clear()</code> — удаление одного узла / очистка всей канвы.</li>
+        <li><code>svgEasing.linear/easeIn/easeOut/easeInOut</code> — готовые функции плавности для <code>.animate()</code>.</li>
+    </ul>
+    <div class="alert alert-secondary">
+        <code>points</code> у <code>polyline</code>/<code>polygon</code> и <code>d</code> у <code>path</code> — строки, а не
+        отдельные числа, поэтому встроенный <code>.animate()</code> их напрямую не анимирует
+        (он тянет только простые числовые атрибуты вроде <code>cx</code>/<code>cy</code>/<code>r</code>/<code>x1</code>…).
+        Для плавного изменения диаграммы (сектора, «паутинка») в примерах ниже — свой
+        небольшой твин по кадрам поверх тех же примитивов, см. <code>tweenPoints()</code>/<code>tweenArc()</code> в коде страницы.
+    </div>
+</div>
+
+<script>
+(function () {
+    // =================================================================
+    // 1) ДИНАМИЧЕСКИЙ ГРАФИК
+    // =================================================================
+    (function () {
+        var W = 640, H = 220, PAD = 24, N = 10;
+        var chart = new SvgCanvas('#line-chart', { viewBox: '0 0 ' + W + ' ' + H });
+        var data = [];
+        for (var i = 0; i < N; i++) data.push(40 + Math.random() * 20);
+
+        var stepX = (W - PAD * 2) / (N - 1);
+        function yFor(v) { return H - PAD - (v / 100) * (H - PAD * 2); }
+        function xFor(i) { return PAD + i * stepX; }
+
+        var poly = chart.polyline({ points: '', fill: 'none', stroke: '#0d6efd', 'stroke-width': 2 });
+        var dots = [];
+        for (i = 0; i < N; i++) dots.push(chart.circle({ cx: xFor(i), cy: yFor(data[i]), r: 4, fill: '#0d6efd' }));
+
+        function pointsStr() { return dots.map(function (d, i) { return xFor(i) + ',' + d.svg.attr('cy'); }).join(' '); }
+        function redrawPoly() { poly.svg.attr('points', pointsStr()); }
+        redrawPoly();
+
+        var avgLine = null;
+        function avgY() {
+            var sum = 0; for (var i = 0; i < data.length; i++) sum += data[i];
+            return yFor(sum / data.length);
+        }
+
+        ui.el('#btn-toggle-avg').ui.on('click', function () {
+            if (avgLine) { avgLine.svg.rm(); avgLine = null; this.textContent = 'Показать среднюю линию'; return; }
+            avgLine = chart.line({ x1: PAD, y1: avgY(), x2: W - PAD, y2: avgY(), stroke: '#dc3545', 'stroke-width': 1, 'stroke-dasharray': '4 4' });
+            this.textContent = 'Скрыть среднюю линию';
+        });
+
+        var paused = false;
+        ui.el('#btn-pause').ui.on('click', function () { paused = !paused; this.textContent = paused ? 'Продолжить' : 'Пауза'; });
+
+        var lastVal = data[data.length - 1];
+        function tick() {
+            var next = Math.max(5, Math.min(95, lastVal + (Math.random() - 0.5) * 30));
+            lastVal = next;
+            data.push(next); data.shift();
+
+            // Переезжаем каждую точку на её новую позицию по X (сдвиг "ленты") и
+            // плавно анимируем высоту (Y) — polyline пересчитывается сразу же на
+            // каждом кадре анимации через step, чтобы линия двигалась вместе с точками.
+            dots.forEach(function (dot, i) {
+                dot.svg.attr('cx', xFor(i));
+                dot.svg.animate({ cy: yFor(data[i]) }, 700, { easing: svgEasing.easeInOut, step: redrawPoly, done: redrawPoly });
+            });
+            if (avgLine) avgLine.svg.animate({ y1: avgY(), y2: avgY() }, 700);
+
+            ui.el('#line-current').textContent = Math.round(next);
+        }
+        ui.el('#line-current').textContent = Math.round(lastVal);
+        setInterval(function () { if (!paused) tick(); }, 1200);
+    })();
+
+    // =================================================================
+    // 2) КРУГОВАЯ ДИАГРАММА
+    // =================================================================
+    (function () {
+        var cx = 110, cy = 110, r = 90;
+        var chart = new SvgCanvas('#pie-chart', { viewBox: '0 0 320 260' });
+        var group = chart.group({});
+        var data = [
+            { label: 'Кровь', value: 40, color: '#dc3545' },
+            { label: 'Моча', value: 25, color: '#ffc107' },
+            { label: 'УЗИ', value: 20, color: '#0d6efd' },
+            { label: 'Прочее', value: 15, color: '#6c757d' }
+        ];
+        var slices = []; // { el, start, end }
+
+        function total() { return data.reduce(function (s, d) { return s + d.value; }, 0); }
+
+        function arcPath(a0, a1) {
+            function pt(a) { var rad = (a - 90) * Math.PI / 180; return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }; }
+            var p0 = pt(a0), p1 = pt(a1), large = (a1 - a0) % 360 > 180 ? 1 : 0;
+            return 'M' + cx + ',' + cy + ' L' + p0.x + ',' + p0.y + ' A' + r + ',' + r + ' 0 ' + large + ' 1 ' + p1.x + ',' + p1.y + ' Z';
+        }
+
+        // Твин угла сектора по кадрам — path.d не тянется el.svg.animate(),
+        // т.к. это строка, а не число; пересчитываем "d" сами на каждом кадре.
+        function tweenArc(el, from0, from1, to0, to1, duration) {
+            var start = null;
+            function frame(ts) {
+                if (!start) start = ts;
+                var p = Math.min(1, (ts - start) / duration), e = svgEasing.easeInOut(p);
+                el.svg.attr('d', arcPath(from0 + (to0 - from0) * e, from1 + (to1 - from1) * e));
+                if (p < 1) requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        }
+
+        function render(animateChange) {
+            var t = total(), start = 0;
+            data.forEach(function (d, i) {
+                var end = start + d.value / t * 360;
+                if (!slices[i]) {
+                    slices[i] = { el: chart.create('path', { fill: d.color, stroke: '#fff', 'stroke-width': 1 }), start: start, end: end };
+                    group.appendChild(slices[i].el);
+                    slices[i].el.svg.attr('d', arcPath(start, end));
+                } else if (animateChange) {
+                    tweenArc(slices[i].el, slices[i].start, slices[i].end, start, end, 600);
+                    slices[i].start = start; slices[i].end = end;
+                } else {
+                    slices[i].el.svg.attr('d', arcPath(start, end));
+                    slices[i].start = start; slices[i].end = end;
+                }
+                start = end;
+            });
+            renderLegend(t);
+        }
+
+        function renderLegend(t) {
+            var box = ui.el('#pie-legend'); box.innerHTML = '';
+            data.forEach(function (d) {
+                var row = document.createElement('div'); row.className = 'legend-item';
+                row.innerHTML = '<span class="legend-swatch" style="background:' + d.color + '"></span>' +
+                    d.label + ' — ' + d.value + ' (' + Math.round(d.value / t * 100) + '%)';
+                box.appendChild(row);
+            });
+        }
+
+        function renderControls() {
+            var box = ui.el('#pie-controls'); box.innerHTML = '';
+            data.forEach(function (d, i) {
+                var row = document.createElement('div'); row.className = 'mb-2';
+                row.innerHTML = '<label class="form-label mb-0" style="font-size:.85em">' + d.label + '</label>' +
+                    '<input type="range" min="1" max="80" value="' + d.value + '" data-i="' + i + '">';
+                box.appendChild(row);
+            });
+            box.querySelectorAll('input[type="range"]').forEach(function (input) {
+                input.addEventListener('input', function () {
+                    data[this.getAttribute('data-i')].value = parseInt(this.value, 10);
+                    render(true);
+                });
+            });
+        }
+
+        ui.el('#btn-pie-random').ui.on('click', function () {
+            data.forEach(function (d) { d.value = 5 + Math.floor(Math.random() * 60); });
+            render(true);
+            renderControls();
+        });
+
+        renderControls();
+        render(false);
+    })();
+
+    // =================================================================
+    // 3) ПАУТИНКА (RADAR)
+    // =================================================================
+    (function () {
+        var cx = 180, cy = 180, R = 140;
+        var axesDef = [
+            { key: 'speed', label: 'Скорость' },
+            { key: 'armor', label: 'Прочность' },
+            { key: 'handling', label: 'Манёвренность' },
+            { key: 'comfort', label: 'Комфорт' },
+            { key: 'price', label: 'Цена' },
+            { key: 'economy', label: 'Экономичность' }
+        ];
+        var values = { speed: 70, armor: 55, handling: 80, comfort: 60, price: 40, economy: 65 };
+
+        var chart = new SvgCanvas('#radar-chart', { viewBox: '0 0 360 360' });
+        var n = axesDef.length;
+
+        function pointFor(i, ratio) {
+            var angle = (Math.PI * 2 * i / n) - Math.PI / 2;
+            return { x: cx + Math.cos(angle) * R * ratio, y: cy + Math.sin(angle) * R * ratio };
+        }
+        function pointsForRatio(ratio) {
+            var pts = []; for (var i = 0; i < n; i++) { var p = pointFor(i, ratio); pts.push(p.x + ',' + p.y); } return pts.join(' ');
+        }
+        function pointsForValues(v) {
+            var pts = []; for (var i = 0; i < n; i++) { var p = pointFor(i, v[axesDef[i].key] / 100); pts.push([p.x, p.y]); } return pts;
+        }
+
+        // "паутина" — вложенные многоугольники-уровни
+        [0.25, 0.5, 0.75, 1].forEach(function (level) {
+            chart.polygon({ points: pointsForRatio(level), fill: 'none', stroke: '#dee2e6', 'stroke-width': 1 });
+        });
+        // оси + подписи
+        axesDef.forEach(function (a, i) {
+            var p = pointFor(i, 1), lp = pointFor(i, 1.14);
+            chart.line({ x1: cx, y1: cy, x2: p.x, y2: p.y, stroke: '#dee2e6', 'stroke-width': 1 });
+            chart.text({ x: lp.x, y: lp.y, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'axis-label' }, a.label);
+        });
+
+        var dataPolygon = chart.polygon({ points: pointsForRatio(0), fill: 'rgba(13,110,253,.25)', stroke: '#0d6efd', 'stroke-width': 2 });
+        var dots = axesDef.map(function (a, i) {
+            var p = pointFor(i, values[a.key] / 100);
+            return chart.circle({ cx: p.x, cy: p.y, r: 3, fill: '#0d6efd' });
+        });
+
+        // Свой твин точек — points у polygon это строка "x,y x,y …", .animate()
+        // из jsroll.svg.js тянет только отдельные числовые атрибуты.
+        function tweenPoints(el, fromPts, toPts, duration) {
+            var start = null;
+            function frame(ts) {
+                if (!start) start = ts;
+                var p = Math.min(1, (ts - start) / duration), e = svgEasing.easeInOut(p);
+                var pts = fromPts.map(function (f, i) { var t = toPts[i]; return (f[0] + (t[0] - f[0]) * e) + ',' + (f[1] + (t[1] - f[1]) * e); });
+                el.svg.attr('points', pts.join(' '));
+                if (p < 1) requestAnimationFrame(frame);
+            }
+            requestAnimationFrame(frame);
+        }
+
+        var currentPts = pointsForValues(values).map(function () { return [cx, cy]; }); // старт из центра — эффект "раскрытия"
+        function redraw(animate) {
+            var target = pointsForValues(values);
+            if (animate) tweenPoints(dataPolygon, currentPts, target, 500);
+            else dataPolygon.svg.attr('points', target.map(function (p) { return p[0] + ',' + p[1]; }).join(' '));
+            currentPts = target;
+            dots.forEach(function (dot, i) {
+                var p = pointFor(i, values[axesDef[i].key] / 100);
+                dot.svg.animate({ cx: p.x, cy: p.y }, animate ? 500 : 0);
+            });
+        }
+        redraw(true);
+
+        var controls = ui.el('#radar-controls');
+        axesDef.forEach(function (a) {
+            var row = document.createElement('div'); row.className = 'radar-control mb-2';
+            row.innerHTML = '<label>' + a.label + ': <span id="radar-val-' + a.key + '">' + values[a.key] + '</span></label>' +
+                '<input type="range" min="5" max="100" value="' + values[a.key] + '" data-key="' + a.key + '">';
+            controls.appendChild(row);
+        });
+        controls.querySelectorAll('input[type="range"]').forEach(function (input) {
+            input.addEventListener('input', function () {
+                var key = this.getAttribute('data-key');
+                values[key] = parseInt(this.value, 10);
+                ui.el('#radar-val-' + key).textContent = values[key];
+                redraw(true);
+            });
+        });
+    })();
+})();
+</script>
+</body>
+</html>
