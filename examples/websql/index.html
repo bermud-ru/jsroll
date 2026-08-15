@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — Web SQL (webSQL/webSQLmodel)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<script type="text/javascript" src="../../build/jsroll.dao.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    .section-card { margin-bottom: 1.5rem; }
+    #event-log { max-height: 12rem; overflow-y: auto; font-family: monospace; font-size: .85em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+    #event-log li.err { color: #b02a37; }
+    table.result-table { font-size: .9em; }
+    .table-block h6 { margin-top: 1rem; }
+    fieldset:disabled { opacity: .55; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Web SQL — <code>webSQL</code> / <code>webSQLmodel</code></h2>
+    <p class="text-muted">
+        Тот же набор из пяти сценариев, что и в <a href="../idb/index.html">примере
+        IndexedDB</a> (инициализация → создание таблицы → заполнение данными →
+        просмотр всех таблиц → запрос с фильтром), но через второй офлайн-модуль
+        jsroll — <code>webSQL</code> (низкоуровневая обёртка над
+        <code>openDatabase()</code> в <code>jsroll.js</code>) и <code>webSQLmodel</code>
+        (обёртка «одна таблица + DDL + синхронизация с сервером» в
+        <code>jsroll.dao.js</code>).
+    </p>
+
+    <div class="alert alert-danger" id="unsupported-banner">
+        <strong>Web SQL полностью удалён из всех современных браузеров.</strong>
+        Chrome/Edge — начиная с версии 124 (апрель 2024), Safari — ещё в 2019, Firefox
+        эту технологию не поддерживал никогда. Поэтому кнопки ниже, скорее всего,
+        <u>не заработают в вашем браузере</u> — страница сама это определит
+        (<code>'openDatabase' in window</code>) и заблокирует форму, если API
+        недоступен. Пример оставлен как справочный по функционалу
+        <code>jsroll.js</code>/<code>jsroll.dao.js</code> для случаев работы со старым
+        кодом на legacy-платформах (встраиваемые WebView, Cordova/Electron со старым
+        Chromium и т.п.), где <code>openDatabase</code> ещё может присутствовать —
+        актуальный офлайн-аналог для новых браузеров — <a href="../idb/index.html">IndexedDB</a>.
+    </div>
+
+    <fieldset id="demo-fieldset">
+
+    <!-- ===================== 1. ИНИЦИАЛИЗАЦИЯ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">1. Инициализация — <code>new webSQL(opt)</code></h5>
+            <p class="card-text text-muted">Открывает (или создаёт) базу через нативный <code>openDatabase()</code>.</p>
+            <button type="button" id="btn-init" class="btn btn-primary btn-sm">Подключиться к базе</button>
+            <span id="init-status" class="ms-2 text-muted"></span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var sql = new webSQL({
+    name: 'medicallabsDemo', version: '1.0',
+    displayName: 'medicallabsDemo', estimatedSize: 500000
+});
+// … webSQLmodel(...) + .init() для каждой таблицы, см. блок 2 …</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 2. СОЗДАНИЕ ТАБЛИЦЫ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">2. Создание таблицы — <code>webSQLmodel(sql, opt)</code> + <code>model.init()</code></h5>
+            <p class="card-text text-muted">
+                <code>webSQLmodel</code> (из <code>jsroll.dao.js</code>) — обёртка «таблица + DDL»:
+                хранит имя таблицы, первичный ключ и SQL создания, <code>init()</code>
+                выполняет DDL (<code>CREATE TABLE IF NOT EXISTS …</code>).
+            </p>
+            <span id="schema-status" class="text-muted">Ожидание подключения (блок 1)…</span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var analysesModel = new webSQLmodel(sql, {
+    modelName: 'Analyses', tableName: 'analyses', primaryKey: 'id',
+    DDL: 'CREATE TABLE IF NOT EXISTS analyses ' +
+         '(id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, name TEXT, category TEXT, price INTEGER)'
+});
+// init(query, ver) не принимает callback — переопределяем done/fail САМОЙ модели:
+analysesModel.done = function () { /* DDL выполнен */ };
+analysesModel.init();
+// patientsModel — аналогично, DDL для таблицы patients(id, name, phone)</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 3. ЗАПОЛНЕНИЕ ДАННЫМИ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">3. Заполнение таблицы данными — <code>sql.insert(table, rows, done, fail, webSQL.BULK)</code></h5>
+            <p class="card-text text-muted">
+                Массовая вставка — CRUD для конкретных строк живёт в самом
+                <code>webSQL</code> (не в <code>webSQLmodel</code>: та отвечает за DDL и
+                постраничную синхронизацию с сервером через <code>populate()</code>/<code>unload()</code>,
+                см. примечание внизу страницы).
+            </p>
+            <button type="button" id="btn-populate" class="btn btn-primary btn-sm" disabled>Заполнить демо-данными</button>
+            <span id="populate-status" class="ms-2 text-muted"></span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>sql.insert('analyses', [
+    {code:'OAK', name:'Общий анализ крови', category:'Кровь', price:450},
+    {code:'BIOCH', name:'Биохимия крови', category:'Кровь', price:1200},
+    // …
+], function (tx, rs) { /* готово */ }, function (tx, err) { /* ошибка */ }, webSQL.BULK);</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 4. ВСЕ ТАБЛИЦЫ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">4. Демонстрация всех таблиц — <code>sql.stmt('SELECT * FROM …')</code></h5>
+            <p class="card-text text-muted">
+                У <code>webSQL</code>, в отличие от <code>IDB.models</code>, нет общего
+                реестра созданных таблиц — какие таблицы есть, приложение отслеживает
+                само (здесь — объект <code>models</code>), либо смотрит
+                <code>sql.info</code> (<code>SELECT * FROM sqlite_master …</code>, лог в консоль).
+            </p>
+            <button type="button" id="btn-show-all" class="btn btn-primary btn-sm" disabled>Показать все таблицы</button>
+            <pre class="p-3 bg-light border rounded mt-2 mb-2"><code>Object.keys(models).forEach(function (name) {
+    sql.stmt('SELECT * FROM ' + models[name].tableName, [], function (tx, rs) {
+        for (var i = 0; i < rs.rows.length; i++) { /* rs.rows.item(i) — очередная строка */ }
+    });
+});</code></pre>
+            <div id="all-tables" class="table-block"></div>
+        </div>
+    </div>
+
+    <!-- ===================== 5. ЗАПРОС С ФИЛЬТРОМ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">5. Запрос с фильтром — <code>sql.filter(query, params, done, fail)</code></h5>
+            <p class="card-text text-muted">
+                Именованные параметры <code>:name</code> в SQL — значения подставляются
+                через <code>QueryParam()</code> (с автоматическим экранированием строк).
+            </p>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="filter-category" class="form-select form-select-sm" style="max-width:14rem" disabled>
+                    <option value="">— выберите категорию —</option>
+                    <option value="Кровь">Кровь</option>
+                    <option value="Моча">Моча</option>
+                    <option value="Кал">Кал</option>
+                </select>
+                <button type="button" id="btn-filter" class="btn btn-primary btn-sm" disabled>Найти</button>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-2"><code>sql.filter('SELECT * FROM analyses WHERE category = :category', { category: 'Кровь' },
+    function (tx, rs) { /* rs.rows — только строки с category = 'Кровь' */ },
+    function (tx, err) { /* ошибка */ }
+);</code></pre>
+            <div id="filter-result" class="table-block"></div>
+        </div>
+    </div>
+
+    </fieldset>
+
+    <h5 class="mt-4">Журнал событий</h5>
+    <ul id="event-log"></ul>
+
+    <div class="alert alert-warning mt-4">
+        <strong>Особенности, обнаруженные при проверке этого примера:</strong>
+        <ul class="mb-0">
+            <li><code>webSQLmodel.init(query, ver)</code> не принимает callback завершения —
+            чтобы узнать, что DDL выполнен, нужно переопределить <code>model.done</code>/<code>model.fail</code>
+            (это методы прототипа с поведением по умолчанию «просто в консоль») ДО вызова <code>init()</code>,
+            как сделано в этом примере.</li>
+            <li><code>sql.opt</code> по умолчанию — <code>QueryParam.STRNULL | QueryParam.INTQOUTED</code>,
+            БЕЗ <code>QueryParam.QOUTED</code>. Из-за этого именованные параметры в
+            <code>sql.filter()</code> подставляются в SQL как значения без кавычек — строка
+            <code>category = Кровь</code> вместо <code>category = 'Кровь'</code> (SQLite трактует её
+            как обращение к несуществующему столбцу и возвращает ошибку). Здесь это исправлено
+            один раз при инициализации: <code>sql.opt |= QueryParam.QOUTED;</code>.</li>
+        </ul>
+    </div>
+
+    <div class="alert alert-warning mt-4">
+        <strong>О <code>webSQLmodel.populate()</code>/<code>.unload()</code>:</strong> помимо
+        <code>init()</code> (DDL), у <code>webSQLmodel</code> есть методы постраничной
+        синхронизации с сервером — <code>populate(opt)</code> скачивает данные с
+        <code>opt.url</code> и вставляет их локально (<code>BULK|UPSERT</code>), а
+        <code>unload(query, countQuery, opt)</code> отправляет локальные данные на
+        сервер порциями. Оба метода по своей сути требуют настоящего backend'а
+        (обращаются через <code>xhr()</code>), поэтому в этом самодостаточном примере
+        без сервера не показаны — здесь используются более простые, не привязанные к
+        сети операции: <code>init()</code>, <code>sql.insert()</code>, <code>sql.stmt()</code>,
+        <code>sql.filter()</code>.
+    </div>
+</div>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg, isErr) {
+        var li = document.createElement('li');
+        if (isErr) li.className = 'err';
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    // Если Web SQL в этом браузере нет (актуально почти для всех современных
+    // браузеров, см. предупреждение сверху) — блокируем интерактив, а не даём
+    // ошибкам сыпаться молча.
+    if (!('openDatabase' in window)) {
+        ui.el('#demo-fieldset').setAttribute('disabled', 'disabled');
+        addLog('window.openDatabase недоступен в этом браузере — интерактивная часть примера отключена.', true);
+    } else {
+        ui.el('#unsupported-banner').insertAdjacentHTML('beforeend', '<div class="mt-2"><b>В вашем браузере openDatabase есть</b> — можно пробовать кнопки ниже.</div>');
+    }
+
+    var sql;                 // webSQL — создаётся в initDb()
+    var models = {};         // { analyses: webSQLmodel, patients: webSQLmodel }
+
+    var demoAnalyses = [
+        { code: 'OAK', name: 'Общий анализ крови', category: 'Кровь', price: 450 },
+        { code: 'BIOCH', name: 'Биохимия крови', category: 'Кровь', price: 1200 },
+        { code: 'GLU', name: 'Глюкоза крови', category: 'Кровь', price: 250 },
+        { code: 'OAM', name: 'Общий анализ мочи', category: 'Моча', price: 350 },
+        { code: 'COPRO', name: 'Копрограмма', category: 'Кал', price: 400 }
+    ];
+    var demoPatients = [
+        { name: 'Иванов Иван Иванович', phone: '(900) 123-45-67' },
+        { name: 'Петрова Мария Сергеевна', phone: '(901) 234-56-78' },
+        { name: 'Сидоров Пётр Алексеевич', phone: '(902) 345-67-89' }
+    ];
+
+    // ---------------------------------------------------------------
+    // 1) Инициализация.
+    // ---------------------------------------------------------------
+    function initDb() {
+        ui.el('#init-status').textContent = 'Подключение…';
+        try {
+            sql = new webSQL({ name: 'medicallabsDemo', version: '1.0', displayName: 'medicallabsDemo', estimatedSize: 500000 });
+            // По умолчанию sql.opt = QueryParam.STRNULL | QueryParam.INTQOUTED — БЕЗ
+            // флага QueryParam.QOUTED. Из-за этого именованные параметры в
+            // sql.filter()/filtration() подставляются в SQL как строки БЕЗ
+            // кавычек (?, category = Кровь вместо category = 'Кровь') — валидный
+            // синтаксически, но не то, что имелось в виду: значение трактуется как
+            // имя столбца, а не строковый литерал. Добавляем QOUTED — так же, как
+            // это иначе пришлось бы сделать в реальном проекте, столкнувшись с этим.
+            sql.opt |= QueryParam.QOUTED;
+        } catch (e) {
+            addLog('Не удалось открыть базу: ' + e, true);
+            ui.el('#init-status').textContent = 'Ошибка подключения.';
+            return;
+        }
+        addLog('webSQL: база "medicallabsDemo" открыта (версия ' + sql.version + ').');
+        ui.el('#init-status').textContent = 'Подключено.';
+        createSchema();
+    }
+
+    // ---------------------------------------------------------------
+    // 2) Создание таблиц через webSQLmodel + init() (DDL).
+    // ---------------------------------------------------------------
+    function createSchema() {
+        models.analyses = new webSQLmodel(sql, {
+            modelName: 'Analyses', tableName: 'analyses', primaryKey: 'id',
+            DDL: 'CREATE TABLE IF NOT EXISTS analyses (id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT, name TEXT, category TEXT, price INTEGER)'
+        });
+        models.patients = new webSQLmodel(sql, {
+            modelName: 'Patients', tableName: 'patients', primaryKey: 'id',
+            DDL: 'CREATE TABLE IF NOT EXISTS patients (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, phone TEXT)'
+        });
+
+        var done = 0, total = 2;
+        function checkDone(name) {
+            addLog('Схема: таблица "' + name + '" готова (DDL выполнен).');
+            if (++done === total) {
+                ui.el('#schema-status').textContent = 'Таблицы созданы: ' + Object.keys(models).join(', ') + '.';
+                [ '#btn-populate', '#btn-show-all', '#btn-filter', '#filter-category' ].forEach(function (sel) {
+                    ui.el(sel).removeAttribute('disabled');
+                });
+            }
+        }
+        // ВАЖНО: model.init(query, ver) НЕ принимает callback завершения третьим
+        // аргументом (это не опечатка в примере — такого параметра просто нет в
+        // сигнатуре, см. jsroll.dao.js). Она использует свои же this.done/this.fail
+        // (по умолчанию — просто console.log/console.error). Чтобы узнать о
+        // завершении DDL, переопределяем done/fail НА КОНКРЕТНОМ экземпляре модели
+        // перед вызовом init().
+        models.analyses.done = function () { checkDone('analyses'); };
+        models.analyses.fail = function (tx, e) { addLog('Ошибка создания "analyses": ' + (e && e.message), true); };
+        models.analyses.init();
+
+        models.patients.done = function () { checkDone('patients'); };
+        models.patients.fail = function (tx, e) { addLog('Ошибка создания "patients": ' + (e && e.message), true); };
+        models.patients.init();
+    }
+
+    ui.el('#btn-init').ui.on('click', function () {
+        this.setAttribute('disabled', 'disabled');
+        initDb();
+    });
+
+    // ---------------------------------------------------------------
+    // 3) Заполнение данными.
+    // ---------------------------------------------------------------
+    ui.el('#btn-populate').ui.on('click', function () {
+        var $btn = this; $btn.setAttribute('disabled', 'disabled');
+        ui.el('#populate-status').textContent = 'Вставка…';
+        var done = 0, total = 2;
+        function checkDone() { if (++done === total) { ui.el('#populate-status').textContent = 'Готово.'; $btn.removeAttribute('disabled'); } }
+
+        sql.insert('analyses', demoAnalyses, function (tx, rs) {
+            addLog('Добавлено в "analyses": ' + demoAnalyses.length + ' строк.'); checkDone();
+        }, function (tx, err) {
+            addLog('Ошибка вставки в "analyses": ' + (err && err.message), true); checkDone();
+        }, webSQL.BULK);
+
+        sql.insert('patients', demoPatients, function (tx, rs) {
+            addLog('Добавлено в "patients": ' + demoPatients.length + ' строк.'); checkDone();
+        }, function (tx, err) {
+            addLog('Ошибка вставки в "patients": ' + (err && err.message), true); checkDone();
+        }, webSQL.BULK);
+    });
+
+    // ---------------------------------------------------------------
+    // 4) Демонстрация всех таблиц.
+    // ---------------------------------------------------------------
+    function rowsFromResultSet(rs) {
+        var rows = [];
+        for (var i = 0; i < rs.rows.length; i++) rows.push(rs.rows.item(i));
+        return rows;
+    }
+    function renderTable(container, rows) {
+        if (!rows.length) { container.insertAdjacentHTML('beforeend', '<p class="text-muted">Пусто.</p>'); return; }
+        var cols = Object.keys(rows[0]);
+        var html = '<table class="table table-sm table-bordered result-table"><thead><tr>' +
+            cols.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            rows.map(function (r) { return '<tr>' + cols.map(function (c) { return '<td>' + (r[c] === undefined || r[c] === null ? '' : r[c]) + '</td>'; }).join('') + '</tr>'; }).join('') +
+            '</tbody></table>';
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    ui.el('#btn-show-all').ui.on('click', function () {
+        var box = ui.el('#all-tables'); box.innerHTML = '';
+        Object.keys(models).forEach(function (name) {
+            box.insertAdjacentHTML('beforeend', '<h6>' + name + '</h6>');
+            sql.stmt('SELECT * FROM ' + models[name].tableName, [], function (tx, rs) {
+                var rows = rowsFromResultSet(rs);
+                addLog('SELECT * FROM ' + models[name].tableName + ' -> ' + rows.length + ' строк.');
+                renderTable(box, rows);
+            }, function (tx, err) {
+                addLog('Ошибка чтения "' + name + '": ' + (err && err.message), true);
+            });
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // 5) Запрос с фильтром (именованный параметр :category).
+    // ---------------------------------------------------------------
+    ui.el('#btn-filter').ui.on('click', function () {
+        var category = ui.el('#filter-category').value;
+        var box = ui.el('#filter-result'); box.innerHTML = '';
+        if (!category) {
+            sql.stmt('SELECT * FROM analyses', [], function (tx, rs) {
+                var rows = rowsFromResultSet(rs);
+                addLog('SELECT без фильтра -> ' + rows.length + ' строк.');
+                renderTable(box, rows);
+            });
+            return;
+        }
+        sql.filter('SELECT * FROM analyses WHERE category = :category', { category: category }, function (tx, rs) {
+            var rows = rowsFromResultSet(rs);
+            addLog('Фильтр category="' + category + '" -> ' + rows.length + ' строк.');
+            renderTable(box, rows);
+        }, function (tx, err) {
+            addLog('Ошибка фильтра: ' + (err && err.message), true);
+        });
+    });
+
+    addLog('Готово к запуску — начните с блока 1.');
+})();
+</script>
+</body>
+</html>

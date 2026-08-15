@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — IndexedDB (IDB/IDBmodel)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<script type="text/javascript" src="../../build/jsroll.dao.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    .section-card { margin-bottom: 1.5rem; }
+    #event-log { max-height: 12rem; overflow-y: auto; font-family: monospace; font-size: .85em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+    #event-log li.err { color: #b02a37; }
+    table.result-table { font-size: .9em; }
+    .table-block h6 { margin-top: 1rem; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>IndexedDB — <code>IDB</code> / <code>IDBmodel</code></h2>
+    <p class="text-muted">
+        Пример по мотивам офлайн-справочника из проекта <code>medicallabs2022</code>
+        (там так же создаётся <code>app.db = new IDB('db', N)</code>, к нему через
+        <code>db.bind(IDBmodel(...))</code> привязываются модели-хранилища со своими
+        индексами, а данные читаются через <code>model.getAll()</code>/<code>model.scope()</code>).
+        Здесь — упрощённый, но рабочий и самодостаточный вариант: два хранилища
+        («Анализы» и «Пациенты») с индексами, без реального сервера.
+    </p>
+    <div class="alert alert-info">
+        Каждый блок ниже — самостоятельный пример одного аспекта API: инициализация,
+        создание таблицы (схемы), заполнение данными, просмотр всех таблиц, запрос
+        с фильтром по индексу. Открывайте по порядку — 2-й блок не сработает без 1-го
+        и т.д. Внизу — статус/журнал событий и важное замечание про особенность
+        библиотеки, на которую я наткнулся при проверке этого примера.
+    </div>
+
+    <!-- ===================== 1. ИНИЦИАЛИЗАЦИЯ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">1. Инициализация — <code>new IDB(name, version)</code></h5>
+            <p class="card-text text-muted">Открывает (или создаёт) базу IndexedDB в браузере.</p>
+            <button type="button" id="btn-init" class="btn btn-primary btn-sm">Подключиться к базе</button>
+            <button type="button" id="btn-reset" class="btn btn-outline-danger btn-sm">Пересоздать базу (удалить и открыть заново)</button>
+            <span id="init-status" class="ms-2 text-muted"></span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var db = new IDB('medicallabsDemo', 1);
+// … db.bind(...) для каждой таблицы, см. блок 2 …
+db.connect();
+db.onready(function () { /* база готова к работе */ });</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 2. СОЗДАНИЕ ТАБЛИЦЫ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">2. Создание таблицы — <code>IDBmodel(name, primaryKey, schema)</code></h5>
+            <p class="card-text text-muted">
+                Схема хранилища объявляется функцией <code>schema(db, tx)</code>, которая
+                выполняется один раз при создании/повышении версии базы
+                (<code>onupgradeneeded</code>) — здесь же создаются индексы.
+            </p>
+            <span id="schema-status" class="text-muted">Ожидание подключения (блок 1)…</span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>db.bind(IDBmodel('analyses', 'id', function (db, tx) {
+    var store = db.objectStoreNames.contains('analyses')
+        ? tx.objectStore('analyses')
+        : db.createObjectStore('analyses', { keyPath: 'id', autoIncrement: true });
+    if (!store.indexNames.contains('category')) {
+        store.createIndex('category', 'category', { unique: false });
+    }
+}));
+db.bind(IDBmodel('patients', 'id', function (db, tx) { /* аналогично, индекс по 'phone' */ }));</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 3. ЗАПОЛНЕНИЕ ДАННЫМИ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">3. Заполнение таблицы данными — <code>model.add(rows, opt)</code></h5>
+            <p class="card-text text-muted">Массовая вставка: один вызов <code>add()</code> с массивом объектов.</p>
+            <button type="button" id="btn-populate" class="btn btn-primary btn-sm" disabled>Заполнить демо-данными</button>
+            <span id="populate-status" class="ms-2 text-muted"></span>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>db.models.analyses.add([
+    {code:'OAK', name:'Общий анализ крови', category:'Кровь', price:450},
+    {code:'BIOCH', name:'Биохимия крови', category:'Кровь', price:1200},
+    // …
+], {
+    done: function (e) { console.log('вставлено, id-шники:', e.result); },
+    fail: function (e) { console.error(e); }
+});</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 4. ВСЕ ТАБЛИЦЫ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">4. Демонстрация всех таблиц — <code>db.models</code> + <code>model.getAll()</code></h5>
+            <p class="card-text text-muted"><code>db.models</code> — обычный объект «имя таблицы → модель», можно перебрать <code>Object.keys(db.models)</code>.</p>
+            <button type="button" id="btn-show-all" class="btn btn-primary btn-sm" disabled>Показать все таблицы</button>
+            <pre class="p-3 bg-light border rounded mt-2 mb-2"><code>Object.keys(db.models).forEach(function (name) {
+    db.models[name].getAll({ done: function (e) { /* e.result — массив строк */ } });
+});</code></pre>
+            <div id="all-tables" class="table-block"></div>
+        </div>
+    </div>
+
+    <!-- ===================== 5. ЗАПРОС С ФИЛЬТРОМ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">5. Запрос с фильтром — <code>getAll({index, keyRange})</code></h5>
+            <p class="card-text text-muted">
+                Выборка по значению ИНДЕКСА (не полное сканирование таблицы) — то же, чем в
+                <code>medicallabs2022</code> пользуется <code>model.scope({keyRange, index, done})</code>.
+            </p>
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <select id="filter-category" class="form-select form-select-sm" style="max-width:14rem" disabled>
+                    <option value="">— выберите категорию —</option>
+                    <option value="Кровь">Кровь</option>
+                    <option value="Моча">Моча</option>
+                    <option value="Кал">Кал</option>
+                </select>
+                <button type="button" id="btn-filter" class="btn btn-primary btn-sm" disabled>Найти</button>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-2"><code>db.models.analyses.getAll({
+    index: 'category',
+    keyRange: 'Кровь',           // «сырое» значение — саму IDBKeyRange модель строит сама
+    done: function (e) { /* e.result — только строки с category === 'Кровь' */ }
+});</code></pre>
+            <div id="filter-result" class="table-block"></div>
+        </div>
+    </div>
+
+    <h5 class="mt-4">Журнал событий</h5>
+    <ul id="event-log"></ul>
+
+    <div class="alert alert-warning mt-4">
+        <strong>Особенность библиотеки, обнаруженная при проверке этого примера:</strong>
+        внутри <code>IDB.prototype.store()</code> (см. <code>jsroll.js</code>) для операций
+        чтения (<code>get/getAll/count/filter/paginator</code>) объект хранилища
+        открывается как <code>tx.objectStore($.tables)</code>, то есть передаётся МАССИВ
+        имён таблиц модели, а не строка. Для модели с ОДНИМ хранилищем (как в обоих
+        примерах здесь и в <code>medicallabs2022</code>) это на практике работает, потому
+        что браузер приводит нестроковый аргумент к строке через <code>Array.toString()</code>,
+        а у массива из одного элемента это даёт ту же строку без изменений. Но для модели,
+        объявленной сразу на НЕСКОЛЬКО таблиц (<code>IDBmodel(['a','b'], …)</code>), тот же
+        код превратится в строку <code>"a,b"</code>, которая ни одному хранилищу не
+        соответствует — чтение сломается. Итог: с одно-табличными моделями (обычный случай)
+        всё работает; с много-табличными — на операциях чтения стоит перепроверить.
+    </div>
+</div>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg, isErr) {
+        var li = document.createElement('li');
+        if (isErr) li.className = 'err';
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    var DB_NAME = 'medicallabsDemo', DB_VERSION = 1;
+    var db; // создаётся в initDb()
+
+    var demoAnalyses = [
+        { code: 'OAK', name: 'Общий анализ крови', category: 'Кровь', price: 450 },
+        { code: 'BIOCH', name: 'Биохимия крови', category: 'Кровь', price: 1200 },
+        { code: 'GLU', name: 'Глюкоза крови', category: 'Кровь', price: 250 },
+        { code: 'OAM', name: 'Общий анализ мочи', category: 'Моча', price: 350 },
+        { code: 'COPRO', name: 'Копрограмма', category: 'Кал', price: 400 }
+    ];
+    var demoPatients = [
+        { name: 'Иванов Иван Иванович', phone: '(900) 123-45-67' },
+        { name: 'Петрова Мария Сергеевна', phone: '(901) 234-56-78' },
+        { name: 'Сидоров Пётр Алексеевич', phone: '(902) 345-67-89' }
+    ];
+
+    // ---------------------------------------------------------------
+    // 1) Инициализация + 2) создание таблиц (схема передаётся сюда же,
+    //    т.к. IDBmodel требует schema-функцию до db.connect()).
+    // ---------------------------------------------------------------
+    function initDb() {
+        ui.el('#init-status').textContent = 'Подключение…';
+        db = new IDB(DB_NAME, DB_VERSION);
+
+        db.bind(IDBmodel('analyses', 'id', function (idb, tx) {
+            var store = idb.objectStoreNames.contains('analyses')
+                ? tx.objectStore('analyses')
+                : idb.createObjectStore('analyses', { keyPath: 'id', autoIncrement: true });
+            if (!store.indexNames.contains('category')) store.createIndex('category', 'category', { unique: false });
+            addLog('Схема: хранилище "analyses" готово (индекс category).');
+        }));
+
+        db.bind(IDBmodel('patients', 'id', function (idb, tx) {
+            var store = idb.objectStoreNames.contains('patients')
+                ? tx.objectStore('patients')
+                : idb.createObjectStore('patients', { keyPath: 'id', autoIncrement: true });
+            if (!store.indexNames.contains('phone')) store.createIndex('phone', 'phone', { unique: false });
+            addLog('Схема: хранилище "patients" готово (индекс phone).');
+        }));
+
+        db.connect();
+        db.onready(function () {
+            addLog('db.onready(): база "' + DB_NAME + '" v' + DB_VERSION + ' подключена, active=' + db.active + '.');
+            ui.el('#init-status').textContent = 'Подключено (' + Object.keys(db.models).join(', ') + ').';
+            ui.el('#schema-status').textContent = 'Хранилища созданы: ' + Object.keys(db.models).join(', ') + '.';
+            [ '#btn-populate', '#btn-show-all', '#btn-filter', '#filter-category' ].forEach(function (sel) {
+                ui.el(sel).removeAttribute('disabled');
+            });
+        });
+    }
+
+    ui.el('#btn-init').ui.on('click', function () {
+        this.setAttribute('disabled', 'disabled');
+        initDb();
+    });
+
+    ui.el('#btn-reset').ui.on('click', function () {
+        if (!confirm('Удалить локальную базу "' + DB_NAME + '" и создать заново?')) return;
+        var run = function () {
+            var req = indexedDB.deleteDatabase(DB_NAME);
+            req.onsuccess = function () { addLog('База удалена, страница будет перезагружена.'); location.reload(); };
+            req.onerror = function () { addLog('Не удалось удалить базу.', true); };
+        };
+        if (db) db.close();
+        run();
+    });
+
+    // ---------------------------------------------------------------
+    // 3) Заполнение данными.
+    // ---------------------------------------------------------------
+    ui.el('#btn-populate').ui.on('click', function () {
+        var $btn = this; $btn.setAttribute('disabled', 'disabled');
+        ui.el('#populate-status').textContent = 'Вставка…';
+        var done = 0, total = 2;
+        function checkDone() { if (++done === total) { ui.el('#populate-status').textContent = 'Готово.'; $btn.removeAttribute('disabled'); } }
+
+        db.models.analyses.add(demoAnalyses, {
+            done: function (e) { addLog('Добавлено в "analyses": ' + e.result.length + ' строк (id: ' + e.result.join(', ') + ').'); checkDone(); },
+            fail: function (e) { addLog('Ошибка вставки в "analyses".', true); checkDone(); }
+        });
+        db.models.patients.add(demoPatients, {
+            done: function (e) { addLog('Добавлено в "patients": ' + e.result.length + ' строк (id: ' + e.result.join(', ') + ').'); checkDone(); },
+            fail: function (e) { addLog('Ошибка вставки в "patients".', true); checkDone(); }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // 4) Демонстрация всех таблиц.
+    // ---------------------------------------------------------------
+    function renderTable(container, rows) {
+        if (!rows.length) { container.insertAdjacentHTML('beforeend', '<p class="text-muted">Пусто.</p>'); return; }
+        var cols = Object.keys(rows[0]);
+        var html = '<table class="table table-sm table-bordered result-table"><thead><tr>' +
+            cols.map(function (c) { return '<th>' + c + '</th>'; }).join('') + '</tr></thead><tbody>' +
+            rows.map(function (r) { return '<tr>' + cols.map(function (c) { return '<td>' + (r[c] === undefined ? '' : r[c]) + '</td>'; }).join('') + '</tr>'; }).join('') +
+            '</tbody></table>';
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    ui.el('#btn-show-all').ui.on('click', function () {
+        var box = ui.el('#all-tables'); box.innerHTML = '';
+        Object.keys(db.models).forEach(function (name) {
+            box.insertAdjacentHTML('beforeend', '<h6>' + name + '</h6>');
+            db.models[name].getAll({
+                done: function (e) { addLog('getAll("' + name + '") -> ' + e.result.length + ' строк.'); renderTable(box, e.result); },
+                fail: function (e) { addLog('Ошибка чтения "' + name + '".', true); }
+            });
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // 5) Запрос с фильтром по индексу.
+    // ---------------------------------------------------------------
+    ui.el('#btn-filter').ui.on('click', function () {
+        var category = ui.el('#filter-category').value;
+        var box = ui.el('#filter-result'); box.innerHTML = '';
+        if (!category) {
+            db.models.analyses.getAll({
+                done: function (e) { addLog('getAll() без фильтра -> ' + e.result.length + ' строк.'); renderTable(box, e.result); }
+            });
+            return;
+        }
+        db.models.analyses.getAll({
+            index: 'category',
+            keyRange: category, // «сырое» значение — model.keyRange() строит IDBKeyRange сама
+            done: function (e) { addLog('Фильтр category="' + category + '" -> ' + e.result.length + ' строк.'); renderTable(box, e.result); },
+            fail: function (e) { addLog('Ошибка фильтра.', true); }
+        });
+    });
+
+    addLog('Готово к запуску — начните с блока 1.');
+})();
+</script>
+</body>
+</html>
