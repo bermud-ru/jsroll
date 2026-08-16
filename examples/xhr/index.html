@@ -32,6 +32,13 @@
         не «строитель» с цепочкой <code>.request().process().result()</code>, как всё ещё описывает
         устаревший <code>docs/xhr.md</code> — в текущем коде такого API нет.
     </p>
+    <div class="alert alert-warning">
+        Внутри <code>done</code>/<code>fail</code>/<code>after</code> — <code>this</code> НЕ является
+        объектом <code>XMLHttpRequest</code> (в более ранней версии этого примера и
+        <code>docs/xhr.md</code> утверждалось обратное). <code>xhr()</code> вызывает
+        <code>opt.done(e)</code> обычным вызовом, без <code>.call(x, e)</code> — сам запрос нужно
+        доставать из аргумента: <code>ui.src(e)</code> (или <code>e.target</code>). Исправлено ниже.
+    </div>
 
     <div class="row">
         <div class="col-md-6">
@@ -51,9 +58,9 @@
 </div>
 
 <script>
-    var statusBlock = document.querySelector('#status-block');
+    var statusBlock = document.querySelector('#status-block'); // .textContent — .ui не нужен
 
-    document.querySelector('#load-btn').ui.on('click', function () {
+    ui.el('#load-btn').ui.on('click', function () {
         xhr({
             method: 'get',
             url: 'sample.json',
@@ -62,15 +69,16 @@
                 return true; // false здесь отменило бы отправку запроса
             },
             done: function (e) {
-                // this внутри done/fail — это сам объект XMLHttpRequest;
+                // this внутри done/fail — НЕ объект XMLHttpRequest (см. предупреждение
+                // выше); сам запрос — через ui.src(e) (это e.target), а на нём уже
                 // .responseJSON — геттер jsroll поверх responseText с safe-парсингом JSON
-                var res = this.responseJSON;
+                var res = ui.src(e).responseJSON;
                 document.querySelector('#result-block').innerHTML =
                     tpl('questions-list', {data: res.data});
             },
             fail: function (e) {
                 document.querySelector('#result-block').textContent =
-                    'ошибка: ' + this.status;
+                    'ошибка: ' + ui.src(e).status;
             },
             after: function (e) {
                 statusBlock.textContent = 'запрос завершён';
@@ -78,7 +86,7 @@
         });
     });
 
-    document.querySelector('#fail-btn').ui.on('click', function () {
+    ui.el('#fail-btn').ui.on('click', function () {
         xhr({
             method: 'get',
             url: 'this-file-does-not-exist.json',
@@ -87,8 +95,9 @@
             },
             fail: function (e) {
                 // HTTP_RESPONSE_CODE — таблица кодов ответа, встроенная в jsroll.js
+                var status = ui.src(e).status;
                 document.querySelector('#error-block').textContent =
-                    'HTTP ' + this.status + ': ' + (HTTP_RESPONSE_CODE[this.status] || 'нет описания');
+                    'HTTP ' + status + ': ' + (HTTP_RESPONSE_CODE[status] || 'нет описания');
             }
         });
     });

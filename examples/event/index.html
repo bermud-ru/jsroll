@@ -25,6 +25,13 @@
         подписка на элемент) и <code>.ui.dg(...)</code> (делегированная подписка на контейнер,
         работает и для элементов, добавленных в DOM уже после подписки).
     </p>
+    <div class="alert alert-warning">
+        Свойства <code>.ui</code>/<code>.css</code> появляются на элементе только через
+        <code>ui.wrap()</code>, которое неявно вызывают <code>ui.el(...)</code>/<code>ui.els(...)</code>.
+        «Голый» <code>document.querySelector(sel).ui</code> — всегда <code>undefined</code>
+        (в более ранней версии этого примера использовался именно он — исправлено ниже на
+        <code>ui.el(...)</code>). Подробности — в <code>docs/event.md</code>.
+    </div>
 
     <h5>1. Прямая подписка — <code>el.ui.on(event, fn, args, opt)</code></h5>
     <button id="direct-btn" class="btn btn-primary mb-2">Нажми меня</button>
@@ -51,18 +58,19 @@
 </div>
 
 <script>
-    // 1. Прямая подписка. Первое обращение к el.ui оборачивает элемент
-    //    (добавляет ему свойства .ui/.css), дальше .ui.on(...) вешает
-    //    обработчик через нативный addEventListener.
-    var directLog = document.querySelector('#direct-log');
+    // 1. Прямая подписка. ui.el(...) находит элемент и оборачивает его
+    //    (добавляет свойства .ui/.css) — дальше .ui.on(...) вешает
+    //    обработчик через нативный addEventListener. "Голый"
+    //    document.querySelector(...).ui дал бы undefined — см. предупреждение выше.
+    var directLog = document.querySelector('#direct-log'); // .textContent — .ui не нужен
     var clicks = 0;
-    document.querySelector('#direct-btn').ui.on('click', function (e) {
+    ui.el('#direct-btn').ui.on('click', function (e) {
         clicks++;
         directLog.textContent = 'Кликов: ' + clicks;
     });
 
     // 2. Делегирование на контейнере списка.
-    var list = document.querySelector('#todo-list');
+    var list = ui.el('#todo-list');
     list.ui.dg('button[data-action="remove"]', 'click', function (e) {
         // внутри обработчика `this` — найденный делегированием элемент
         // (кнопка), а не сам контейнер
@@ -70,7 +78,7 @@
     });
 
     var counter = 1;
-    document.querySelector('#add-item').ui.on('click', function () {
+    ui.el('#add-item').ui.on('click', function () {
         counter++;
         var li = document.createElement('li');
         li.className = 'list-group-item d-flex justify-content-between align-items-center';
@@ -82,8 +90,8 @@
     });
 
     // 3. eventCode — нормализует разные способы браузеров сообщать о нажатой клавише.
-    var keyLog = document.querySelector('#key-log');
-    document.querySelector('#key-input').ui.on('keyup', function (e) {
+    var keyLog = document.querySelector('#key-log'); // .textContent — .ui не нужен
+    ui.el('#key-input').ui.on('keyup', function (e) {
         keyLog.textContent = 'eventCode(e): ' + JSON.stringify(eventCode(e));
     });
 </script>

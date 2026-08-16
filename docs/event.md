@@ -3,17 +3,31 @@
 > В более ранней версии этого файла документировался объект `window.event`
 > с назначаемым `.onclick`. Такого объекта в библиотеке нет и никогда не
 > было. Реальный механизм — методы `.ui.on(...)` (прямая подписка) и
-> `.ui.dg(...)` (делегированная подписка), доступные на любом элементе
-> после того как он хотя бы раз был обёрнут библиотекой (например, через
-> `document.querySelector(sel).ui`). Рабочий пример —
+> `.ui.dg(...)` (делегированная подписка). Рабочий пример —
 > `examples/event/index.html`.
+
+## ⚠ `.ui`/`.css` есть не у любого DOM-элемента "из коробки"
+
+Свойства `.ui` и `.css` появляются на элементе только через "оборачивание"
+(`ui.wrap()`), которое **неявно** вызывают методы `ui.el(...)`/`ui.els(...)`
+(глобальный `window.ui`, обёртка над `document`) — либо `.ui.el(...)`/
+`.ui.els(...)`, если вызваны на уже обёрнутом элементе. "Голый"
+`document.querySelector(sel).ui` — **всегда `undefined`**, и
+`.ui.on(...)` на нём упадёт с `TypeError`. В более ранней версии этого
+файла (и части примеров) использовался именно неверный, "голый" вариант —
+исправлено ниже на рабочий `ui.el(...)`.
+
+```js
+ui.el('#btn').ui.on('click', function (e) { ... });   // верно
+document.querySelector('#btn').ui.on('click', ...);   // упадёт — .ui === undefined
+```
 
 ## Прямая подписка — `el.ui.on(event, fn, args, opt)`
 
 ```html
 <button id="btn">Нажми меня</button>
 <script>
-    document.querySelector('#btn').ui.on('click', function (e) {
+    ui.el('#btn').ui.on('click', function (e) {
         console.log('клик', e);
     });
 </script>
@@ -39,7 +53,7 @@
     <li>Задача 1 <button data-action="remove">×</button></li>
 </ul>
 <script>
-    document.querySelector('#list').ui.dg('button[data-action="remove"]', 'click', function (e) {
+    ui.el('#list').ui.dg('button[data-action="remove"]', 'click', function (e) {
         // внутри обработчика `this` — найденный делегированием элемент
         // (кнопка), а не сам контейнер
         this.closest('li').remove();
@@ -51,10 +65,22 @@
 элемента, подходящего под `selector` — включая случай, когда событие
 случилось на вложенном внутри кнопки элементе (иконке, `<span>` и т.п.).
 
+### ⚠ Делегирование не сработает, если промежуточный обработчик уже остановил всплытие
+
+`container.ui.dg(...)` полагается на то, что событие ДОЙДЁТ до контейнера
+через всплытие (bubbling). Если на самом целевом элементе уже есть свой
+обработчик, вызывающий `e.stopPropagation()`, делегированный обработчик на
+контейнере не сработает вообще — и это не гипотетический случай: именно
+так устроены `focusin`/`focusout` на ячейках `grid()` из
+`jsroll.ui.grid.js` (см. `cellEvent()` в исходнике) — там `table.ui.dg(...,
+'focusin', ...)` будет молчать. В таких случаях (как показано на примере
+`examples/grid/index.html`) обработчик вешают напрямую на каждый нужный
+элемент, а не через делегирование на общий контейнер.
+
 ## Отписка — `el.ui.off(event, fn, opt)`
 
 ```js
-document.querySelector('#btn').ui.off('click', myHandler);
+ui.el('#btn').ui.off('click', myHandler);
 ```
 
 ## Коды клавиш — `eventCode(e)`
@@ -62,7 +88,7 @@ document.querySelector('#btn').ui.off('click', myHandler);
 Единая обёртка над `e.key` / `e.keyCode` / `e.data` (для `InputEvent`):
 
 ```js
-document.querySelector('#input').ui.on('keyup', function (e) {
+ui.el('#input').ui.on('keyup', function (e) {
     console.log(eventCode(e));
 });
 ```
