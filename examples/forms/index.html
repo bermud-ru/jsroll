@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — формы (group, валидация, typeahead, маски)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    .section-card { margin-bottom: 1.5rem; }
+    .is-invalid { border-color: #dc3545 !important; }
+    .is-valid { border-color: #198754 !important; }
+    .is-warn { border-color: #ffc107 !important; }
+    .has-danger label { color: #dc3545; }
+    .has-success label { color: #198754; }
+    label.required::after { content: ' *'; color: #dc3545; }
+    /* typeahead-выпадашка (см. typeahead-tpl ниже) */
+    .dropdown { position: relative; }
+    .dropdown-menu.list { position: absolute; top: 100%; left: 0; right: 0; z-index: 20; max-height: 12rem; overflow-y: auto; }
+    .dropdown-menu.list.fade { display: none; }
+    .dropdown-menu.list .dropdown-item.active { background: #e7f1ff; }
+    #event-log, #json-out { max-height: 16rem; overflow-y: auto; font-family: monospace; font-size: .82em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; }
+    #event-log { list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Формы — <code>group</code>, валидация, <code>typeahead</code>, маски</h2>
+    <p class="text-muted">
+        Форма ниже собрана по мотивам карточки пользователя из модуля
+        <code>users</code> (см. <code>public/js/app/users.js</code> +
+        <code>Application/view/app/users.phtml</code> в загруженном проекте):
+        та же связка <code>group()</code> + <code>pattern_validator</code> +
+        <code>maskedigits()</code> + <code>typeahead()</code>, только без
+        реального бэкенда — запросы <code>typeahead</code> и отправка формы
+        уходят на пару «заглушек» прямо в этом файле (см. раздел про перехват
+        XHR внизу страницы), чтобы пример был самодостаточным.
+    </p>
+
+    <div class="alert alert-warning">
+        <strong>Формы jsroll — не только GET/POST.</strong> Нативный
+        HTML5 <code>&lt;form method="…"&gt;</code> понимает только
+        <code>get</code>/<code>post</code> (браузер молча подставит GET для
+        любого другого значения). Но <code>group</code>/<code>xhr()</code> формы
+        <u>никогда не сабмитят её нативно</u> — событие <code>submit</code>
+        перехватывается (<code>preventDefault</code>), а сама отправка идёт
+        через <code>XMLHttpRequest</code>, которому браузер разрешает
+        открыть запрос ЛЮБЫМ методом. Поэтому атрибут <code>method="put"</code>
+        (как в форме пользователя в оригинале: <code>method="{%= user_id ? "put" : "post" %}"</code>)
+        — это не опечатка и не «неверный HTML», а рабочий способ отправить
+        полноценный REST-запрос PUT/PATCH/DELETE прямо из формы. Отдельная
+        живая демонстрация — раздел 3 ниже.
+    </div>
+
+    <!-- ===================== 1. ОСНОВНАЯ ФОРМА ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">1. Карточка пользователя — <code>new group(formEl, opt)</code></h5>
+            <div class="alert alert-secondary py-2 small mb-3">
+                <b>Заполнение из JSON</b> (кнопка «Заполнить из JSON» ниже) и
+                <b>чтение в JSON для отправки</b> (кнопка «Показать JSON для
+                отправки», раздел 5) устроены НЕ симметрично: чтение
+                (<code>form.data</code>-геттер) само собирает
+                <code>name="address[city]"</code>/<code>name="address[zip]"</code>
+                во вложенный объект <code>{address:{city,zip}}</code>, а вот
+                запись (<code>form.data = {...}</code>-сеттер) такой сборки
+                не делает — ключи объекта должны буквально совпадать со
+                строкой атрибута <code>name</code>, то есть
+                <code>{'address[city]': '…'}</code>, а не
+                <code>{address:{city:'…'}}</code>. Учитывайте это при
+                заполнении форм данными с сервера.
+            </div>
+            <form id="user-form" method="put" action="/mock/users/42" autocomplete="off">
+            <fieldset>
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-4">
+                        <label class="form-label">Роль</label>
+                        <select class="form-select form-select-sm" name="role_id" required>
+                            <option value="1">Оператор</option>
+                            <option value="2">Врач</option>
+                            <option value="5">Администратор</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-4 d-flex align-items-end">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
+                            <label class="form-check-label" for="is_active">Активирован</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-6">
+                        <label class="required form-label" for="fio">ФИО</label>
+                        <input class="form-control form-control-sm" type="text" id="fio" name="fio"
+                               pattern="^[А-ЯЁ][а-яё]+ [А-ЯЁ][а-яё]+( [А-ЯЁ][а-яё]+)?$" required
+                               placeholder="Фамилия Имя Отчество">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="required form-label" for="email">Email</label>
+                        <input class="form-control form-control-sm" type="email" id="email" name="email"
+                               pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$" required placeholder="name@example.com">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-4">
+                        <label class="form-label" for="phone">Телефон (маска)</label>
+                        <input class="form-control form-control-sm" type="text" id="phone" name="phone" placeholder="">
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label" for="birthdate">Дата рождения (маска)</label>
+                        <input class="form-control form-control-sm" type="text" id="birthdate" name="birthdate" placeholder="">
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label" for="city">Город (typeahead)</label>
+                        <div class="dropdown">
+                            <input class="form-control form-control-sm" type="text" id="city" name="city"
+                                   url="/mock/cities" placeholder="начните вводить…">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-6">
+                        <label class="required form-label" for="address_city">Город (вложенное поле)</label>
+                        <input class="form-control form-control-sm" type="text" id="address_city" name="address[city]" placeholder="Москва">
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label" for="address_zip">Индекс (вложенное поле)</label>
+                        <input class="form-control form-control-sm" type="text" id="address_zip" name="address[zip]" placeholder="123456">
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-2">
+                    <div class="col-sm-6">
+                        <label class="form-label d-block">Каналы уведомлений (обычный массив чекбоксов)</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="channels" value="email" id="ch-email" checked>
+                            <label class="form-check-label" for="ch-email">Email</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="channels" value="sms" id="ch-sms">
+                            <label class="form-check-label" for="ch-sms">SMS</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="channels" value="push" id="ch-push" checked>
+                            <label class="form-check-label" for="ch-push">Push</label>
+                        </div>
+                    </div>
+                    <div class="col-sm-6">
+                        <label class="form-label d-block">Права доступа (<code>pack</code> — битовая маска в одно число)</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="permissions" value="1" pack="1" id="p-read" checked>
+                            <label class="form-check-label" for="p-read">Чтение (1)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="permissions" value="2" pack="1" id="p-write" checked>
+                            <label class="form-check-label" for="p-write">Запись (2)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="permissions" value="4" pack="1" id="p-delete">
+                            <label class="form-check-label" for="p-delete">Удаление (4)</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="permissions" value="8" pack="1" id="p-admin">
+                            <label class="form-check-label" for="p-admin">Админ (8)</label>
+                        </div>
+                    </div>
+                </div>
+            </fieldset>
+            <button type="submit" class="btn btn-primary btn-sm mt-2">Сохранить (<span id="method-badge">PUT</span>)</button>
+            <button type="button" id="btn-load-json" class="btn btn-outline-secondary btn-sm mt-2">Заполнить из JSON</button>
+            <button type="button" id="btn-show-json" class="btn btn-outline-secondary btn-sm mt-2">Показать JSON для отправки</button>
+            </form>
+
+            <pre id="json-out" class="mt-2" style="display:none"></pre>
+
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var form = new group(document.querySelector('#user-form'), Object.merge(group_xhr_opt, {
+    // method здесь не указываем — group САМА читает form.getAttribute('method')
+    done: function (e) { /* … */ },
+    fail: function (e) { /* … */ }
+}));
+maskedigits(form.form.phone, '(___) ___-__-__', false);
+maskedigits(form.form.birthdate, '__.__.____', false);
+pattern_validator.call(form.form, [form.form.fio, form.form.email]); // валидация "на лету" при вводе
+typeahead(form.form.city, { url: '/mock/cities', skip: 2 });</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 2. group НА ЧАСТИ ПОЛЕЙ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">2. <code>group()</code> на части полей — не на всю форму</h5>
+            <p class="card-text text-muted">
+                <code>group()</code> необязательно вешать на весь <code>&lt;form&gt;</code> —
+                первый аргумент может быть просто списком элементов (так в оригинале собрана строка
+                фильтра таблицы: <code>new group(ui.els('[filter-piece]'), fopt)</code>). Здесь
+                вторая, полностью независимая от формы выше группа — только на поле уведомлений «по умолчанию».
+            </p>
+            <div class="d-flex align-items-center gap-3 flex-wrap">
+                <select class="form-select form-select-sm" style="max-width:12rem" data-group="prefs" name="digest">
+                    <option value="daily">Дайджест: ежедневно</option>
+                    <option value="weekly">Дайджест: раз в неделю</option>
+                    <option value="never">Дайджест: не присылать</option>
+                </select>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" data-group="prefs" name="dark_theme" id="dark_theme">
+                    <label class="form-check-label" for="dark_theme">Тёмная тема по умолчанию</label>
+                </div>
+                <span id="prefs-changed" class="text-muted small"></span>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var prefs = new group(ui.els('[data-group="prefs"]'), {
+    change: function () { statusEl.textContent = 'изменено: ' + JSON.stringify(prefs.data); }
+});
+prefs.data; // { digest: 'daily', dark_theme: null } — независимо от формы карточки выше</code></pre>
+        </div>
+    </div>
+
+    <!-- ===================== 3. REST-МЕТОДЫ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">3. REST-методы формы — не только GET/POST</h5>
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <select id="rest-method" class="form-select form-select-sm" style="max-width:10rem">
+                    <option>GET</option><option selected>PUT</option><option>PATCH</option><option>DELETE</option><option>POST</option>
+                </select>
+                <button type="button" id="btn-rest-send" class="btn btn-primary btn-sm">Отправить на /mock/users/42</button>
+            </div>
+            <div id="rest-result" class="mt-2"></div>
+        </div>
+    </div>
+
+    <!-- ===================== 4. TYPEAHEAD ОТДЕЛЬНО ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">4. Typeahead отдельно от формы</h5>
+            <div class="dropdown" style="max-width:20rem">
+                <input class="form-control form-control-sm" type="text" id="ta-standalone" name="city" url="/mock/cities" placeholder="Москва, Санкт-Петербург…">
+            </div>
+            <p class="text-muted mt-2 mb-0">Минимум 2 символа — запрос уходит на <code>/mock/cities?city=…</code> (перехвачен, без реального сервера).</p>
+        </div>
+    </div>
+
+    <!-- ===================== 5. МАСКИРОВАННЫЙ ВВОД ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">5. Маскированный ввод — <code>maskedigits(el, pattern, cleared)</code></h5>
+            <p class="card-text text-muted">Принимает только цифры, буквы/спецсимволы игнорируются — маска задаёт, где именно эти цифры окажутся.</p>
+            <div class="row g-3">
+                <div class="col-sm-6 col-md-3"><label class="form-label small">Телефон</label><input class="form-control form-control-sm" id="m-phone"></div>
+                <div class="col-sm-6 col-md-3"><label class="form-label small">Дата</label><input class="form-control form-control-sm" id="m-date"></div>
+                <div class="col-sm-6 col-md-3"><label class="form-label small">СНИЛС</label><input class="form-control form-control-sm" id="m-snils"></div>
+                <div class="col-sm-6 col-md-3"><label class="form-label small">Номер карты</label><input class="form-control form-control-sm" id="m-card"></div>
+            </div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>maskedigits(document.querySelector('#m-phone'), '(___) ___-__-__', false);
+maskedigits(document.querySelector('#m-date'),  '__.__.____', false);
+maskedigits(document.querySelector('#m-snils'), '___-___-___ __', false);
+maskedigits(document.querySelector('#m-card'),  '____ ____ ____ ____', false);</code></pre>
+        </div>
+    </div>
+
+    <h5 class="mt-4">Журнал событий</h5>
+    <ul id="event-log"></ul>
+
+    <div class="alert alert-secondary mt-4">
+        <strong>О заглушке сети на этой странице:</strong> запросы на
+        <code>/mock/cities</code> и <code>/mock/users/*</code> перехватываются
+        обёрткой поверх <code>XMLHttpRequest.prototype.open/send</code> прямо в
+        скрипте этой страницы — сделано только для того, чтобы пример работал
+        как самостоятельный файл без backend'а. Ни <code>group</code>, ни
+        <code>xhr()</code>, ни <code>typeahead()</code> об этом «не знают» —
+        для них это обычный сетевой запрос и обычный ответ сервера.
+    </div>
+</div>
+
+<!-- Шаблон выпадашки typeahead — тот же, что в Application/view/typeahead-tpl.phtml исходного проекта -->
+<script type="text/x-template" id="typeahead-tpl">
+{% var d = data || [], up = arguments[0].up || false;
+if (!up) { %}
+<ul class="typeahead dropdown-menu dropdown-menu-start list fade">
+    {% } for(var i=0; i<d.length; i++) { %}
+    <li class="dropdown-item" value="{%= i %}" title="{%= d[i][field] %}">{%= d[i][field] %}</li>
+    {% } if (!up) { %}
+</ul>
+{% } %}
+</script>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg) {
+        var li = document.createElement('li');
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    // -----------------------------------------------------------------
+    // Заглушка сети: перехватываем XMLHttpRequest.prototype.open/send для
+    // /mock/* — только ради самодостаточности этого файла (см. пояснение
+    // в конце страницы). Настоящее приложение просто указывает боевой url.
+    // -----------------------------------------------------------------
+    var CITIES = ['Москва', 'Санкт-Петербург', 'Новосибирск', 'Екатеринбург', 'Казань', 'Нижний Новгород', 'Челябинск', 'Красноярск', 'Самара', 'Уфа', 'Ростов-на-Дону', 'Омск'];
+    (function () {
+        var origOpen = XMLHttpRequest.prototype.open, origSend = XMLHttpRequest.prototype.send;
+        XMLHttpRequest.prototype.open = function (method, url) {
+            this.__mockMethod = method; this.__mockUrl = url;
+            return origOpen.apply(this, arguments);
+        };
+        XMLHttpRequest.prototype.send = function (body) {
+            if (this.__mockUrl && this.__mockUrl.indexOf('/mock/') === 0) {
+                var x = this, method = this.__mockMethod, url = this.__mockUrl;
+                setTimeout(function () {
+                    var resp = mockResponse(method, url);
+                    addLog('Мок-сервер: ' + method + ' ' + url + ' -> ' + resp.result);
+                    Object.defineProperty(x, 'readyState', { value: 4, configurable: true });
+                    Object.defineProperty(x, 'status', { value: 200, configurable: true });
+                    Object.defineProperty(x, 'responseText', { value: JSON.stringify(resp), configurable: true });
+                    x.dispatchEvent(new Event('readystatechange'));
+                    x.dispatchEvent(new Event('load'));
+                }, 180);
+                return;
+            }
+            return origSend.apply(this, arguments);
+        };
+    })();
+
+    function mockResponse(method, url) {
+        var u = url.split('?'), path = u[0], params = location.decoder('?' + (u[1] || ''));
+        if (path === '/mock/cities') {
+            var q = String(params.city || '').toLowerCase();
+            var matches = q.length ? CITIES.filter(function (c) { return c.toLowerCase().indexOf(q) > -1; }) : CITIES;
+            return { result: 'ok', data: matches.slice(0, 8).map(function (c) { return { city: c }; }) };
+        }
+        if (path.indexOf('/mock/users') === 0) {
+            return { result: 'ok', message: 'сервер принял бы это как ' + method + ' ' + path };
+        }
+        return { result: 'error', message: 'неизвестная демо-точка' };
+    }
+
+    // -----------------------------------------------------------------
+    // 1) Основная форма — group() + маски + typeahead + валидация.
+    // -----------------------------------------------------------------
+    var formEl = ui.el('#user-form');
+    var form = new group(formEl, Object.merge(group_xhr_opt, {
+        done: function (e) { addLog('Форма: успешно отправлено (' + formEl.getAttribute('method').toUpperCase() + ').'); },
+        fail: function (e) { addLog('Форма: ошибка отправки.'); }
+    }));
+
+    maskedigits(form.form.phone, '(___) ___-__-__', false);
+    maskedigits(form.form.birthdate, '__.__.____', false);
+    pattern_validator.call(form.form, [form.form.fio, form.form.email]);
+    typeahead(form.form.city, { skip: 2 });
+
+    ui.el('#method-badge').textContent = formEl.getAttribute('method').toUpperCase();
+
+    ui.el('#btn-load-json').ui.on('click', function () {
+        var json = {
+            role_id: 2, is_active: true,
+            fio: 'Иванов Пётр Сергеевич', email: 'ivanov@example.com',
+            phone: '9161234567', birthdate: '15051988',
+            city: 'Москва',
+            // ВАЖНО (асимметрия чтения/записи): form.data (геттер) СОБИРАЕТ
+            // "address[city]"/"address[zip]" в form.data.address = {city,zip}
+            // (см. раздел 5 ниже) — а вот у СЕТТЕРА form.data = {...} такой
+            // сборки в обратную сторону нет: ключ должен буквально совпадать
+            // со строкой атрибута name, поэтому здесь именно "address[city]",
+            // а не вложенный объект address:{city:...}.
+            'address[city]': 'Санкт-Петербург', 'address[zip]': '190000',
+            channels: ['sms', 'push'],      // обычный массив чекбоксов — отмечаются те, чьи value входят в массив
+            permissions: 5                   // pack-битмаска: 1(чтение) | 4(удаление) = 5 — отметятся именно эти два чекбокса
+        };
+        form.data = json;
+        addLog('form.data = ' + JSON.stringify(json) + ' — поля заполнены.');
+    });
+
+    ui.el('#btn-show-json').ui.on('click', function () {
+        var box = ui.el('#json-out');
+        box.style.display = 'block';
+        box.textContent = JSON.stringify(form.data, null, 2);
+        addLog('form.data прочитан для отправки на сервер (JSON.stringify ниже под формой).');
+    });
+
+    // -----------------------------------------------------------------
+    // 2) group() на подмножестве полей (не форма целиком).
+    // -----------------------------------------------------------------
+    var prefs = new group(ui.els('[data-group="prefs"]'), {
+        change: function () { ui.el('#prefs-changed').textContent = JSON.stringify(prefs.data); }
+    });
+    ui.el('#prefs-changed').textContent = JSON.stringify(prefs.data);
+
+    // -----------------------------------------------------------------
+    // 3) REST-методы — меняем method прямо на форме и смотрим, что реально уходит.
+    // -----------------------------------------------------------------
+    ui.el('#btn-rest-send').ui.on('click', function () {
+        var method = ui.el('#rest-method').value;
+        xhr({
+            method: method, url: '/mock/users/42',
+            done: function (e) {
+                // ВАЖНО: внутри done/fail не полагаемся на this === XHR — xhr() вызывает
+                // opt.done(e) обычным вызовом, без .call(x, e), поэтому this здесь —
+                // window (как и в исходном users.js everywhere используется ui.src(e)).
+                ui.el('#rest-result').innerHTML = '<div class="alert alert-success py-2 mb-0">' + ui.src(e).responseJSON.message + '</div>';
+            },
+            fail: function (e) {
+                ui.el('#rest-result').innerHTML = '<div class="alert alert-danger py-2 mb-0">Ошибка запроса.</div>';
+            }
+        });
+    });
+
+    // -----------------------------------------------------------------
+    // 4) Typeahead отдельно.
+    // -----------------------------------------------------------------
+    typeahead(ui.el('#ta-standalone'), { skip: 2 });
+
+    // -----------------------------------------------------------------
+    // 5) Маски — только цифры, разные шаблоны.
+    // -----------------------------------------------------------------
+    maskedigits(ui.el('#m-phone'), '(___) ___-__-__', false);
+    maskedigits(ui.el('#m-date'), '__.__.____', false);
+    maskedigits(ui.el('#m-snils'), '___-___-___ __', false);
+    maskedigits(ui.el('#m-card'), '____ ____ ____ ____', false);
+
+    addLog('Пример готов.');
+})();
+</script>
+</body>
+</html>
