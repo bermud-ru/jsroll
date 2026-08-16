@@ -8,7 +8,11 @@
  * прицелом на итоговый результат как обычный растровый <img> (см.
  * Canvas.toImage()). Оформлен в том же стиле: каждая созданная фигура
  * получает свойство `.raster` (аналог `.ui`/`.css`/`.svg`) с методами
- * attr/style/animate/rm.
+ * attr/style/animate/rm/on/off/trigger. on/trigger — подписка на и
+ * генерация полностью пользовательских типов событий с любыми данными
+ * (у фигур — через свой мини-эмиттер, у самой канвы — через нативный
+ * addEventListener/dispatchEvent на <canvas>), удобно для развязки "ввод
+ * данных" / "отрисовка графика", см. examples/image/index.html.
  *
  * В отличие от SVG, у <canvas> нет отдельных DOM-узлов на фигуру — canvas
  * это просто пиксели. Поэтому здесь используется классическая для 2D-canvas
@@ -52,6 +56,32 @@
     }
 
     /**
+     * Небольшой миксин пользовательских событий для объектов без
+     * собственного DOM-узла (RasterShape — обычный JS-объект, не элемент
+     * canvas, поэтому нативный addEventListener/dispatchEvent ему не
+     * доступен). API — те же on/off/trigger, что и у SvgElement/SvgCanvas
+     * в jsroll.svg.js, чтобы оба модуля учились одинаково.
+     */
+    function withEvents(obj) {
+        var handlers = {};
+        obj.on = function (type, fn) {
+            (handlers[type] || (handlers[type] = [])).push(fn);
+            return obj;
+        };
+        obj.off = function (type, fn) {
+            if (!handlers[type]) return obj;
+            handlers[type] = fn ? handlers[type].filter(function (h) { return h !== fn; }) : [];
+            return obj;
+        };
+        /** trigger(type, detail) — сгенерировать пользовательское событие; detail доступен в обработчике как e.detail */
+        obj.trigger = function (type, detail) {
+            (handlers[type] || []).slice().forEach(function (fn) { fn.call(obj, { type: type, detail: detail, target: obj }); });
+            return obj;
+        };
+        return obj;
+    }
+
+    /**
      * @class RasterShape — одна фигура на канве (line/circle/ellipse/rect/
      * polyline/polygon/arc/text). Свойства читаются/пишутся через .attr(),
      * либо напрямую через объект, который возвращает .attr() без аргументов.
@@ -61,6 +91,7 @@
         this.type = type;
         this.props = Object.merge({ fill: null, stroke: '#000', 'stroke-width': 1, opacity: 1, visible: true }, attrs || {});
         this.raster = this; // shape.raster.attr(...) работает так же, как el.svg.attr(...) у jsroll.svg.js
+        withEvents(this);   // shape.on('my:event', fn) / shape.trigger('my:event', data)
     };
     RasterShape.prototype = {
         /**
@@ -205,6 +236,22 @@
             img.src = this.el.toDataURL('image/png');
             return img;
         },
+
+        /**
+         * RasterCanvas:on/off/trigger — подписка на пользовательские
+         * события прямо на канве. this.el — настоящий <canvas> (DOM-узел),
+         * поэтому здесь, в отличие от RasterShape, работает штатный
+         * addEventListener/dispatchEvent, а не миксин withEvents. Удобно,
+         * чтобы развязать код, добавляющий данные (например, обработчик
+         * формы ввода), и код, который их рисует:
+         *
+         * canvas.on('point:added', function (e) { addBar(e.detail); });
+         * ...
+         * canvas.trigger('point:added', { label: 'Янв', value: 42 });
+         */
+        on: function (type, fn, opt) { this.el.addEventListener(type, fn, opt || false); return this; },
+        off: function (type, fn, opt) { this.el.removeEventListener(type, fn, opt || false); return this; },
+        trigger: function (type, detail) { this.el.dispatchEvent(new CustomEvent(type, { detail: detail, bubbles: true })); return this; },
 
         /** Общий цикл requestAnimationFrame для всех активных .animate() — один redraw() на кадр. */
         _loop: function () {

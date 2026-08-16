@@ -114,7 +114,8 @@ jsroll.tools.js — независим, ничего не требует, мож
 | `new SvgCanvas(target, opt)` | class | контейнер `<svg>` + методы создания фигур |
 | `canvas.line/circle/ellipse/rect/polyline/polygon/path/text/group(attrs)` | method | создание SVG-примитива |
 | `canvas.arc({cx,cy,r,startAngle,endAngle})` | method | сектор окружности как `<path>` — для круговых диаграмм |
-| `el.svg.attr/style/animate/rm/addClass/removeClass` | property | управление созданным узлом (аналог `.ui`/`.css`) |
+| `el.svg.attr/style/animate/rm/addClass/removeClass/on/off/trigger` | property | управление созданным узлом (аналог `.ui`/`.css`); `on/off/trigger` — подписка/генерация пользовательских событий, всплывают до канвы |
+| `canvas.on/off/trigger` | method | то же самое на уровне всей канвы — удобно для развязки «источник данных» / «отрисовка» |
 | `svgEasing.linear/easeIn/easeOut/easeInOut` | object | функции плавности для `.animate()` |
 
 ### Растровая графика (`jsroll.image.js`, опционально) — см. `docs/image.md`
@@ -122,7 +123,8 @@ jsroll.tools.js — независим, ничего не требует, мож
 |---|---|---|
 | `new RasterCanvas(target, opt)` | class | контейнер `<canvas>` + методы создания фигур (тот же набор, что у `SvgCanvas`) |
 | `canvas.toImage(imgEl?)` | method | снимок канвы как настоящий `<img>` |
-| `shape.raster.attr/style/animate/rm` | property | управление фигурой (`shape.raster === shape`); `.animate()` умеет и массивы точек, не только числа |
+| `shape.raster.attr/style/animate/rm/on/off/trigger` | property | управление фигурой (`shape.raster === shape`); `.animate()` умеет и массивы точек, не только числа; `on/off/trigger` — свой мини-эмиттер (не DOM, без всплытия) |
+| `canvas.on/off/trigger` | method | пользовательские события на уровне канвы — настоящие нативные (canvas.el — реальный `<canvas>`) |
 | `imageEasing.linear/easeIn/easeOut/easeInOut` | object | функции плавности |
 
 ### Биометрия (`jsroll.auth.js`, опционально) — см. `docs/auth.md`

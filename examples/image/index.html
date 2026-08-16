@@ -130,6 +130,47 @@ downloadLink.href = pieChart.el.toDataURL('image/png');                // тот
         </div>
     </div>
 
+    <!-- ===================== 5. ДАННЫЕ С СТРАНИЦЫ ЧЕРЕЗ СОБЫТИЯ ===================== -->
+    <div class="card section-card">
+        <div class="card-body">
+            <h5 class="card-title">5. Данные, введённые на странице — через пользовательские события</h5>
+            <p class="card-text text-muted">
+                Форма ниже не знает, как устроен график — она просто генерирует
+                <code>chart.trigger('point:added', {label, value})</code> прямо на канве
+                (<code>canvas.el</code> — настоящий <code>&lt;canvas&gt;</code>, поэтому здесь
+                работает нативный <code>addEventListener</code>/<code>dispatchEvent</code>). Код
+                отрисовки подписан на это событие через <code>chart.on(...)</code> и ничего не
+                знает про форму.
+            </p>
+            <div class="row">
+                <div class="col-md-9">
+                    <canvas id="user-chart" class="chart" width="640" height="240"></canvas>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0">Подпись</label>
+                    <input type="text" id="point-label" class="form-control form-control-sm mb-2" placeholder="Например, Пн" maxlength="6">
+                    <label class="form-label small mb-0">Значение</label>
+                    <input type="number" id="point-value" class="form-control form-control-sm mb-2" placeholder="0..100">
+                    <button type="button" id="btn-add-point" class="btn btn-primary btn-sm w-100 mb-1">Добавить точку</button>
+                    <button type="button" id="btn-remove-point" class="btn btn-outline-secondary btn-sm w-100 mb-1">Удалить последнюю</button>
+                    <button type="button" id="btn-clear-points" class="btn btn-outline-danger btn-sm w-100">Очистить</button>
+                </div>
+            </div>
+            <ul id="user-chart-log" class="mt-2" style="font-family:monospace;font-size:.82em;max-height:8rem;overflow-y:auto;background:#f8f9fa;border:1px solid #dee2e6;border-radius:.375rem;padding:.5rem .75rem;list-style:none;"></ul>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var chart = new RasterCanvas('#user-chart', { width: 640, height: 240 });
+
+// код отрисовки НЕ знает, откуда берутся данные — только реагирует на событие
+chart.on('point:added', function (e) { addBar(e.detail.label, e.detail.value); });
+chart.on('point:removed', function () { removeLastBar(); });
+chart.on('chart:cleared', function () { clearBars(); });
+
+// обработчик формы НЕ знает, как устроена отрисовка — просто сообщает о новых данных
+document.querySelector('#btn-add-point').addEventListener('click', function () {
+    chart.trigger('point:added', { label: labelInput.value, value: Number(valueInput.value) });
+});</code></pre>
+        </div>
+    </div>
+
     <h5 class="mt-4">API модуля вкратце</h5>
     <ul class="text-muted">
         <li><code>new RasterCanvas(selector, opt)</code> — контейнер <code>&lt;canvas&gt;</code>, <code>opt.width/height</code> — размер в пикселях.</li>
@@ -138,8 +179,15 @@ downloadLink.href = pieChart.el.toDataURL('image/png');                // тот
         <li><code>shape.raster.animate({свойство: значение, ...}, duration, {easing, done, step})</code> — плавный твин; работает и с числами, и с массивами точек.</li>
         <li><code>shape.raster.rm()</code> / <code>canvas.clear()</code> — удаление одной фигуры / очистка всей канвы.</li>
         <li><code>canvas.toImage(imgEl?)</code> — снимок текущего рисунка как <code>&lt;img&gt;</code> (создаёт новый либо обновляет переданный).</li>
+        <li><code>shape.on(type, fn)</code>/<code>.off(type, fn)</code>/<code>.trigger(type, detail)</code> и то же самое у <code>canvas.on/off/trigger</code> — подписка и генерация пользовательских событий.</li>
         <li><code>imageEasing.linear/easeIn/easeOut/easeInOut</code> — готовые функции плавности.</li>
     </ul>
+    <div class="alert alert-secondary">
+        В отличие от <code>jsroll.svg.js</code>, где события на фигуре всплывают до канвы (это
+        реальные DOM-узлы), здесь у отдельной фигуры (<code>shape.on(...)</code>) всплытия нет —
+        это обычный JS-объект, не элемент DOM. А вот у самой канвы (<code>canvas.on(...)</code>)
+        события — самые настоящие, нативные (<code>canvas.el</code> — реальный <code>&lt;canvas&gt;</code>).
+    </div>
 </div>
 
 <script>
@@ -331,6 +379,78 @@ downloadLink.href = pieChart.el.toDataURL('image/png');                // тот
         dl.href = img.src;
         dl.style.display = 'inline-block';
     });
+
+    // =================================================================
+    // 5) ДАННЫЕ С СТРАНИЦЫ ЧЕРЕЗ ПОЛЬЗОВАТЕЛЬСКИЕ СОБЫТИЯ
+    // =================================================================
+    (function () {
+        var W = 640, H = 240, PAD_L = 30, PAD_B = 26, PAD_T = 10;
+        var chart = new RasterCanvas('#user-chart', { width: W, height: H });
+        var logBox = ui.el('#user-chart-log');
+        function log(msg) {
+            var li = document.createElement('li');
+            li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+            logBox.insertBefore(li, logBox.firstChild);
+        }
+
+        var points = []; // { label, value, bar, label_el, value_el }
+        var baseline = H - PAD_B;
+        var colors = ['#0d6efd', '#20c997', '#fd7e14', '#dc3545', '#6f42c1', '#0dcaf0'];
+
+        function maxValue() { return Math.max(10, points.reduce(function (m, p) { return Math.max(m, p.value); }, 0)); }
+        function layout(animate) {
+            var n = points.length, max = maxValue();
+            var slot = (W - PAD_L - 10) / Math.max(n, 1);
+            var barW = Math.min(52, slot * 0.6);
+            points.forEach(function (p, i) {
+                var cx = PAD_L + slot * i + slot / 2;
+                var h = (baseline - PAD_T) * (p.value / max);
+                var target = { x: cx - barW / 2, y: baseline - h, width: barW, height: h };
+                if (animate) p.bar.raster.animate(target, 400, { easing: imageEasing.easeInOut });
+                else p.bar.raster.attr(target);
+                p.label_el.raster.attr({ x: cx, y: baseline + 14 });
+                p.value_el.raster.attr({ x: cx, y: baseline - h - 6, text: String(p.value) });
+            });
+        }
+
+        // --- код отрисовки: НЕ знает, откуда берутся данные, только слушает события ---
+        chart.on('point:added', function (e) {
+            var label = e.detail.label, value = e.detail.value;
+            var bar = chart.rect({ x: 0, y: baseline, width: 0, height: 0, fill: colors[points.length % colors.length] });
+            var label_el = chart.text({ x: 0, y: baseline + 14, align: 'center', fill: '#6c757d', font: '11px sans-serif' }, label);
+            var value_el = chart.text({ x: 0, y: baseline, align: 'center', fill: '#212529', font: 'bold 11px sans-serif' }, String(value));
+            points.push({ label: label, value: value, bar: bar, label_el: label_el, value_el: value_el });
+            layout(true);
+            log('поймано point:added -> ' + label + ' = ' + value);
+        });
+        chart.on('point:removed', function () {
+            var p = points.pop();
+            if (!p) return;
+            p.bar.raster.rm(); p.label_el.raster.rm(); p.value_el.raster.rm();
+            layout(true);
+            log('поймано point:removed');
+        });
+        chart.on('chart:cleared', function () {
+            points.forEach(function (p) { p.bar.raster.rm(); p.label_el.raster.rm(); p.value_el.raster.rm(); });
+            points = [];
+            log('поймано chart:cleared');
+        });
+
+        // --- форма: НЕ знает, как устроена отрисовка, только генерирует события ---
+        ui.el('#btn-add-point').ui.on('click', function () {
+            var labelInput = ui.el('#point-label'), valueInput = ui.el('#point-value');
+            var value = parseFloat(valueInput.value);
+            if (isNaN(value)) { log('значение не число — игнорируем'); return; }
+            var label = labelInput.value.trim() || ('#' + (points.length + 1));
+            chart.trigger('point:added', { label: label, value: value });
+            labelInput.value = ''; valueInput.value = ''; labelInput.focus();
+        });
+        ui.el('#btn-remove-point').ui.on('click', function () { chart.trigger('point:removed'); });
+        ui.el('#btn-clear-points').ui.on('click', function () { chart.trigger('chart:cleared'); });
+
+        // немного данных для затравки
+        [['Пн', 30], ['Вт', 55], ['Ср', 40]].forEach(function (p) { chart.trigger('point:added', { label: p[0], value: p[1] }); });
+    })();
 })();
 </script>
 </body>

@@ -9,7 +9,12 @@
  *
  * Оформлен в стиле jsroll.ui.js: любой созданный SVG-узел получает
  * неизменяемое свойство `.svg` (аналог `.ui`/`.css` у обычных DOM-узлов)
- * с методами attr/style/классы(add/removeClass)/animate/rm. Зависит от jsroll.ui.js
+ * с методами attr/style/классы(add/removeClass)/animate/rm/on/off/trigger.
+ * `on`/`trigger` — не только обычные DOM-события (click и т.п.), но и
+ * полностью пользовательские типы событий с любыми данными (addEventListener
+ * одинаково принимает любую строку) — то же самое умеет и сама канва
+ * (`SvgCanvas`), что удобно для развязки "ввод данных" / "отрисовка
+ * графика", см. examples/svg/index.html. Зависит от jsroll.ui.js
  * (использует window.ui для поиска контейнера по селектору) — как и
  * jsroll.dao.js/jsroll.ui.grid.js, самостоятельно не подключается.
  *
@@ -63,9 +68,26 @@
         hasClass: function (c) { return this.instance.classList.contains(c); },
         toggleClass: function (c) { this.instance.classList.toggle(c); return this; },
 
-        /** SvgElement:on/off — обычная подписка/отписка от DOM-событий узла */
+        /** SvgElement:on/off — подписка/отписка от событий узла: и обычных
+         * DOM-событий (click/mouseover/...), и полностью пользовательских
+         * типов (addEventListener одинаково принимает любую строку) —
+         * см. SvgElement:trigger ниже, чтобы такие события генерировать. */
         on: function (event, fn, opt) { this.instance.addEventListener(event, fn, opt || false); return this; },
         off: function (event, fn, opt) { this.instance.removeEventListener(event, fn, opt || false); return this; },
+
+        /**
+         * SvgElement:trigger — сгенерировать (диспатчить) на узле
+         * пользовательское событие произвольного типа с любыми данными.
+         * Событие всплывает (bubbles:true), поэтому его может поймать и
+         * .svg.on(...) на родительской группе/канве, и .ui.dg(...) на
+         * обычном DOM-контейнере снаружи.
+         * @param type { string } имя события, например 'point:added'
+         * @param detail { *= } любые данные, доступны в обработчике как e.detail
+         */
+        trigger: function (type, detail) {
+            this.instance.dispatchEvent(new CustomEvent(type, { detail: detail, bubbles: true }));
+            return this;
+        },
 
         /** SvgElement:append — добавить готовый узел внутрь (группы и т.п.) */
         append: function (child) { this.instance.appendChild(child.instance || child); return wrap(child.instance || child); },
@@ -180,7 +202,24 @@
         clear: function () { while (this.el.firstChild) this.el.removeChild(this.el.firstChild); return this; },
 
         /** Canvas:rm — удалить конкретный узел, созданный этой канвой */
-        rm: function (el) { (el.svg || wrap(el).svg).rm(); return this; }
+        rm: function (el) { (el.svg || wrap(el).svg).rm(); return this; },
+
+        /**
+         * Canvas:on/off/trigger — подписка на пользовательские события
+         * прямо на канве (корневой <svg> — обычный DOM-узел, поэтому
+         * работает штатный addEventListener/dispatchEvent). Удобно, чтобы
+         * развязать код, добавляющий данные (например, обработчик формы
+         * ввода), и код, который их рисует — первый просто генерирует
+         * событие с произвольным именем и данными, второй на него
+         * подписан и ничего не знает об источнике данных.
+         *
+         * canvas.on('point:added', function (e) { addPoint(e.detail); });
+         * ...
+         * canvas.trigger('point:added', { label: 'Янв', value: 42 });
+         */
+        on: function (type, fn, opt) { this.el.addEventListener(type, fn, opt || false); return this; },
+        off: function (type, fn, opt) { this.el.removeEventListener(type, fn, opt || false); return this; },
+        trigger: function (type, detail) { this.el.dispatchEvent(new CustomEvent(type, { detail: detail, bubbles: true })); return this; }
     };
 
     g.SvgCanvas = Canvas;

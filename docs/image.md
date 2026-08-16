@@ -100,7 +100,42 @@ downloadLink.href = canvas.el.toDataURL('image/png');
 downloadLink.download = 'chart.png';
 ```
 
+## Пользовательские события — `on`/`off`/`trigger`
+
+Тот же API, что и у `jsroll.svg.js`, но с важной оговоркой: у отдельной
+фигуры (`shape.on/off/trigger`) нет DOM-узла, поэтому события реализованы
+собственным маленьким эмиттером (без нативного `addEventListener`) — и,
+как следствие, **без всплытия**. У самой канвы (`canvas.on/off/trigger`)
+события настоящие, нативные — `canvas.el` это реальный `<canvas>`.
+
+```js
+canvas.on('point:added', function (e) {
+    console.log(e.detail); // произвольные данные, переданные в trigger()
+});
+canvas.trigger('point:added', { label: 'Янв', value: 42 });
+
+shape.on('highlight', function (e) { /* сработает только на этой фигуре, вверх не всплывёт */ });
+shape.trigger('highlight');
+```
+
+Тот же приём развязки «источник данных / отрисовка», что и в
+`jsroll.svg.js`:
+
+```js
+// код отрисовки НЕ знает, откуда берутся данные
+canvas.on('point:added', function (e) { addBar(e.detail.label, e.detail.value); });
+
+// форма НЕ знает, как устроена отрисовка
+addButton.addEventListener('click', function () {
+    canvas.trigger('point:added', { label: labelInput.value, value: Number(valueInput.value) });
+});
+```
+
+Живой пример — раздел 5 в `examples/image/index.html` (форма на странице
+добавляет данные на график через события).
+
 ## Полный пример
 
-Те же три сценария, что у `jsroll.svg.js` (живой график, круговая
-диаграмма, «паутинка»), плюс снимок в `<img>` — в `examples/image/index.html`.
+Те же сценарии, что у `jsroll.svg.js` (живой график, круговая диаграмма,
+«паутинка»), снимок в `<img>`, плюс динамическое добавление данных из
+формы через пользовательские события — в `examples/image/index.html`.
