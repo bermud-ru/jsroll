@@ -14,7 +14,7 @@ jsroll: класс с шиной событий как у `Application` (`addEve
 состояние — через `storage()`.
 
 ```js
-var webauthn = new WebAuthn({ rpName: 'Моё приложение', rpId: location.hostname });
+var webauthn = new WebAuthn({ rpName: 'Моё приложение' }); // rpId — см. предупреждение ниже
 
 webauthn.addEventListener('webauthn.register', function (e) {
     console.log('зарегистрирован:', e.detail.userId);
@@ -51,12 +51,24 @@ WebAuthn существует ради того, чтобы `challenge` для
   не имя пользователя напрямую (в примере оно открытое — только ради
   простоты демонстрации).
 
+## ⚠ «The requested RPID did not match the origin or related origins»
+
+Именно поэтому `rpId` по умолчанию **не задан** (`null`) — см. `docs/auth.md`
+исходник и комментарий в `jsroll.auth.js`. Если задать `rpId` явно (например,
+`location.hostname`) и открыть страницу не как обычную вкладку браузера на
+её собственном адресе — через встроенный предпросмотр, прокси или iframe,
+которые подменяют/скрывают реальный адрес — браузер откажет именно с этой
+ошибкой, потому что видимый адрес не совпадает с тем, что WebAuthn считает
+настоящим доменом страницы. Решение — не задавать `rpId` (тогда браузер сам
+корректно подставит текущий эффективный домен) и/или открыть страницу в
+отдельной вкладке браузера напрямую, а не через встроенный просмотрщик.
+
 ## `new WebAuthn(opt)`
 
 ```js
 var webauthn = new WebAuthn({
     rpName: 'Моё приложение',       // по умолчанию document.title || location.hostname
-    rpId: location.hostname,          // домен, к которому привязывается ключ
+    rpId: null,                        // домен, к которому привязывается ключ — не задан -> браузер сам подставит текущий эффективный домен
     userVerification: 'required',     // требовать именно биометрию/PIN, а не просто "ключ подключён"
     authenticatorAttachment: 'platform', // встроенный сенсор устройства, не внешний USB-ключ
     attestation: 'none',

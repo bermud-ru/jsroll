@@ -206,7 +206,8 @@ typeahead(form.form.city, { url: '/mock/cities', skip: 2 });</code></pre>
                 <code>group()</code> необязательно вешать на весь <code>&lt;form&gt;</code> —
                 первый аргумент может быть просто списком элементов (так в оригинале собрана строка
                 фильтра таблицы: <code>new group(ui.els('[filter-piece]'), fopt)</code>). Здесь
-                вторая, полностью независимая от формы выше группа — только на поле уведомлений «по умолчанию».
+                вторая, полностью независимая от формы выше группа — только на поле уведомлений «по умолчанию»,
+                и она же отправляется на сервер отдельно от всей формы.
             </p>
             <div class="d-flex align-items-center gap-3 flex-wrap">
                 <select class="form-select form-select-sm" style="max-width:12rem" data-group="prefs" name="digest">
@@ -218,12 +219,47 @@ typeahead(form.form.city, { url: '/mock/cities', skip: 2 });</code></pre>
                     <input class="form-check-input" type="checkbox" data-group="prefs" name="dark_theme" id="dark_theme">
                     <label class="form-check-label" for="dark_theme">Тёмная тема по умолчанию</label>
                 </div>
+                <button type="button" id="btn-send-prefs" class="btn btn-outline-primary btn-sm">Отправить только эти поля</button>
                 <span id="prefs-changed" class="text-muted small"></span>
             </div>
+            <div id="prefs-send-result" class="mt-2"></div>
             <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var prefs = new group(ui.els('[data-group="prefs"]'), {
     change: function () { statusEl.textContent = 'изменено: ' + JSON.stringify(prefs.data); }
 });
-prefs.data; // { digest: 'daily', dark_theme: null } — независимо от формы карточки выше</code></pre>
+prefs.data; // { digest: 'daily', dark_theme: null } — независимо от формы карточки выше
+
+// эта группа отправляется САМА, отдельным запросом — вся остальная форма
+// её вообще не касается:
+xhr({ method: 'patch', url: '/mock/users/42/preferences', data: prefs.data, done: ..., fail: ... });</code></pre>
+
+            <hr class="my-3">
+
+            <h6>2b. Отправка только ИЗМЕНИВШИХСЯ полей главной формы</h6>
+            <p class="card-text text-muted">
+                Тот же <code>xhr()</code>/<code>group.data</code>, но с собственным
+                несложным diff'ом: запоминаем снимок <code>form.data</code> при
+                загрузке (и после каждой удачной отправки), а при сохранении
+                сравниваем с текущим состоянием и в <code>xhr()</code> уходят
+                только реально поменявшиеся ключи — экономит трафик и не
+                перезаписывает на сервере поля, которые пользователь не трогал.
+                Готового такого diff'а в jsroll нет — это несложная надстройка
+                поверх <code>form.data</code>.
+            </p>
+            <button type="button" id="btn-send-changed" class="btn btn-outline-primary btn-sm">Отправить только изменённые поля формы (блок 1)</button>
+            <button type="button" id="btn-snapshot-reset" class="btn btn-outline-secondary btn-sm">Сбросить точку отсчёта («ничего не менялось»)</button>
+            <div id="changed-send-result" class="mt-2"></div>
+            <pre class="p-3 bg-light border rounded mt-2 mb-0"><code>var snapshot = JSON.stringify(form.data); // точка отсчёта — что было "исходно"
+
+function sendOnlyChanged() {
+    var current = form.data, before = JSON.parse(snapshot), changed = {};
+    Object.keys(current).forEach(function (k) {
+        if (JSON.stringify(current[k]) !== JSON.stringify(before[k])) changed[k] = current[k];
+    });
+    if (!Object.keys(changed).length) return; // менять нечего
+    xhr({ method: 'patch', url: '/mock/users/42', data: changed, done: function () {
+        snapshot = JSON.stringify(current); // после удачной отправки — новая точка отсчёта
+    }});
+}</code></pre>
         </div>
     </div>
 
@@ -321,8 +357,8 @@ if (!up) { %}
             if (this.__mockUrl && this.__mockUrl.indexOf('/mock/') === 0) {
                 var x = this, method = this.__mockMethod, url = this.__mockUrl;
                 setTimeout(function () {
-                    var resp = mockResponse(method, url);
-                    addLog('Мок-сервер: ' + method + ' ' + url + ' -> ' + resp.result);
+                    var resp = mockResponse(method, url, body);
+                    addLog('Мок-сервер: ' + method + ' ' + url + ' -> ' + resp.result + (body ? ' (тело: ' + body + ')' : ''));
                     Object.defineProperty(x, 'readyState', { value: 4, configurable: true });
                     Object.defineProperty(x, 'status', { value: 200, configurable: true });
                     Object.defineProperty(x, 'responseText', { value: JSON.stringify(resp), configurable: true });
@@ -335,7 +371,7 @@ if (!up) { %}
         };
     })();
 
-    function mockResponse(method, url) {
+    function mockResponse(method, url, body) {
         var u = url.split('?'), path = u[0], params = location.decoder('?' + (u[1] || ''));
         if (path === '/mock/cities') {
             var q = String(params.city || '').toLowerCase();
@@ -343,7 +379,11 @@ if (!up) { %}
             return { result: 'ok', data: matches.slice(0, 8).map(function (c) { return { city: c }; }) };
         }
         if (path.indexOf('/mock/users') === 0) {
-            return { result: 'ok', message: 'сервер принял бы это как ' + method + ' ' + path };
+            // Тело запроса (то, что реально ушло бы на сервер) отражаем
+            // обратно в ответе — чтобы на странице было видно, какие именно
+            // поля были отправлены (актуально для демонстрации "только
+            // изменённые поля" — блок 2b).
+            return { result: 'ok', message: 'сервер принял бы это как ' + method + ' ' + path, received: body ? str2json(body, body) : null };
         }
         return { result: 'error', message: 'неизвестная демо-точка' };
     }
@@ -392,12 +432,65 @@ if (!up) { %}
     });
 
     // -----------------------------------------------------------------
-    // 2) group() на подмножестве полей (не форма целиком).
+    // 2a) group() на подмножестве полей (не форма целиком) + отправка
+    //     именно этого подмножества отдельным запросом.
     // -----------------------------------------------------------------
     var prefs = new group(ui.els('[data-group="prefs"]'), {
         change: function () { ui.el('#prefs-changed').textContent = JSON.stringify(prefs.data); }
     });
     ui.el('#prefs-changed').textContent = JSON.stringify(prefs.data);
+
+    ui.el('#btn-send-prefs').ui.on('click', function () {
+        xhr({
+            method: 'patch', url: '/mock/users/42/preferences', data: prefs.data,
+            done: function (e) {
+                ui.el('#prefs-send-result').innerHTML = '<div class="alert alert-success py-2 mb-0">Отправлено: ' + JSON.stringify(prefs.data) + '</div>';
+            },
+            fail: function (e) {
+                ui.el('#prefs-send-result').innerHTML = '<div class="alert alert-danger py-2 mb-0">Ошибка отправки.</div>';
+            }
+        });
+    });
+
+    // -----------------------------------------------------------------
+    // 2b) Отправка только ИЗМЕНИВШИХСЯ полей главной формы (блок 1) —
+    //     несложный diff поверх form.data, готового такого механизма в
+    //     jsroll нет.
+    // -----------------------------------------------------------------
+    var formSnapshot = JSON.stringify(form.data);
+
+    function diffChangedFields() {
+        var current = form.data, before = str2json(formSnapshot, {}) || {}, changed = {};
+        Object.keys(current).forEach(function (k) {
+            if (JSON.stringify(current[k]) !== JSON.stringify(before[k])) changed[k] = current[k];
+        });
+        return changed;
+    }
+
+    ui.el('#btn-send-changed').ui.on('click', function () {
+        var changed = diffChangedFields();
+        if (!Object.keys(changed).length) {
+            ui.el('#changed-send-result').innerHTML = '<div class="alert alert-secondary py-2 mb-0">С последнего снимка ничего не менялось — отправлять нечего.</div>';
+            addLog('diff: изменений не найдено.');
+            return;
+        }
+        addLog('diff: найдены изменённые поля -> ' + JSON.stringify(changed));
+        xhr({
+            method: 'patch', url: '/mock/users/42', data: changed,
+            done: function (e) {
+                formSnapshot = JSON.stringify(form.data); // новая точка отсчёта после удачной отправки
+                ui.el('#changed-send-result').innerHTML = '<div class="alert alert-success py-2 mb-0">Отправлено только изменённое: <code>' + JSON.stringify(changed) + '</code></div>';
+            },
+            fail: function (e) {
+                ui.el('#changed-send-result').innerHTML = '<div class="alert alert-danger py-2 mb-0">Ошибка отправки.</div>';
+            }
+        });
+    });
+    ui.el('#btn-snapshot-reset').ui.on('click', function () {
+        formSnapshot = JSON.stringify(form.data);
+        ui.el('#changed-send-result').innerHTML = '<div class="alert alert-secondary py-2 mb-0">Точка отсчёта обновлена — текущее состояние формы теперь считается «исходным».</div>';
+        addLog('Снимок формы сброшен (текущее состояние = точка отсчёта).');
+    });
 
     // -----------------------------------------------------------------
     // 3) REST-методы — меняем method прямо на форме и смотрим, что реально уходит.

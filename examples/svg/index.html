@@ -135,7 +135,13 @@ dataPolygon.setAttribute('points', pointsForValues(values));</code></pre>
                     <input type="number" id="point-value" class="form-control form-control-sm mb-2" placeholder="0..100">
                     <button type="button" id="btn-add-point" class="btn btn-primary btn-sm w-100 mb-1">Добавить точку</button>
                     <button type="button" id="btn-remove-point" class="btn btn-outline-secondary btn-sm w-100 mb-1">Удалить последнюю</button>
-                    <button type="button" id="btn-clear-points" class="btn btn-outline-danger btn-sm w-100">Очистить</button>
+                    <button type="button" id="btn-clear-points" class="btn btn-outline-danger btn-sm w-100 mb-2">Очистить</button>
+                    <button type="button" id="btn-save-svg" class="btn btn-outline-secondary btn-sm w-100 mb-1">💾 Скачать SVG</button>
+                    <button type="button" id="btn-save-json" class="btn btn-outline-secondary btn-sm w-100 mb-1">💾 Сохранить данные (JSON)</button>
+                    <label class="btn btn-outline-secondary btn-sm w-100 mb-0">
+                        📂 Загрузить данные (JSON)
+                        <input type="file" id="load-json" accept="application/json" hidden>
+                    </label>
                 </div>
             </div>
             <ul id="user-chart-log" class="mt-2" style="font-family:monospace;font-size:.82em;max-height:8rem;overflow-y:auto;background:#f8f9fa;border:1px solid #dee2e6;border-radius:.375rem;padding:.5rem .75rem;list-style:none;"></ul>
@@ -147,9 +153,14 @@ chart.on('point:removed', function () { removeLastBar(); });
 chart.on('chart:cleared', function () { clearBars(); });
 
 // обработчик формы НЕ знает, как устроена отрисовка — просто сообщает о новых данных
-document.querySelector('#btn-add-point').addEventListener('click', function () {
+ui.el('#btn-add-point').addEventListener('click', function () {
     chart.trigger('point:added', { label: labelInput.value, value: Number(valueInput.value) });
-});</code></pre>
+});
+
+// сохранить картинку и данные в файл — методы самой канвы
+chart.download('chart.svg');                        // .svg — сериализованное содержимое канвы
+chart.downloadJSON(pointsData, 'chart-data.json');    // .json — исходные данные, из которых собран график</code></pre>
+            <p class="text-muted small mt-1 mb-0">Загрузка JSON не вызывает функцию отрисовки напрямую — она просто заново генерирует те же события <code>point:added</code> для каждой точки из файла, ровно как это делает форма выше.</p>
         </div>
     </div>
 
@@ -487,6 +498,38 @@ document.querySelector('#btn-add-point').addEventListener('click', function () {
         });
         ui.el('#btn-remove-point').ui.on('click', function () { chart.trigger('point:removed'); });
         ui.el('#btn-clear-points').ui.on('click', function () { chart.trigger('chart:cleared'); });
+
+        // --- сохранение картинки и данных в файл — методы самой канвы ---
+        ui.el('#btn-save-svg').ui.on('click', function () {
+            chart.download('chart.svg');
+            log('chart.download() -> chart.svg');
+        });
+        ui.el('#btn-save-json').ui.on('click', function () {
+            var data = points.map(function (p) { return { label: p.label, value: p.value }; });
+            chart.downloadJSON(data, 'chart-data.json');
+            log('chart.downloadJSON() -> chart-data.json (' + data.length + ' точек)');
+        });
+        // Загрузка JSON НЕ вызывает функцию отрисовки напрямую — она просто
+        // заново генерирует событие point:added для каждой точки из файла,
+        // ровно как это делает форма выше. Отрисовка ничего не знает, что
+        // источник данных сменился с формы на файл.
+        ui.el('#load-json').ui.on('change', function (e) {
+            var file = e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function () {
+                try {
+                    var data = JSON.parse(reader.result);
+                    chart.trigger('chart:cleared');
+                    data.forEach(function (p) { chart.trigger('point:added', { label: p.label, value: p.value }); });
+                    log('Загружено из ' + file.name + ': ' + data.length + ' точек.');
+                } catch (err) {
+                    log('Ошибка чтения JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        });
 
         // немного данных для затравки
         [['Пн', 30], ['Вт', 55], ['Ср', 40]].forEach(function (p) { chart.trigger('point:added', { label: p[0], value: p[1] }); });

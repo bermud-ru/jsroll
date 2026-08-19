@@ -105,8 +105,32 @@
         <div class="btn-group mb-2" role="group">
             <button type="button" class="btn btn-outline-secondary" id="btn-csv">Экспорт CSV</button>
             <button type="button" class="btn btn-outline-secondary" id="btn-xls">Экспорт Excel</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-print">🖨 Печать</button>
         </div>
     </div>
+
+    <!-- Шаблон для печати (copy2prn) — своя мини-страница со стилями таблицы,
+         т.к. copy2prn() печатает содержимое во ВНУТРЕННЕМ iframe без доступа
+         к стилям родительской страницы (Bootstrap туда не попадает). -->
+    <script type="text/x-template" id="print-tpl">
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <title>{%= title %}</title>
+            <style>
+                body { font-family: sans-serif; margin: 1.5em; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #333; padding: 4px 10px; text-align: left; }
+                thead th { background: #eee; }
+                tbody td:first-of-type { background: #f5f5f5; text-align: center; font-weight: 600; }
+            </style>
+        </head>
+        <body>
+            <h3>{%= title %}</h3>
+            {%= tableHtml %}
+        </body>
+        </html>
+    </script>
 
     <div id="sheet-wrapper" class="border rounded mb-2">
         <table id="sheet" class="sheet table table-sm mb-0">
@@ -166,7 +190,7 @@
     // причин нестабильности исходного черновика grid.html. Поэтому здесь везде,
     // где нужен .ui/.css, элементы получены через ui.el()/ui.els().
     var table = ui.el('#sheet');
-    var statusBar = document.querySelector('#status-bar'); // читаем/пишем только .textContent — .ui не нужен
+    var statusBar = ui.el('#status-bar');
     var STORAGE_KEY = 'jsroll-grid-example';
 
     // ---------------------------------------------------------------
@@ -430,6 +454,14 @@
     });
     ui.el('#btn-xls').ui.on('click', function () {
         exportHTML2Excel(table, 'таблица.xls', 'Лист1');
+    });
+    ui.el('#btn-print').ui.on('click', function () {
+        // copy2prn(cntx, data) печатает содержимое во внутреннем скрытом
+        // iframe — если передать сам <table>, уйдёт только его innerHTML,
+        // без стилей родительской страницы. Поэтому здесь используется
+        // отдельный шаблон 'print-tpl' (см. <script type="text/x-template">
+        // выше) со своими минимальными стилями таблицы для печати.
+        copy2prn('print-tpl', { title: 'Бюджет — печать', tableHtml: table.outerHTML });
     });
 
     function setStatus(msg) { statusBar.textContent = msg; }

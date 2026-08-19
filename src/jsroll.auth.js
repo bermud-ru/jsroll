@@ -91,7 +91,20 @@
 
     WebAuthn.prototype = {
         rpName: g.document.title || g.location.hostname,
-        rpId: g.location.hostname,
+        // ⚠ rpId по умолчанию НЕ задаётся (null) — и это осознанный выбор, не
+        // недосмотр. Если явно передать сюда, например, location.hostname,
+        // браузер сверяет его буквально с эффективным доменом текущего
+        // контекста — и, если страница открыта через прокси/предпросмотр
+        // или во вложенном/сэндбоксированном контексте (типичная ситуация
+        // при просмотре примера не как обычной вкладки браузера), значения
+        // могут не совпасть даже когда всё остальное корректно — браузер
+        // ответит ошибкой "The requested RPID did not match the origin or
+        // related origins". Спецификация WebAuthn для этого случая как раз
+        // предусматривает пропуск rp.id/rpId: тогда браузер сам подставляет
+        // текущий эффективный домен — это гарантированно валидный вариант.
+        // Указывайте rpId вручную только если он вам осознанно нужен иным
+        // (например, общий поддомен для нескольких приложений).
+        rpId: null,
         userVerification: 'required',        // именно биометрия/PIN, а не просто "ключ подключён"
         authenticatorAttachment: 'platform',  // встроенный сенсор устройства, а не внешний USB-ключ
         attestation: 'none',
@@ -184,9 +197,12 @@
                 return { id: base64urlToBuffer(c.id), type: 'public-key' };
             });
 
+            var rp = { name: $.rpName };
+            if ($.rpId) rp.id = $.rpId; // не задан -> браузер сам подставит текущий эффективный домен
+
             g.navigator.credentials.create({
                 publicKey: {
-                    rp: { id: $.rpId, name: $.rpName },
+                    rp: rp,
                     user: {
                         id: new TextEncoder().encode(String(user.id)),
                         name: user.name || String(user.id),
@@ -235,15 +251,15 @@
             }) : [];
             if (opt.userId && !allow.length) return $._bail(opt, 'Для пользователя "' + opt.userId + '" на этом устройстве нет сохранённых ключей.');
 
-            g.navigator.credentials.get({
-                publicKey: {
-                    rpId: $.rpId,
-                    challenge: opt.challenge || randomBuffer(32), // ⚠ DEMO — в проде challenge с сервера
-                    allowCredentials: allow,
-                    userVerification: $.userVerification,
-                    timeout: $.timeout
-                }
-            }).then(function (assertion) {
+            var publicKey = {
+                challenge: opt.challenge || randomBuffer(32), // ⚠ DEMO — в проде challenge с сервера
+                allowCredentials: allow,
+                userVerification: $.userVerification,
+                timeout: $.timeout
+            };
+            if ($.rpId) publicKey.rpId = $.rpId; // не задан -> браузер сам подставит текущий эффективный домен
+
+            g.navigator.credentials.get({ publicKey: publicKey }).then(function (assertion) {
                 var id = bufferToBase64url(assertion.rawId);
                 var userId = opt.userId || $._findUserByCredential(id);
                 $.dispatchEvent(new ce('webauthn.authenticate', { detail: { userId: userId, credentialId: id } }));

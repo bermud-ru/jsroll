@@ -62,11 +62,11 @@
 
 <script>
     // 1. Шаблон как обычная строка — компилируется на лету.
-    document.querySelector('#simple-block').innerHTML =
+    ui.el('#simple-block').innerHTML =
         tpl('Привет, {%= name %}! Сегодня {%= day %}.', {name: 'Ирина', day: 'понедельник'});
 
     // 2. Шаблон, лежащий в <script id="faq-list">, с реальными управляющими конструкциями.
-    document.querySelector('#list-block').innerHTML = tpl('faq-list', {
+    ui.el('#list-block').innerHTML = tpl('faq-list', {
         items: [
             {question: 'Как сбросить пароль?', answered: true,  answer: 'Через ссылку «Забыли пароль» на странице входа.'},
             {question: 'Как добавить нового пользователя?', answered: true,  answer: 'Вкладка «Пользователи» → кнопка «+», доступно администраторам.'},
@@ -75,7 +75,7 @@
     });
 
     // 3. Повторное использование того же скомпилированного шаблона с другим набором данных.
-    document.querySelector('#list-block-2').innerHTML = tpl('faq-list', {
+    ui.el('#list-block-2').innerHTML = tpl('faq-list', {
         items: [
             {question: 'Поддерживается ли экспорт в CSV?', answered: false},
             {question: 'Можно ли работать офлайн?', answered: true, answer: 'Да, через IDBmodel/webSQLmodel (см. jsroll.dao.js).'}

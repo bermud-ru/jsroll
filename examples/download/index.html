@@ -33,7 +33,7 @@
             </p>
             <pre class="p-3 bg-light border rounded"><code>&lt;script src="jsroll.min.js"&gt;&lt;/script&gt;
 &lt;script&gt;
-    document.querySelector('#target').innerHTML = tpl('Привет, {%= name %}!', {name: 'мир'});
+    ui.el('#target').innerHTML = tpl('Привет, {%= name %}!', {name: 'мир'});
 &lt;/script&gt;</code></pre>
         </div>
     </div>
@@ -45,9 +45,9 @@
 </footer>
 
 <script>
-    document.querySelector('#year').textContent = new Date().getFullYear();
+    ui.el('#year').textContent = new Date().getFullYear();
 
-    document.querySelector('.navbar .container').innerHTML = tpl('welcome', {
+    ui.el('.navbar .container').innerHTML = tpl('welcome', {
         caption: 'jsroll',
         text: '<b>RIA</b> (Rich Internet Application) / <b>SPA</b> (Single-page Application) javascript framework'
     });

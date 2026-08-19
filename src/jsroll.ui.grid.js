@@ -235,6 +235,14 @@
         });
 
         var cellEvent = function (el) {
+            // Ячейка данных по умолчанию не фокусируема (tabIndex браузера
+            // для обычного <td> — -1), поэтому клик по ней никогда не
+            // порождает focusin, и contenteditable ниже никогда не
+            // включается — в реальном браузере (не только здесь, при
+            // programmatic-диспатче focusin в тестах) редактирование
+            // попросту не запускалось бы. tabIndex=0 делает ячейку
+            // фокусируемой мышью и с клавиатуры, как и положено.
+            if (el.tabIndex < 0) el.tabIndex = 0;
             el.ui.on('focusin', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return focus.call(this, table, calkedCell.focus);
@@ -406,6 +414,9 @@
         table.cell.OBJECT = 2;
 
         var cellEvent = function (el) {
+            // См. аналогичный комментарий в grid() выше — без tabIndex
+            // ячейка не получает фокус по клику в настоящем браузере.
+            if (el.tabIndex < 0) el.tabIndex = 0;
             el.ui.on('focusin', function(e) {
                 e.preventDefault(); e.stopPropagation();
                 return focus.call(this, cursor, sheet.cellEvent);

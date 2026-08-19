@@ -128,6 +128,19 @@
         return el;
     }
 
+    /** Общий хелпер скачивания текстового содержимого файлом (не g.dwnBlob() —
+     * у той функции есть известный баг: аргумент mime-типа фактически
+     * игнорируется из-за Object.assign(target, строка) в g.bb(), см. AI_CONTEXT.md). */
+    function downloadBlob(content, filename, type) {
+        var blob = new g.Blob([content], { type: type });
+        var url = g.URL.createObjectURL(blob);
+        var a = g.document.createElement('a');
+        a.href = url; a.download = filename;
+        g.document.body.appendChild(a); a.click();
+        g.document.body.removeChild(a);
+        setTimeout(function () { g.URL.revokeObjectURL(url); }, 1000);
+    }
+
     /** @function window.svgEasing — готовые функции плавности для SvgElement.animate() */
     g.svgEasing = {
         linear: function (t) { return t; },
@@ -203,6 +216,31 @@
 
         /** Canvas:rm — удалить конкретный узел, созданный этой канвой */
         rm: function (el) { (el.svg || wrap(el).svg).rm(); return this; },
+
+        /** Canvas:toSVG — сериализовать текущее содержимое канвы в строку SVG */
+        toSVG: function () { return new g.XMLSerializer().serializeToString(this.el); },
+
+        /**
+         * Canvas:download — сохранить канву в файл .svg.
+         * @param filename { string= } по умолчанию 'chart.svg'
+         */
+        download: function (filename) {
+            downloadBlob(this.toSVG(), filename || 'chart.svg', 'image/svg+xml');
+            return this;
+        },
+
+        /**
+         * Canvas:downloadJSON — сохранить в файл .json произвольные данные
+         * (например, точки графика, а не саму картинку) — пара к download(),
+         * чтобы данные можно было потом загрузить обратно и перестроить
+         * график (см. пример: examples/svg/index.html, раздел 4).
+         * @param data { * } любые JSON-сериализуемые данные
+         * @param filename { string= } по умолчанию 'data.json'
+         */
+        downloadJSON: function (data, filename) {
+            downloadBlob(JSON.stringify(data, null, 2), filename || 'data.json', 'application/json');
+            return this;
+        },
 
         /**
          * Canvas:on/off/trigger — подписка на пользовательские события

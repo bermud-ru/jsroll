@@ -36,6 +36,19 @@
     'use strict';
     if (typeof ui === 'undefined') return false;
 
+    /** Общий хелпер скачивания текстового содержимого файлом (не g.dwnBlob() —
+     * у той функции есть известный баг: аргумент mime-типа фактически
+     * игнорируется из-за Object.assign(target, строка) в g.bb(), см. AI_CONTEXT.md). */
+    function downloadBlob(content, filename, type) {
+        var blob = new g.Blob([content], { type: type });
+        var url = g.URL.createObjectURL(blob);
+        var a = g.document.createElement('a');
+        a.href = url; a.download = filename;
+        g.document.body.appendChild(a); a.click();
+        g.document.body.removeChild(a);
+        setTimeout(function () { g.URL.revokeObjectURL(url); }, 1000);
+    }
+
     /** @function window.imageEasing — функции плавности для RasterShape.animate() */
     g.imageEasing = {
         linear: function (t) { return t; },
@@ -235,6 +248,32 @@
             var img = imgEl || g.document.createElement('img');
             img.src = this.el.toDataURL('image/png');
             return img;
+        },
+
+        /**
+         * RasterCanvas:download — сохранить канву в файл .png.
+         * @param filename { string= } по умолчанию 'chart.png'
+         */
+        download: function (filename) {
+            var a = g.document.createElement('a');
+            a.href = this.el.toDataURL('image/png');
+            a.download = filename || 'chart.png';
+            g.document.body.appendChild(a); a.click();
+            g.document.body.removeChild(a);
+            return this;
+        },
+
+        /**
+         * RasterCanvas:downloadJSON — сохранить в файл .json произвольные
+         * данные (например, точки графика, а не саму картинку) — пара к
+         * download(), чтобы данные можно было потом загрузить обратно и
+         * перестроить график (см. пример: examples/image/index.html, раздел 5).
+         * @param data { * } любые JSON-сериализуемые данные
+         * @param filename { string= } по умолчанию 'data.json'
+         */
+        downloadJSON: function (data, filename) {
+            downloadBlob(JSON.stringify(data, null, 2), filename || 'data.json', 'application/json');
+            return this;
         },
 
         /**

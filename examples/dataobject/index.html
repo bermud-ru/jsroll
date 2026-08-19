@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — dataObject() + crud() (локальные данные)</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    #event-log { max-height: 12rem; overflow-y: auto; font-family: monospace; font-size: .85em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+    tr.editing input { width: 100%; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Локальные данные — <code>dataObject()</code> + <code>crud()</code></h2>
+    <p class="text-muted">
+        <code>dataObject()</code> — фабрика, которая создаёт «локальный сервер»:
+        функцию с сигнатурой, ожидаемой <code>crud</code> (той же, что обычно
+        занимает настоящий <code>xhr</code>), но вместо сети работающую прямо с
+        обычным JS-массивом в памяти. Пригодится для офлайн-заглушек, тестов UI
+        без бэкенда или переключаемого источника данных («пока сервера нет —
+        работаем локально, потом просто подменяем <code>api</code> на реальный <code>xhr</code>»).
+    </p>
+    <div class="alert alert-info">
+        <code>new crud(dataObject(), meta)</code> даёт тот же интерфейс
+        (<code>.data</code>, <code>.item()</code>, <code>.get/.post/.put/.del()</code>), которым в
+        остальных примерах пользуется <code>xhr</code> — здесь вместо реального
+        запроса на сервер каждая операция читает/пишет обычный массив в памяти.
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Пользователи (локально, в памяти)</h5>
+            <table class="table table-sm table-bordered align-middle" id="users-table">
+                <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th style="width:11rem"></th></tr></thead>
+                <tbody></tbody>
+            </table>
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-4"><label class="form-label small mb-0">Имя</label><input class="form-control form-control-sm" id="new-name"></div>
+                <div class="col-sm-5"><label class="form-label small mb-0">Email</label><input class="form-control form-control-sm" id="new-email"></div>
+                <div class="col-sm-3"><button type="button" id="btn-add" class="btn btn-primary btn-sm w-100">users.post() — добавить</button></div>
+            </div>
+        </div>
+    </div>
+
+    <pre class="p-3 bg-light border rounded mb-3"><code>var api = dataObject();                                   // локальный "сервер" в памяти
+var users = new crud(api, { id: null, name: '', email: '' }); // meta — шаблон пустой записи
+users.data = [ { id: 1, name: 'Иван', email: 'ivan@example.com' }, … ];
+
+// дальше — тот же интерфейс, что и с настоящим xhr-бэкендом:
+users.get(null, { crud: users.data, after: function () { render(users.data); } });
+users.post({ name: 'Мария', email: '...' }, { crud: users.data, primaryKey: 'id', after: render });
+users.put({ name: 'Новое имя' }, { crud: users.data, index: 0, after: render });</code></pre>
+
+    <h5 class="mt-4">Журнал событий</h5>
+    <ul id="event-log"></ul>
+
+    <div class="alert alert-warning mt-4">
+        <strong>Особенность, обнаруженная при проверке этого примера:</strong>
+        <code>crud.prototype.del()</code> подставляет во внутренний вызов
+        <code>method: 'DELETE'</code> (полное слово, как настоящий HTTP-метод), а
+        <code>dataObject()</code> внутри себя сравнивает
+        <code>opt.method.toLowerCase()</code> именно с коротким
+        <code>case 'del':</code> — <code>'DELETE'.toLowerCase()</code> даёт
+        <code>'delete'</code>, что ни с одним <code>case</code> не совпадает, и
+        удаление молча ничего не делает (остальные операции — <code>'post'</code>,
+        <code>'put'</code>, <code>'get'</code> — совпадают корректно, ломается только
+        удаление). Рабочий обходной путь (используется в этом примере) — вызывать
+        функцию, которую возвращает <code>dataObject()</code>, напрямую, минуя
+        <code>users.del()</code>, и явно передать короткую форму метода:
+        <code>api({ method: 'del', crud: users.data, index: i, after: render })</code>.
+    </div>
+</div>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg) {
+        var li = document.createElement('li');
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    // ---------------------------------------------------------------
+    // Инициализация: dataObject() — "локальный сервер" в памяти;
+    // crud(api, meta) — тот же интерфейс, которым обычно пользуется xhr.
+    // ---------------------------------------------------------------
+    var api = dataObject();
+    var users = new crud(api, { id: null, name: '', email: '' });
+    users.data = [
+        { id: 1, name: 'Иван Петров', email: 'ivan@example.com' },
+        { id: 2, name: 'Мария Сидорова', email: 'maria@example.com' },
+        { id: 3, name: 'Пётр Иванов', email: 'petr@example.com' }
+    ];
+    addLog('Инициализировано: users.data = ' + users.data.length + ' строк.');
+
+    var tbody = ui.el('#users-table tbody');
+
+    function render() {
+        tbody.innerHTML = '';
+        users.data.forEach(function (row, i) {
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td>' + row.id + '</td>' +
+                '<td class="cell-name">' + row.name + '</td>' +
+                '<td class="cell-email">' + row.email + '</td>' +
+                '<td>' +
+                '<button type="button" class="btn btn-outline-secondary btn-sm btn-edit">users.put()</button> ' +
+                '<button type="button" class="btn btn-outline-danger btn-sm btn-del">удалить</button>' +
+                '</td>';
+            wireRow(tr, i);
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Один обработчик на кнопку "Изменить/Сохранить", переключающий режим
+    // по внутреннему флагу — если бы вместо этого второй клик навешивал ещё
+    // один обработчик (или переприсваивал onclick поверх уже стоящего
+    // addEventListener), оба сработали бы на одном и том же клике: тот,
+    // что "начать редактирование", успел бы затереть только что введённое
+    // значение обратно на исходное ДО срабатывания "сохранить" — именно
+    // так это было в первой версии примера, пока не проверили тестами.
+    function wireRow(tr, index) {
+        var editing = false;
+        var editBtn = tr.querySelector('.btn-edit');
+        editBtn.addEventListener('click', function () {
+            var row = users.data[index];
+            if (!editing) {
+                tr.classList.add('editing');
+                tr.querySelector('.cell-name').innerHTML = '<input class="form-control form-control-sm" value="' + row.name + '">';
+                tr.querySelector('.cell-email').innerHTML = '<input class="form-control form-control-sm" value="' + row.email + '">';
+                editBtn.textContent = 'Сохранить';
+                editing = true;
+                return;
+            }
+            var name = tr.querySelector('.cell-name input').value;
+            var email = tr.querySelector('.cell-email input').value;
+            users.put({ name: name, email: email }, {
+                crud: users.data, index: index,
+                after: function () {
+                    render();
+                    addLog('users.put({name:"' + name + '"}, {index:' + index + '}) -> строка обновлена.');
+                }
+            });
+        });
+        tr.querySelector('.btn-del').addEventListener('click', function () { removeRow(index); });
+    }
+
+    // ---------------------------------------------------------------
+    // GET — done() для GET/POST у dataObject() возвращает не то, что можно
+    // было бы ожидать (см. AI_CONTEXT.md), поэтому здесь просто читаем
+    // users.data напрямую внутри after() — этот путь работает надёжно
+    // независимо от того, что именно пришло в done().
+    // ---------------------------------------------------------------
+    users.get(null, { crud: users.data, after: function () { render(); addLog('users.get(): прочитано ' + users.data.length + ' строк.'); } });
+
+    // ---------------------------------------------------------------
+    // POST — добавление новой строки.
+    // ---------------------------------------------------------------
+    ui.el('#btn-add').ui.on('click', function () {
+        var name = ui.el('#new-name').value.trim(), email = ui.el('#new-email').value.trim();
+        if (!name) return;
+        users.post({ name: name, email: email }, {
+            crud: users.data, primaryKey: 'id',
+            after: function () {
+                render();
+                addLog('users.post({name:"' + name + '"}) -> добавлена строка, всего ' + users.data.length + '.');
+                ui.el('#new-name').value = ''; ui.el('#new-email').value = '';
+            }
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // DEL — удаление строки по индексу. users.del() не работает (см.
+    // предупреждение внизу страницы) — вызываем api() напрямую с короткой
+    // формой метода 'del'.
+    // ---------------------------------------------------------------
+    function removeRow(index) {
+        var removed = users.data[index];
+        api({
+            method: 'del', crud: users.data, index: index,
+            after: function () {
+                render();
+                addLog('api({method:"del", index:' + index + '}) -> удалена строка "' + removed.name + '", осталось ' + users.data.length + '.');
+            }
+        });
+    }
+
+    render();
+})();
+</script>
+</body>
+</html>

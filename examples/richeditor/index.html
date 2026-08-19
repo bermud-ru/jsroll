@@ -79,6 +79,7 @@
         <div class="btn-group mb-2" role="group">
             <button type="button" class="btn btn-outline-secondary" id="btn-export-txt">Скачать .txt</button>
             <button type="button" class="btn btn-outline-secondary" id="btn-export-word">Скачать Word (.doc)</button>
+            <button type="button" class="btn btn-outline-secondary" id="btn-print">🖨 Печать</button>
         </div>
     </div>
 
@@ -125,7 +126,7 @@ ui.el('#btn-export-word').ui.on('click', function () {
     // .ui.on(...) на нём упадёт с ошибкой. Поэтому весь пример намеренно
     // получает элементы через ui.el()/ui.els(), как и просили в задаче.
     var canvas = ui.el('#editor-canvas');
-    var statusBar = document.querySelector('#status-bar'); // читаем/пишем только .textContent — .ui не нужен
+    var statusBar = ui.el('#status-bar');
     var STORAGE_KEY = 'jsroll-richeditor-example';
 
     // Единый разделитель абзацев — по умолчанию не все браузеры используют <p>
@@ -216,7 +217,7 @@ ui.el('#btn-export-word').ui.on('click', function () {
     })();
 
     // ---------------------------------------------------------------
-    // 6) Выгрузка в обычный текст (.txt) и в Word (.doc).
+    // 6) Выгрузка в обычный текст (.txt), в Word (.doc) и печать.
     // ---------------------------------------------------------------
     ui.el('#btn-export-txt').ui.on('click', function () {
         dwnBlob(canvas.innerText, 'document.txt', 'text/plain;base64;');
@@ -225,6 +226,13 @@ ui.el('#btn-export-word').ui.on('click', function () {
     ui.el('#btn-export-word').ui.on('click', function () {
         exportHTML2Word(canvas, 'document.doc');
         setStatus('Выгружено в document.doc.');
+    });
+    ui.el('#btn-print').ui.on('click', function () {
+        // copy2prn(cntx) печатает содержимое переданного элемента во
+        // внутреннем скрытом iframe — весь текущий HTML редактора
+        // (жирный/курсив/выравнивание уходят как есть, это обычная разметка).
+        copy2prn(canvas);
+        setStatus('Отправлено на печать.');
     });
 
     updateToolbarState();

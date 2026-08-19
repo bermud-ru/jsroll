@@ -54,6 +54,19 @@
 
     <div class="alert alert-info" id="support-status">Проверка поддержки браузером…</div>
 
+    <div class="alert alert-secondary">
+        <strong>Если браузер отвечает «The requested RPID did not match the
+        origin or related origins»:</strong> это не баг примера, а защита
+        самого WebAuthn — она сработает, если страница открыта не как
+        обычная вкладка браузера на своём собственном адресе (например,
+        через встроенный предпросмотр/прокси/iframe, которые подменяют или
+        скрывают реальный адрес страницы). Откройте эту страницу напрямую в
+        отдельной вкладке браузера (после скачивания — через локальный
+        сервер, например <code>python3 -m http.server</code> из корня
+        проекта, или через любой другой статический хостинг) — и ошибка
+        исчезнет сама, без каких-либо действий с кодом.
+    </div>
+
     <fieldset id="demo-fieldset" disabled>
 
     <!-- ===================== РЕГИСТРАЦИЯ ===================== -->
@@ -133,7 +146,7 @@ webauthn.authenticate({ done: function (r) { /* r.userId определился 
         eventLog.insertBefore(li, eventLog.firstChild);
     }
 
-    var webauthn = new WebAuthn({ rpName: 'jsroll demo', rpId: location.hostname });
+    var webauthn = new WebAuthn({ rpName: 'jsroll demo' }); // rpId сознательно не задаём — см. комментарий в jsroll.auth.js
 
     // ---------------------------------------------------------------
     // Подписка на события модуля — тот же паттерн, что и у Application

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>jsroll — Application</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css" rel="stylesheet" />
+<script type="text/javascript" src="../../build/jsroll.min.js" charset="UTF-8"></script>
+<style>
+    body { padding-top: 5em; padding-bottom: 3em; }
+    #login-screen { max-width: 24rem; margin: 4rem auto; }
+    #event-log { max-height: 14rem; overflow-y: auto; font-family: monospace; font-size: .85em; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: .375rem; padding: .5rem .75rem; list-style: none; margin: 0; }
+    #event-log li { padding: .15rem 0; border-bottom: 1px dashed #e9ecef; }
+    #event-log li:last-child { border-bottom: none; }
+    [ui="auth"] { cursor: pointer; }
+    #app-shell { display: none; }
+</style>
+</head>
+<body>
+<nav class="navbar navbar-dark bg-dark fixed-top">
+    <div class="container">
+        <span class="navbar-brand">jsroll</span>
+        <a class="btn btn-outline-light btn-sm" href="../index.html">← ко всем примерам</a>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Application — жизненный цикл SPA-приложения</h2>
+    <p class="text-muted">
+        Пример по мотивам загруженного фрагмента <code>common.app.js</code>: та же
+        связка «вкладки синхронизированы с <code>?tab=</code> в адресной строке
+        через <code>urn</code>», dropdown-меню пользователя, кастомные события
+        <code>app.login</code>/<code>app.logout</code> и куки-сессия. Отличие —
+        здесь нет настоящего бэкенда: вход эмулируется прямо в браузере (в реальном
+        приложении на месте <code>app.setCookie(...)</code> в обработчике кнопки
+        «Войти» был бы <code>xhr({url:'/login', ...})</code>, как в исходном файле).
+    </p>
+
+    <div class="alert alert-info">
+        <strong>Что здесь происходит по шагам:</strong>
+        1) при загрузке страницы создаётся <code>window.app = new Application('1.0.0')</code> —
+        статус ниже; 2) пока нет сессии — показан <b>экран входа</b>; 3) после
+        входа — <b>панель с вкладками</b>, переключение которых хранится в
+        адресной строке через <code>urn</code> (тот же механизм, что и в
+        <code>tabulator()</code> из приложенного <code>common.app.js</code>).
+        <div id="app-init-status" class="mt-2 font-monospace small">window.app = new Application('1.0.0') — …</div>
+    </div>
+
+    <!-- ===================== ЭКРАН ВХОДА ===================== -->
+    <div id="login-screen" class="card">
+        <div class="card-body">
+            <h5 class="card-title">1. Экран входа (пока нет сессии)</h5>
+            <p class="card-text text-muted">Любое имя — пароль в демо не проверяется.</p>
+            <input type="text" id="login-username" class="form-control mb-3" placeholder="Ваше имя" value="Андрей">
+            <button type="button" id="btn-login" class="btn btn-primary w-100">Войти</button>
+        </div>
+    </div>
+
+    <!-- ===================== ПРИЛОЖЕНИЕ ===================== -->
+    <div id="app-shell">
+        <h5 class="text-muted">2. Приложение — панель с вкладками (после входа)</h5>
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+            <div>
+                <span class="badge bg-secondary" id="version-badge">v1.0.0</span>
+                <span class="badge bg-success" id="net-badge">online</span>
+            </div>
+            <div class="dropdown">
+                <a href="#" ui="auth" class="dropdown-toggle text-decoration-none">
+                    Здравствуйте, <b ui="user-name">…</b>
+                </a>
+                <div class="dropdown-menu dropdown-menu-end" id="user-dropdown-menu">
+                    <a class="dropdown-item" href="#" id="btn-logout">Выйти</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Вкладки, синхронизированные с ?tab=N — см. функцию tabulator() в скрипте -->
+        <ul class="nav nav-tabs mb-3">
+            <li class="nav-item"><a class="nav-link" href="?tab=1">Обзор</a></li>
+            <li class="nav-item"><a class="nav-link" href="?tab=2">Настройки</a></li>
+            <li class="nav-item"><a class="nav-link" href="?tab=3">Журнал событий</a></li>
+        </ul>
+        <div class="tab-content mb-4">
+            <div class="tab-pane fade">
+                <p>Активная вкладка хранится в адресной строке (<code>?tab=1</code>) через
+                <code>urn.set()</code> — можно обновить страницу или скопировать ссылку,
+                вкладка не потеряется.</p>
+                <button type="button" id="btn-bump-version" class="btn btn-outline-secondary btn-sm">Сменить версию приложения</button>
+                <button type="button" id="btn-simulate-online" class="btn btn-outline-success btn-sm">Симулировать online</button>
+                <button type="button" id="btn-simulate-offline" class="btn btn-outline-danger btn-sm">Симулировать offline</button>
+            </div>
+            <div class="tab-pane fade">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="chk-confirm-reload">
+                    <label class="form-check-label" for="chk-confirm-reload">
+                        Спрашивать подтверждение при закрытии/обновлении вкладки (<code>app.confirmReload</code>)
+                    </label>
+                </div>
+                <p class="text-muted mt-2 mb-0">Включите и попробуйте закрыть или обновить вкладку браузера.</p>
+            </div>
+            <div class="tab-pane fade">
+                <ul id="event-log"></ul>
+            </div>
+        </div>
+    </div>
+
+    <h5 class="mt-4">Что здесь показано</h5>
+    <ul class="text-muted">
+        <li><code>window.app = new Application(version)</code> — создание единственного экземпляра приложения.</li>
+        <li><code>app.onready(fn)</code> — код выполняется после <code>DOMContentLoaded</code>.</li>
+        <li><code>app.addEventListener/dispatchEvent</code> + <code>ce</code> (CustomEvent) — вход/выход как в <code>common.app.js</code>.</li>
+        <li><code>app.setCookie/getCookie/clearCookie</code> — сессия пользователя.</li>
+        <li><code>app.changeVersion(fn)</code> — колбэк на смену <code>app.version</code>.</li>
+        <li><code>app.confirmReload</code> — встроенное подтверждение ухода со страницы.</li>
+        <li><code>urn.add(handler).chk().lsn()</code> + <code>location.params()/update()</code> — вкладки, синхронные с URL.</li>
+        <li>dropdown-меню пользователя: <code>ui.el('[ui="auth"]', …)</code>, <code>css.tgl('show')</code>, закрытие по <code>blur</code>.</li>
+    </ul>
+</div>
+
+<script>
+(function () {
+    var eventLog = ui.el('#event-log');
+    function addLog(msg) {
+        var li = document.createElement('li');
+        li.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+        eventLog.insertBefore(li, eventLog.firstChild);
+    }
+
+    var COOKIE_NAME = 'AppDemoSession';
+    function isAuthenticated() { return !!app.getCookie(COOKIE_NAME); }
+
+    // ---------------------------------------------------------------
+    // 1) Создаём Application — это и есть window.app, на который опирается
+    //    весь остальной код (onready/куки/события/confirmReload и т.д.).
+    //    Сама библиотека НЕ создаёт app автоматически — это должно сделать
+    //    приложение, как здесь.
+    // ---------------------------------------------------------------
+    window.app = new Application('1.0.0');
+    ui.el('#app-init-status').innerHTML = '✅ window.app = new Application(&#39;1.0.0&#39;) — выполнено, window.app instanceof Application: ' + (app instanceof Application);
+
+    app.onready(function () { addLog('app.onready(): DOM готов.'); });
+
+    // Пример из common.app.js: app.changeVersion(function () { app.sessionStorage.clear() });
+    // здесь — просто лог + обновление бейджа версии.
+    var versionBadge = ui.el('#version-badge');
+    app.changeVersion(function () {
+        versionBadge.textContent = 'v' + app.version;
+        addLog('app.changeVersion(): версия изменена на "' + app.version + '".');
+    });
+    var verCounter = 1;
+    ui.el('#btn-bump-version').ui.on('click', function () { app.version = '1.0.' + (verCounter++); });
+
+    // online/offline по умолчанию просто пишут в console.log/warn — переопределяем,
+    // чтобы показать, что это обычные переопределяемые методы экземпляра.
+    var netBadge = ui.el('#net-badge');
+    app.online = function () { netBadge.textContent = 'online'; netBadge.className = 'badge bg-success'; addLog('app.online()'); };
+    app.offline = function () { netBadge.textContent = 'offline'; netBadge.className = 'badge bg-danger'; addLog('app.offline()'); };
+    ui.el('#btn-simulate-online').ui.on('click', function () { app.online(); });
+    ui.el('#btn-simulate-offline').ui.on('click', function () { app.offline(); });
+
+    // ---------------------------------------------------------------
+    // 2) confirmReload — встроенный в Application обработчик beforeunload
+    //    (window.onbeforeunload уже назначен внутри конструктора Application).
+    // ---------------------------------------------------------------
+    ui.el('#chk-confirm-reload').ui.on('change', function () {
+        app.confirmReload = this.checked;
+        addLog('app.confirmReload = ' + app.confirmReload);
+    });
+
+    // ---------------------------------------------------------------
+    // 3) Вход/выход через кастомные события app.login/app.logout — тот же
+    //    паттерн, что в common.app.js (там реальный XHR на /login, здесь —
+    //    без сервера, сразу выставляем куку).
+    // ---------------------------------------------------------------
+    function showApp(name) {
+        ui.el('#login-screen').style.display = 'none';
+        ui.el('#app-shell').style.display = '';
+        ui.el('[ui="user-name"]').innerHTML = name;
+        urn.chk(); // подхватить/выставить активную вкладку по текущему ?tab=
+        addLog('Экран переключён: 1 (вход) -> 2 (приложение с вкладками).');
+    }
+    function showLogin() {
+        ui.el('#app-shell').style.display = 'none';
+        ui.el('#login-screen').style.display = '';
+        addLog('Экран переключён: 2 (приложение) -> 1 (вход).');
+    }
+
+    app.addEventListener('app.login', function (e) {
+        addLog('Событие "app.login" (app.dispatchEvent -> app.addEventListener).');
+        showApp(e.detail && e.detail.name || 'Пользователь');
+    });
+    app.addEventListener('app.logout', function () {
+        addLog('Событие "app.logout".');
+        app.clearCookie(COOKIE_NAME);
+        showLogin();
+    });
+
+    ui.el('#btn-login').ui.on('click', function () {
+        var name = ui.el('#login-username').value.trim() || 'Гость';
+        app.setCookie(COOKIE_NAME, { name: name }, 1); // сессия на 1 день
+        app.dispatchEvent(new ce('app.login', { detail: { name: name } }));
+    });
+    ui.el('#btn-logout').ui.on('click', function (e) {
+        e.preventDefault();
+        if (confirm('Вы действительно хотите выйти?')) app.dispatchEvent(new ce('app.logout'));
+    });
+
+    // ---------------------------------------------------------------
+    // 4) Dropdown пользователя — как в common.app.js: клик по [ui="auth"]
+    //    переключает класс 'show', blur мимо .dropdown-item закрывает.
+    // ---------------------------------------------------------------
+    var dropdown = ui.el('#user-dropdown-menu');
+    ui.el('[ui="auth"]', function () {
+        this.setAttribute('tabindex', '0');
+        this.ui.on('click', function (e) { e.preventDefault(); dropdown.css.tgl('show'); });
+        // css.el(x) переиспользует общий (глобальный) объект window.css, временно
+        // указывая его на x — так это сделано в исходном common.app.js; в
+        // приложении с несколькими одновременными dropdown-ами так делать не
+        // стоит (это разделяемое состояние), для одного меню — безопасно.
+        this.ui.on('blur', function (e) {
+            if (!e.relatedTarget || !css.el(e.relatedTarget).has('dropdown-item')) dropdown.css.del('show');
+        });
+    });
+
+    // ---------------------------------------------------------------
+    // 5) Вкладки, синхронизированные с ?tab=N через urn (по мотивам
+    //    tabulator() из common.app.js, без привязки к конкретному бэкенду).
+    // ---------------------------------------------------------------
+    function tabulator(tabs, panels) {
+        var nav = {
+            tabs: tabs || [], panels: panels || [], current: 0,
+            show: function (index, updateUrl) {
+                this.current = index;
+                if (this.tabs[this.current]) this.tabs[this.current].css.add('active');
+                if (this.panels[this.current]) this.panels[this.current].css.add(['show', 'active']);
+                if (updateUrl) urn.set(location.pathname + location.update({ tab: index + 1 }));
+                return this;
+            },
+            hide: function () {
+                if (this.tabs[this.current]) this.tabs[this.current].css.del('active');
+                if (this.panels[this.current]) this.panels[this.current].css.del(['show', 'active']);
+                return this;
+            }
+        };
+
+        tabs.forEach(function (t, i) {
+            t.tabIndex_ = i; // не путать с нативным HTML-атрибутом tabIndex
+            t.ui.on('click', function (e) {
+                e.preventDefault();
+                if (!this.css.has('active')) { nav.hide(); nav.show(this.tabIndex_, true); addLog('Вкладка переключена на «' + this.textContent.trim() + '».'); }
+            });
+        });
+
+        urn.add(function () {
+            if (!isAuthenticated()) return; // без входа вкладки не переключаем
+            var idx = Math.max(0, Math.min((parseInt(location.params('tab'), 10) || 1) - 1, tabs.length - 1));
+            var alreadyShown = nav.tabs[nav.current] && nav.tabs[nav.current].css.has('active');
+            if (idx !== nav.current || !alreadyShown) { nav.hide(); nav.show(idx, false); }
+        }).chk().lsn();
+
+        return nav;
+    }
+
+    tabulator(ui.els('.nav-tabs .nav-link'), ui.els('.tab-pane.fade'));
+
+    // ---------------------------------------------------------------
+    // 6) Если сессия уже есть (например, страницу обновили после входа) —
+    //    сразу показать приложение, а не экран входа.
+    // ---------------------------------------------------------------
+    app.onready(function () {
+        var saved = app.getCookie(COOKIE_NAME);
+        if (saved && saved.name) showApp(saved.name); else showLogin();
+    });
+})();
+</script>
+</body>
+</html>

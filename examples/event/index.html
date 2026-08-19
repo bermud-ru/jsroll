@@ -62,7 +62,7 @@
     //    (добавляет свойства .ui/.css) — дальше .ui.on(...) вешает
     //    обработчик через нативный addEventListener. "Голый"
     //    document.querySelector(...).ui дал бы undefined — см. предупреждение выше.
-    var directLog = document.querySelector('#direct-log'); // .textContent — .ui не нужен
+    var directLog = ui.el('#direct-log');
     var clicks = 0;
     ui.el('#direct-btn').ui.on('click', function (e) {
         clicks++;
@@ -90,7 +90,7 @@
     });
 
     // 3. eventCode — нормализует разные способы браузеров сообщать о нажатой клавише.
-    var keyLog = document.querySelector('#key-log'); // .textContent — .ui не нужен
+    var keyLog = ui.el('#key-log');
     ui.el('#key-input').ui.on('keyup', function (e) {
         keyLog.textContent = 'eventCode(e): ' + JSON.stringify(eventCode(e));
     });

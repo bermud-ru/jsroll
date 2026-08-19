@@ -60,8 +60,8 @@
 </div>
 
 <script>
-    var out = document.querySelector('#route-output');
-    var urlBox = document.querySelector('#current-url');
+    var out = ui.el('#route-output');
+    var urlBox = ui.el('#current-url');
 
     function render(html) {
         out.innerHTML = html;
@@ -88,13 +88,18 @@
         })
         .lsn();
 
-    // Первичная отрисовка для того пути, с которым страница была открыта.
+    // Страница физически лежит по адресу /examples/router/index.html — этот
+    // путь ни под один зарегистрированный маршрут не подходит, и обычный
+    // urn.chk() при первой же загрузке страницы честно показал бы "404:
+    // /examples/router/index.html", что выглядит как "демо не работает",
+    // хотя на самом деле работает верно. Поэтому при старте демо сперва
+    // переходим на "/" (Главная) и только потом проверяем маршрут —
+    // так демо всегда открывается в предсказуемом, не пугающем состоянии.
+    urn.set('');
     urn.chk();
 
-    document.querySelectorAll('[data-path]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            urn.set(btn.getAttribute('data-path'));
-        });
+    ui.els('[data-path]').ui.on('click', function () {
+        urn.set(this.getAttribute('data-path'));
     });
 </script>
 </body>

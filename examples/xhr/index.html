@@ -58,7 +58,7 @@
 </div>
 
 <script>
-    var statusBlock = document.querySelector('#status-block'); // .textContent — .ui не нужен
+    var statusBlock = ui.el('#status-block');
 
     ui.el('#load-btn').ui.on('click', function () {
         xhr({
@@ -73,11 +73,11 @@
                 // выше); сам запрос — через ui.src(e) (это e.target), а на нём уже
                 // .responseJSON — геттер jsroll поверх responseText с safe-парсингом JSON
                 var res = ui.src(e).responseJSON;
-                document.querySelector('#result-block').innerHTML =
+                ui.el('#result-block').innerHTML =
                     tpl('questions-list', {data: res.data});
             },
             fail: function (e) {
-                document.querySelector('#result-block').textContent =
+                ui.el('#result-block').textContent =
                     'ошибка: ' + ui.src(e).status;
             },
             after: function (e) {
@@ -91,12 +91,12 @@
             method: 'get',
             url: 'this-file-does-not-exist.json',
             done: function (e) {
-                document.querySelector('#error-block').textContent = 'неожиданный успех';
+                ui.el('#error-block').textContent = 'неожиданный успех';
             },
             fail: function (e) {
                 // HTTP_RESPONSE_CODE — таблица кодов ответа, встроенная в jsroll.js
                 var status = ui.src(e).status;
-                document.querySelector('#error-block').textContent =
+                ui.el('#error-block').textContent =
                     'HTTP ' + status + ': ' + (HTTP_RESPONSE_CODE[status] || 'нет описания');
             }
         });
