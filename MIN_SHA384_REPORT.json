@@ -1,0 +1,30 @@
+[
+  {
+    "file": "build/jsroll.tools.min.js",
+    "sha384": "ac0c3cc0904095264f2303f734667f5a597664cc2e60c5f808be7613e6d3d7b26e20f1987d2f875642f99d01e7abb3f5"
+  },
+  {
+    "file": "build/jsroll.ui.grid.min.js",
+    "sha384": "f38d452bf5ce667680c4be271857249911aa9921c2b1fc3f690d52503f17e73acef45f9c2385f00d9740899e527f3e67"
+  },
+  {
+    "file": "build/jsroll.auth.min.js",
+    "sha384": "275310cb7a0168d71f301b93164df4f065a4c646397f7371540fc313da693dbc5ec4bf59343d5def1986645f45b2cbc5"
+  },
+  {
+    "file": "build/jsroll.image.min.js",
+    "sha384": "8202259c3d10804c2889d8e2e2bc3483998ee7b0c720a41632e79a3ce8ecbc825ed64e7ef6a50e6285ccd569bc86fffe"
+  },
+  {
+    "file": "build/jsroll.min.js",
+    "sha384": "145d8689c2dc042bc421e4431e420c501c869e78fbe82dd1af17d525aafd996f40f783932e53b70e4238206472cf01af"
+  },
+  {
+    "file": "build/jsroll.dao.min.js",
+    "sha384": "1b8ae0413ae542905a98205256ac0fc17a0b8d9f509a273e4e502ee864b07fd5b8a2bdc5ce5d2480e302a908f4296ed3"
+  },
+  {
+    "file": "build/jsroll.svg.min.js",
+    "sha384": "8868a4503adf50adc15dba362f70f04395f80ddd8e955086b498fcc70a9eddddc269097ca5bafb4e43e19e4f6d760880"
+  }
+]
