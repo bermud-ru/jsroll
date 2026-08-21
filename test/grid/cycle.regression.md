@@ -1,0 +1,1 @@
+REG-013 Circular reference: A=B, B=A. Engine must not hang.

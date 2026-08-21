@@ -1,0 +1,1 @@
+REG-014: B=A -> B=C. Verify A.depend cleanup and C.depend creation.

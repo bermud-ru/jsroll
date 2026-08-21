@@ -702,7 +702,7 @@ var Application = function (ver) {
             var rows = o.crud;
             var fn, worker = function (row) {
                 switch (opt.method.toLowerCase()) {
-                    case 'del': rows.splice(index,1); break;
+                    case 'del': case 'delete': rows.splice(index,1); break;
                     case 'post': if (pk) row[pk] = Math.max.apply(Math, rows.map(function(r) { return r[pk]; })) + 1;
                         rows.push(row); break;
                     case 'put': rows[index].merge(row); break;

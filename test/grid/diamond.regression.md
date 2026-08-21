@@ -1,0 +1,1 @@
+REG-012 Diamond graph: A->B,C->D; D recalculated once after A change.

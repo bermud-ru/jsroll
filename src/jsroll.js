@@ -280,7 +280,7 @@
             if (data && typeof data === 'object') {
                 var p = function (o) {
                     var res = {};
-                    for (var i in o) { res[i] = QueryParam(o[i],typeof flag === 'undefined' ? QueryParam.STRNULL : flag); }
+                    for (var i in o) { if (!Object.prototype.hasOwnProperty.call(o,i)) continue; res[i] = QueryParam(o[i],typeof flag === 'undefined' ? QueryParam.STRNULL : flag); }
                     return res;
                 };
                 if (data instanceof Array) { return data.map(function (v) { return p(v); }); }
@@ -442,29 +442,30 @@
         get version() {
             return this.webSQLinstance.version;
         },
-        turn: false,
-        runnig: false,
+        running: false,
+        get running() { return this.running; },
+        set running(v) { this.running = v; },
         proc: function (tx, callback) {
-            this.runnig = tx;
+            this.running = tx;
             if (typeof callback === 'function') return callback.call(this, tx);
             return tx;
         },
         fail: function (tx, error, callback, sql, index, query) {
             if (typeof callback === 'function') callback.call(this, tx, error, sql, index, query);
             else console.error('webSQL query ['+sql+'] error(' + error.code + '): ' + error.message);
-            return this.runnig = false;
+            return this.running = false;
         },
         done: function (tx, result, callback, sql, index, query) {
             if (typeof callback === 'function') callback.call(this, tx, result, sql, index, query);
             else { console.warn('webSQL query ['+sql+'] resultSet: '); console.table(result); }
-            return this.runnig = false;
+            return this.running = false;
         },
         cancel: function (tx) { /*tx.executeSql('ABORT', [], null, function () {return true; }); */}, //TODO:
         transaction: function (proc, fail) {
             var $ = this;
             //  $.webSQLinstance.readTransaction(function (tx) {
             var wait = function() {
-                if (!$.turn || !$.runnig) {
+                if (!$.running) {
                     if (wait.timer) clearTimeout(wait.timer);
                     return $.webSQLinstance.transaction(
                         function (tx) { return $.proc(tx, proc);},
@@ -1439,7 +1440,7 @@
         if (typeof search === 'string' ) url = search; else kv = search;
         var p = g.location.decoder(url);
         for (var i in kv) { p[decodeURIComponent(i)] = QueryParam(decodeURIComponent(kv[i]), QueryParam.STRNULL); }
-        var res = []; for (var a in p) { res.push(a + '=' + QueryParam(p[a],QueryParam.NULLSTR)); }
+        var res = []; for (var a in p) { if (!Object.prototype.hasOwnProperty.call(p,a)) continue; res.push(a + '=' + QueryParam(p[a],QueryParam.NULLSTR)); }
         if (res.length) {
             var prefix = url+'?', sufix = '';
             if (url.indexOf('?') > -1) { h = url.split('?'); if (h.length > 1) prefix = h[0] + '?'; }
@@ -1665,7 +1666,7 @@
                 x.open(opt.method.toUpperCase(), opt.url, opt.async, opt.username, opt.password);
                 x.withCredentials = opt.withCredentials;
                 if (x.withCredentials) x.setRequestHeader('cookies', document.cookie);
-                for (var m in rs) x.setRequestHeader(m, rs[m]);
+                for (var m in rs) if (Object.prototype.hasOwnProperty.call(rs,m)) x.setRequestHeader(m, rs[m]);
                 g.addEventListener('offline', cancel);
                 x.timeout = opt.timeout; x.ontimeout = cancel; x.onerror = fail; x.onload = done;
                 x.onreadystatechange = (typeof opt.process === 'function') ? opt.process :

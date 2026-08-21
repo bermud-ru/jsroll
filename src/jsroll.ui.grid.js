@@ -75,7 +75,7 @@
     var cursor = new g.Cursor();
     var refless = function(table) {
         if (this.hasOwnProperty('ref')) {
-            for (var x in this.ref) {
+            for (var x in this.ref) if (Object.prototype.hasOwnProperty.call(this.ref,x)) {
                 var idx = x.split(':'), ref = table.cell(idx[0],idx[1],true);
                 if (ref && ref.hasOwnProperty('depend')) delete ref.depend[this.parentNode.rowIndex+':'+this.cellIndex];
             }
@@ -85,10 +85,12 @@
     var depend = function(table) {
         if (this.hasOwnProperty('depend')) {
             var idx, ref;
-            for (var x in this.depend) {
+            for (var x in this.depend) if (Object.prototype.hasOwnProperty.call(this.depend,x)) {
                 idx = x.split(':');
                 ref = table.cell(idx[0],idx[1],true);
-                setTimeout(function () { calc.call(ref, table); }, 0);
+                (function (target) {
+                    setTimeout(function () { calc.call(target, table); }, 0);
+                })(ref);
             }
         }
     };

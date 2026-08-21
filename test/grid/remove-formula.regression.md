@@ -1,0 +1,1 @@
+REG-015: B=A -> B="". Verify dependency graph cleanup.
